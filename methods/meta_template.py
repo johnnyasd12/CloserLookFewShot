@@ -19,6 +19,8 @@ class MetaTemplate(nn.Module):
 
     @abstractmethod
     def set_forward(self,x,is_feature):
+        ''' get the last output (score), not only embedding ???
+        '''
         pass
 
     @abstractmethod
@@ -26,10 +28,14 @@ class MetaTemplate(nn.Module):
         pass
 
     def forward(self,x):
+        ''' get feture embedding Tensor???
+        '''
         out  = self.feature.forward(x)
         return out
 
     def parse_feature(self,x,is_feature):
+        ''' parsing xs into support and query feature embedding
+        '''
         x    = Variable(x.cuda())
         if is_feature:
             z_all = x
@@ -43,6 +49,9 @@ class MetaTemplate(nn.Module):
         return z_support, z_query
 
     def correct(self, x):       
+        '''
+        :return: n_correct, n_query
+        '''
         scores = self.set_forward(x)
         y_query = np.repeat(range( self.n_way ), self.n_query )
 
@@ -68,7 +77,7 @@ class MetaTemplate(nn.Module):
             if i % print_freq==0:
                 #print(optimizer.state_dict()['param_groups'][0]['lr'])
                 print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader), avg_loss/float(i+1)))
-
+    
     def test_loop(self, test_loader, record = None):
         correct =0
         count = 0
@@ -80,7 +89,7 @@ class MetaTemplate(nn.Module):
             if self.change_way:
                 self.n_way  = x.size(0)
             correct_this, count_this = self.correct(x)
-            acc_all.append(correct_this/ count_this*100  )
+            acc_all.append(correct_this/count_this * 100)
 
         acc_all  = np.asarray(acc_all)
         acc_mean = np.mean(acc_all)

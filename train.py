@@ -23,7 +23,7 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     if optimization == 'Adam':
         optimizer = torch.optim.Adam(model.parameters())
     else:
-       raise ValueError('Unknown optimization, please define by yourself')
+        raise ValueError('Unknown optimization, please define by yourself')
 
     max_acc = 0       
 
@@ -94,7 +94,7 @@ if __name__=='__main__':
                 params.stop_epoch = 400
             else:
                 params.stop_epoch = 600 #default
-     
+    
 
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)
@@ -114,7 +114,7 @@ if __name__=='__main__':
 
     elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
- 
+
         train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
         base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
@@ -151,7 +151,7 @@ if __name__=='__main__':
                 model.task_update_num = 1
                 model.train_lr = 0.1
     else:
-       raise ValueError('Unknown method')
+        raise ValueError('Unknown method')
 
     model = model.cuda()
 
@@ -162,6 +162,7 @@ if __name__=='__main__':
         params.checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
 
     if not os.path.isdir(params.checkpoint_dir):
+        print('making directory:',params.checkpoint_dir)
         os.makedirs(params.checkpoint_dir)
 
     start_epoch = params.start_epoch

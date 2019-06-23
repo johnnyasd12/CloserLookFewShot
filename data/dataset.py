@@ -30,7 +30,7 @@ class SetDataset:
     def __init__(self, data_file, batch_size, transform):
         with open(data_file, 'r') as f:
             self.meta = json.load(f)
- 
+
         self.cl_list = np.unique(self.meta['image_labels']).tolist()
 
         self.sub_meta = {}

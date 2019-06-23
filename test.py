@@ -32,8 +32,8 @@ def feature_evaluation(cl_data_file, model, n_way = 5, n_support = 5, n_query = 
         perm_ids = np.random.permutation(len(img_feat)).tolist()
         z_all.append( [ np.squeeze( img_feat[perm_ids[i]]) for i in range(n_support+n_query) ] )     # stack each batch
 
-    z_all = torch.from_numpy(np.array(z_all) )
-   
+    z_all = torch.from_numpy(np.array(z_all))
+    
     model.n_query = n_query
     if adaptation:
         scores  = model.set_forward_adaptation(z_all, is_feature = True)
@@ -52,7 +52,8 @@ if __name__ == '__main__':
     iter_num = 600
 
     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot) 
-
+    
+    # set meta-learning method and backbone
     if params.dataset in ['omniglot', 'cross_char']:
         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
         params.model = 'Conv4S'
@@ -87,10 +88,11 @@ if __name__ == '__main__':
             model.task_update_num = 1
             model.train_lr = 0.1
     else:
-       raise ValueError('Unknown method')
+        raise ValueError('Unknown method')
 
     model = model.cuda()
 
+    # set save directory
     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
     if params.train_aug:
         checkpoint_dir += '_aug'
@@ -98,7 +100,7 @@ if __name__ == '__main__':
         checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
 
     #modelfile   = get_resume_file(checkpoint_dir)
-
+    # load model file ???
     if not params.method in ['baseline', 'baseline++'] : 
         if params.save_iter != -1:
             modelfile   = get_assigned_file(checkpoint_dir,params.save_iter)
@@ -108,6 +110,7 @@ if __name__ == '__main__':
             tmp = torch.load(modelfile)
             model.load_state_dict(tmp['state'])
 
+    # train/val/novel
     split = params.split
     if params.save_iter != -1:
         split_str = split + "_" +str(params.save_iter)
@@ -143,7 +146,7 @@ if __name__ == '__main__':
         model.eval()
         acc_mean, acc_std = model.test_loop( novel_loader, return_std = True)
 
-    else:
+    else: # not MAML
         novel_file = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +".hdf5") #defaut split = novel, but you can also test base or val classes
         cl_data_file = feat_loader.init_loader(novel_file)
 

@@ -4,6 +4,7 @@ import glob
 import argparse
 import backbone
 
+# embedding model architecture
 model_dict = dict(
             Conv4 = backbone.Conv4,
             Conv4S = backbone.Conv4S,
@@ -39,7 +40,7 @@ def parse_args(script):
         parser.add_argument('--save_iter', default=-1, type=int,help ='saved feature from the model trained in x epoch, use the best model if x is -1')
         parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
     else:
-       raise ValueError('Unknown script')
+        raise ValueError('Unknown script')
         
 
     return parser.parse_args()
