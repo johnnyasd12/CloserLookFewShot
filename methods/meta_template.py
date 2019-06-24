@@ -13,7 +13,7 @@ class MetaTemplate(nn.Module):
         self.n_way      = n_way
         self.n_support  = n_support
         self.n_query    = -1 #(change depends on input) 
-        self.feature    = model_func()
+        self.feature    = model_func() # set feature backbone
         self.feat_dim   = self.feature.final_feat_dim
         self.change_way = change_way  #some methods allow different_way classification during training and test
 
@@ -28,13 +28,14 @@ class MetaTemplate(nn.Module):
         pass
 
     def forward(self,x):
-        ''' get feture embedding Tensor???
+        ''' get feature embedding Tensor???
+        :param x: ???
         '''
         out  = self.feature.forward(x)
         return out
 
     def parse_feature(self,x,is_feature):
-        ''' parsing xs into support and query feature embedding
+        ''' parsing xs or zs to support and query feature embedding
         '''
         x    = Variable(x.cuda())
         if is_feature:
@@ -48,8 +49,23 @@ class MetaTemplate(nn.Module):
 
         return z_support, z_query
 
-    def correct(self, x):       
+    def parse_x(self, x, is_feature):
+        ''' parsing xs into support and query x
+        :param x: x_support & x_query before parsing
+        :return: x_support, x_query, shape=[n_way, n_sample, dim]
         '''
+        assert not is_feature, 'x must not be feature'
+        
+        x = Variable(x.cuda())
+        x_reshape = x.contiguous().view(self.n_way, self.n_support+self.n_query, -1)
+        x_support = x_reshape[:, :self.n_support]
+        x_query = x_reshape[:, self.n_support:]
+        
+        return x_support, x_query
+        
+    def correct(self, x):       
+        ''' compute accuracy of query_set in an episode
+        :param x: x_support & x_query before parse_feature
         :return: n_correct, n_query
         '''
         scores = self.set_forward(x)
@@ -60,8 +76,14 @@ class MetaTemplate(nn.Module):
         top1_correct = np.sum(topk_ind[:,0] == y_query)
         return float(top1_correct), len(y_query)
 
+    def sample_plt(self, x):
+        '''
+        :param x: x_support & x_query before parse_feature
+        '''
+        pass
+    
     def train_loop(self, epoch, train_loader, optimizer ):
-        print_freq = 10
+        print_freq = 100
 
         avg_loss=0
         for i, (x,_ ) in enumerate(train_loader):
@@ -84,7 +106,7 @@ class MetaTemplate(nn.Module):
         acc_all = []
         
         iter_num = len(test_loader) 
-        for i, (x,_) in enumerate(test_loader):
+        for i, (x,_) in enumerate(test_loader): # episode
             self.n_query = x.size(1) - self.n_support
             if self.change_way:
                 self.n_way  = x.size(0)
