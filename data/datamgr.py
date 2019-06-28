@@ -63,6 +63,8 @@ class SimpleDataManager(DataManager):
         return data_loader
 
 class SetDataManager(DataManager):
+    ''' to get a data_loader
+    '''
     def __init__(self, image_size, n_way, n_support, n_query, n_eposide =100):        
         super(SetDataManager, self).__init__()
         self.image_size = image_size
@@ -75,7 +77,7 @@ class SetDataManager(DataManager):
     def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
         transform = self.trans_loader.get_composed_transform(aug)
         dataset = SetDataset( data_file , self.batch_size, transform )
-        sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_eposide )  
+        sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_eposide ) # sample classes randomly
         data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)       
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
         return data_loader

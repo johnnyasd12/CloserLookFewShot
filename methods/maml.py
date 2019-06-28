@@ -8,6 +8,8 @@ import numpy as np
 import torch.nn.functional as F
 from methods.meta_template import MetaTemplate
 
+from packaging import version
+
 class MAML(MetaTemplate):
     def __init__(self, model_func,  n_way, n_support, approx = False):
         super(MAML, self).__init__( model_func,  n_way, n_support, change_way = False)
@@ -81,13 +83,16 @@ class MAML(MetaTemplate):
             assert self.n_way  ==  x.size(0), "MAML do not support way change"
 
             loss = self.set_forward_loss(x)
-            avg_loss = avg_loss+loss.data[0]
+            if version.parse(torch.__version__) < version.parse("0.4.0"):
+                avg_loss = avg_loss+loss.data[0]
+            else:
+                avg_loss = avg_loss+loss.item()
             loss_all.append(loss)
 
             task_count += 1
 
             if task_count == self.n_task: #MAML update several tasks at one time
-                loss_q = torch.stack(loss_all).sum(0)
+                loss_q = torch.stack(loss_all).sum(0) # BUGFIX: .contiguous?
                 loss_q.backward()
 
                 optimizer.step()

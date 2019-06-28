@@ -23,7 +23,31 @@ from methods.maml import MAML
 from io_utils import model_dict, parse_args, get_resume_file, get_best_file , get_assigned_file
 from my_utils import feature_evaluation
 
+def get_settings(params, split):
+    if 'Conv' in params.model:
+        if params.dataset in ['omniglot', 'cross_char']:
+            image_size = 28
+        else:
+            image_size = 84 
+    else:
+        image_size = 224
+    
+    if params.dataset == 'cross':
+        if split == 'base':
+            loadfile = configs.data_dir['miniImagenet'] + 'all.json' 
+        else:
+            loadfile   = configs.data_dir['CUB'] + split +'.json'
+    elif params.dataset == 'cross_char':
+        if split == 'base':
+            loadfile = configs.data_dir['omniglot'] + 'noLatin.json' 
+        else:
+            loadfile  = configs.data_dir['emnist'] + split +'.json' 
+    else: 
+        loadfile    = configs.data_dir[params.dataset] + split + '.json'
+    return image_size, loadfile
+
 if __name__ == '__main__':
+    print('test.py start')
     params = parse_args('test')
 
     acc_all = []
@@ -95,29 +119,32 @@ if __name__ == '__main__':
         split_str = split + "_" +str(params.save_iter)
     else:
         split_str = split
+    
+    
     if params.method in ['maml', 'maml_approx']: #maml do not support testing with feature
-        if 'Conv' in params.model:
-            if params.dataset in ['omniglot', 'cross_char']:
-                image_size = 28
-            else:
-                image_size = 84 
-        else:
-            image_size = 224
+        image_size, load_file = get_settings(params, split)
+#         if 'Conv' in params.model:
+#             if params.dataset in ['omniglot', 'cross_char']:
+#                 image_size = 28
+#             else:
+#                 image_size = 84 
+#         else:
+#             image_size = 224
 
         datamgr         = SetDataManager(image_size, n_eposide = iter_num, n_query = 15 , **few_shot_params)
         
-        if params.dataset == 'cross':
-            if split == 'base':
-                loadfile = configs.data_dir['miniImagenet'] + 'all.json' 
-            else:
-                loadfile   = configs.data_dir['CUB'] + split +'.json'
-        elif params.dataset == 'cross_char':
-            if split == 'base':
-                loadfile = configs.data_dir['omniglot'] + 'noLatin.json' 
-            else:
-                loadfile  = configs.data_dir['emnist'] + split +'.json' 
-        else: 
-            loadfile    = configs.data_dir[params.dataset] + split + '.json'
+#         if params.dataset == 'cross':
+#             if split == 'base':
+#                 loadfile = configs.data_dir['miniImagenet'] + 'all.json' 
+#             else:
+#                 loadfile   = configs.data_dir['CUB'] + split +'.json'
+#         elif params.dataset == 'cross_char':
+#             if split == 'base':
+#                 loadfile = configs.data_dir['omniglot'] + 'noLatin.json' 
+#             else:
+#                 loadfile  = configs.data_dir['emnist'] + split +'.json' 
+#         else: 
+#             loadfile    = configs.data_dir[params.dataset] + split + '.json'
 
         novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
         if params.adaptation:
@@ -126,11 +153,13 @@ if __name__ == '__main__':
         acc_mean, acc_std = model.test_loop( novel_loader, return_std = True)
 
     else: # not MAML
-        novel_file = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +".hdf5") #defaut split = novel, but you can also test base or val classes
-        cl_data_file = feat_loader.init_loader(novel_file)
+        # directly use extracted features
+        test_file = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +".hdf5") #defaut split = novel, but you can also test base or val classes # so the variable name "test_file" is proper?
+        cl_data_file = feat_loader.init_loader(test_file)
 
         for i in range(iter_num):
             acc = feature_evaluation(cl_data_file, model, n_query = 15, adaptation = params.adaptation, **few_shot_params)
+            # TODO: draw something here ???
             acc_all.append(acc)
 
         acc_all  = np.asarray(acc_all)
@@ -147,3 +176,11 @@ if __name__ == '__main__':
             exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
         acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num))
         f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
+        
+    # use SetDataManager to transform original image???
+    print('='*10 + 'start ploting' + '='*10)
+    image_size, loadfile = get_settings(params, split)
+    datamgr         = SetDataManager(image_size, n_eposide = iter_num, n_query = 15 , **few_shot_params)
+    novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
+    model.eval()
+    acc_mean = model.test_loop( novel_loader)

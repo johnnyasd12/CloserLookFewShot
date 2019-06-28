@@ -7,6 +7,8 @@ import torch.nn.functional as F
 import utils
 from abc import abstractmethod
 
+from packaging import version
+
 class MetaTemplate(nn.Module):
     def __init__(self, model_func, n_way, n_support, change_way = True):
         super(MetaTemplate, self).__init__()
@@ -76,6 +78,25 @@ class MetaTemplate(nn.Module):
         top1_correct = np.sum(topk_ind[:,0] == y_query)
         return float(top1_correct), len(y_query)
 
+    def correct_batch(self, x):
+        ''' compute accuracy of query_set in an episode
+        :param x: x_support & x_query before parse_feature
+        :return: n_correct, n_query
+        '''
+        print('correct_batch: x.shape =', x.shape)
+        scores = self.set_forward(x)
+        y_query = np.repeat(range(self.n_way), self.n_query)
+        topk_scores, topk_labels = scores.data.topk(1, 1, True, True)
+        topk_ind = topk_labels.cpu().numpy()
+        correct_bool = topk_ind[:,0] == y_query
+        top1_correct = np.sum(correct_bool)
+        print('plot support set...')
+        
+        print('plot correct query set...')
+        
+        print('plot misclassified query set...')
+        return float(top1_correct), len(y_query)
+    
     def sample_plt(self, x):
         '''
         :param x: x_support & x_query before parse_feature
@@ -94,13 +115,18 @@ class MetaTemplate(nn.Module):
             loss = self.set_forward_loss( x )
             loss.backward()
             optimizer.step()
-            avg_loss = avg_loss+loss.data[0]
+            if version.parse(torch.__version__) < version.parse("0.4.0"):
+                avg_loss = avg_loss+loss.data[0]
+            else:
+                avg_loss = avg_loss+loss.item()
 
             if i % print_freq==0:
                 #print(optimizer.state_dict()['param_groups'][0]['lr'])
                 print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader), avg_loss/float(i+1)))
     
     def test_loop(self, test_loader, record = None):
+        ''' not for MAML, MAML will override this function
+        '''
         correct =0
         count = 0
         acc_all = []

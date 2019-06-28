@@ -7,6 +7,8 @@ from torch.autograd import Variable
 import numpy as np
 import torch.nn.functional as F
 
+from packaging import version
+
 class BaselineTrain(nn.Module):
     def __init__(self, model_func, num_class, loss_type = 'softmax'):
         super(BaselineTrain, self).__init__()
@@ -40,8 +42,11 @@ class BaselineTrain(nn.Module):
             loss = self.forward_loss(x, y)
             loss.backward()
             optimizer.step()
-
-            avg_loss = avg_loss+loss.data[0]
+            
+            if version.parse(torch.__version__) < version.parse("0.4.0"):
+                avg_loss = avg_loss+loss.data[0]
+            else:
+                avg_loss = avg_loss+loss.item()
 
             if i % print_freq==0:
                 #print(optimizer.state_dict()['param_groups'][0]['lr'])

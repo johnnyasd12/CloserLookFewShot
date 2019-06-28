@@ -4,7 +4,7 @@ import random
 
 def feature_evaluation(cl_data_file, model, n_way = 5, n_support = 5, n_query = 15, adaptation = False):
     ''' sample 1 episode to do evaluation
-    :param cl_data_file: 
+    :param cl_data_file: extracted features and ys
     '''
     class_list = cl_data_file.keys()
 
@@ -12,7 +12,7 @@ def feature_evaluation(cl_data_file, model, n_way = 5, n_support = 5, n_query = 
     z_all  = []
     for cl in select_class:
         img_feat = cl_data_file[cl]
-        perm_ids = np.random.permutation(len(img_feat)).tolist()
+        perm_ids = np.random.permutation(len(img_feat)).tolist() # get shuffled idx of class data???
         z_all.append( [ np.squeeze( img_feat[perm_ids[i]]) for i in range(n_support+n_query) ] )     # stack each batch
 
     z_all = torch.from_numpy(np.array(z_all)) # z_support & z_query

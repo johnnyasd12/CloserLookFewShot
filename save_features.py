@@ -17,7 +17,7 @@ from methods.maml import MAML
 from io_utils import model_dict, parse_args, get_resume_file, get_best_file, get_assigned_file 
 
 
-def save_features(model, data_loader, outfile ):
+def save_features(model, data_loader, outfile, params):
     f = h5py.File(outfile, 'w')
     max_count = len(data_loader)*data_loader.batch_size
     all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
@@ -26,7 +26,13 @@ def save_features(model, data_loader, outfile ):
     for i, (x,y) in enumerate(data_loader):
         if i%10 == 0:
             print('{:d}/{:d}'.format(i, len(data_loader)))
-        x = x.cuda()
+        
+        if params.gpu_id:
+            device = torch.device('gpu:'+str(params.gpu_id))
+            x = x.to(device)
+        else:
+            x = x.cuda()
+        
         x_var = Variable(x)
         feats = model(x_var)
         if all_feats is None:
