@@ -186,3 +186,5 @@ if __name__ == '__main__':
     novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
     model.eval()
     acc_mean = model.test_loop( novel_loader)
+    
+    torch.cuda.empty_cache()

@@ -200,3 +200,5 @@ if __name__=='__main__':
             raise ValueError('No warm_up file')
 
     model = train(base_loader, val_loader,  model, optimization, start_epoch, stop_epoch, params)
+    
+    torch.cuda.empty_cache()
