@@ -21,7 +21,7 @@ from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
 from io_utils import model_dict, parse_args, get_resume_file, get_best_file , get_assigned_file
-from my_utils import feature_evaluation
+from my_utils import *
 
 def get_settings(params, split):
     if 'Conv' in params.model:
@@ -93,7 +93,9 @@ if __name__ == '__main__':
     else:
         raise ValueError('Unknown method')
 
-    model = model.cuda()
+    
+#     model = model.cuda()
+    model = to_device(model)
 
     # set save directory
     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)

@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from methods.meta_template import MetaTemplate
 
 from packaging import version
+from my_utils import *
 
 class MAML(MetaTemplate):
     def __init__(self, model_func,  n_way, n_support, approx = False):
@@ -30,7 +31,8 @@ class MAML(MetaTemplate):
 
     def set_forward(self,x, is_feature = False):
         assert is_feature == False, 'MAML do not support fixed feature' 
-        x = x.cuda()
+#         x = x.cuda()
+        x = to_device(x)
         x_var = Variable(x)
         x_a_i = x_var[:,:self.n_support,:,:,:].contiguous().view( self.n_way* self.n_support, *x.size()[2:]) #support data 
         x_b_i = x_var[:,self.n_support:,:,:,:].contiguous().view( self.n_way* self.n_query,   *x.size()[2:]) #query data
@@ -65,13 +67,14 @@ class MAML(MetaTemplate):
 
     def set_forward_loss(self, x):
         scores = self.set_forward(x, is_feature = False)
-        y_b_i = Variable( torch.from_numpy( np.repeat(range( self.n_way ), self.n_query   ) )).cuda()
+#         y_b_i = Variable( torch.from_numpy( np.repeat(range( self.n_way ), self.n_query   ) )).cuda()
+        y_b_i = to_device(Variable( torch.from_numpy( np.repeat(range( self.n_way ), self.n_query   ) )))
         loss = self.loss_fn(scores, y_b_i)
 
         return loss
 
     def train_loop(self, epoch, train_loader, optimizer): #overwrite parrent function
-        print_freq = 10
+        print_freq = 50
         avg_loss=0
         task_count = 0
         loss_all = []

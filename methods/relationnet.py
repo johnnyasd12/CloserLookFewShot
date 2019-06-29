@@ -9,6 +9,8 @@ import torch.nn.functional as F
 from methods.meta_template import MetaTemplate
 import utils
 
+from my_utils import *
+
 class RelationNet(MetaTemplate):
     def __init__(self, model_func,  n_way, n_support, loss_type = 'mse'):
         super(RelationNet, self).__init__(model_func,  n_way, n_support)
@@ -45,7 +47,7 @@ class RelationNet(MetaTemplate):
         full_n_query = self.n_query
         relation_module_clone = RelationModule( self.feat_dim , 8, self.loss_type )
         relation_module_clone.load_state_dict(self.relation_module.state_dict())
- 
+
 
         z_support, z_query  = self.parse_feature(x,is_feature)
         z_support   = z_support.contiguous()
@@ -58,7 +60,8 @@ class RelationNet(MetaTemplate):
         for epoch in range(100):
             perm_id = np.random.permutation(full_n_support).tolist()            
             sub_x = np.array([z_support_cpu[i,perm_id,:,:,:] for i in range(z_support.size(0))])
-            sub_x = torch.Tensor(sub_x).cuda()
+#             sub_x = torch.Tensor(sub_x).cuda()
+            sub_x = to_device(torch.Tensor(sub_x))
             if self.change_way:
                 self.n_way  = sub_x.size(0)
             set_optimizer.zero_grad()
@@ -66,11 +69,13 @@ class RelationNet(MetaTemplate):
             scores = self.set_forward(sub_x, is_feature = True)
             if self.loss_type == 'mse':
                 y_oh = utils.one_hot(y, self.n_way)
-                y_oh = Variable(y_oh.cuda())            
+#                 y_oh = Variable(y_oh.cuda())
+                y_oh = Variable(to_device(y_oh))
 
                 loss =  self.loss_fn(scores, y_oh )
             else:
-                y = Variable(y.cuda())
+#                 y = Variable(y.cuda())
+                y = Variable(to_device(y))
                 loss = self.loss_fn(scores, y )
             loss.backward()
             set_optimizer.step()
@@ -97,11 +102,13 @@ class RelationNet(MetaTemplate):
         scores = self.set_forward(x)
         if self.loss_type == 'mse':
             y_oh = utils.one_hot(y, self.n_way)
-            y_oh = Variable(y_oh.cuda())            
+#             y_oh = Variable(y_oh.cuda())
+            y_oh = Variable(to_device(y_oh))
 
             return self.loss_fn(scores, y_oh )
         else:
-            y = Variable(y.cuda())
+#             y = Variable(y.cuda())
+            y = Variable(to_device(y))
             return self.loss_fn(scores, y )
 
 class RelationConvBlock(nn.Module):

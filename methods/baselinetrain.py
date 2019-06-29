@@ -8,6 +8,7 @@ import numpy as np
 import torch.nn.functional as F
 
 from packaging import version
+from my_utils import *
 
 class BaselineTrain(nn.Module):
     def __init__(self, model_func, num_class, loss_type = 'softmax'):
@@ -23,18 +24,20 @@ class BaselineTrain(nn.Module):
         self.loss_fn = nn.CrossEntropyLoss()
 
     def forward(self,x):
-        x    = Variable(x.cuda())
+#         x    = Variable(x.cuda())
+        x    = Variable(to_device(x))
         out  = self.feature.forward(x)
         scores  = self.classifier.forward(out)
         return scores
 
     def forward_loss(self, x, y):
         scores = self.forward(x)
-        y = Variable(y.cuda())
+#         y = Variable(y.cuda())
+        y = Variable(to_device(y))
         return self.loss_fn(scores, y )
     
     def train_loop(self, epoch, train_loader, optimizer):
-        print_freq = 100
+        print_freq = 50
         avg_loss=0
 
         for i, (x,y) in enumerate(train_loader):

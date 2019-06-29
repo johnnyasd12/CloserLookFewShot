@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import random
+import configs
 
 def feature_evaluation(cl_data_file, model, n_way = 5, n_support = 5, n_query = 15, adaptation = False):
     ''' sample 1 episode to do evaluation
@@ -26,6 +27,14 @@ def feature_evaluation(cl_data_file, model, n_way = 5, n_support = 5, n_query = 
     y = np.repeat(range( n_way ), n_query )
     acc = np.mean(pred == y)*100 
     return acc
+
+def to_device(tensor):
+    if configs.gpu_id:
+        device = torch.device('cuda:'+str(configs.gpu_id))
+        tensor = tensor.to(device)
+    else:
+        tensor = tensor.cuda()
+    return tensor
 
 def cl_file_to_z_all(cl_data_file, n_way, n_support, n_query):
     class_list = cl_data_file.keys()

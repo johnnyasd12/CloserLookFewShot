@@ -8,6 +8,8 @@ import numpy as np
 import torch.nn.functional as F
 from methods.meta_template import MetaTemplate
 
+from my_utils import *
+
 class ProtoNet(MetaTemplate):
     def __init__(self, model_func,  n_way, n_support):
         super(ProtoNet, self).__init__( model_func,  n_way, n_support)
@@ -28,7 +30,8 @@ class ProtoNet(MetaTemplate):
 
     def set_forward_loss(self, x):
         y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
-        y_query = Variable(y_query.cuda())
+#         y_query = Variable(y_query.cuda())
+        y_query = Variable(to_device(y_query))
 
         scores = self.set_forward(x)
 

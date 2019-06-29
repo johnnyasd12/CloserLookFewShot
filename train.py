@@ -17,7 +17,9 @@ from methods.protonet import ProtoNet
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
-from io_utils import model_dict, parse_args, get_resume_file  
+from io_utils import model_dict, parse_args, get_resume_file
+
+from my_utils import *
 
 def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch, params):    
     if optimization == 'Adam':
@@ -153,10 +155,9 @@ if __name__=='__main__':
     else:
         raise ValueError('Unknown method')
 
-    model = model.cuda()
-    if params.gpu_id:
-        device = torch.device('gpu:'+str(params.gpu_id))
-        model = model.to(device)
+    
+#     model = model.cuda()
+    model = to_device(model)
 
     params.checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
     if params.train_aug:

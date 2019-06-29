@@ -16,6 +16,7 @@ from methods.relationnet import RelationNet
 from methods.maml import MAML
 from io_utils import model_dict, parse_args, get_resume_file, get_best_file, get_assigned_file 
 
+from my_utils import *
 
 def save_features(model, data_loader, outfile, params):
     f = h5py.File(outfile, 'w')
@@ -23,15 +24,14 @@ def save_features(model, data_loader, outfile, params):
     all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
     all_feats=None
     count=0
+        
     for i, (x,y) in enumerate(data_loader):
         if i%10 == 0:
             print('{:d}/{:d}'.format(i, len(data_loader)))
         
-        if params.gpu_id:
-            device = torch.device('gpu:'+str(params.gpu_id))
-            x = x.to(device)
-        else:
-            x = x.cuda()
+        
+#         x = x.cuda()
+        x = to_device(x)
         
         x_var = Variable(x)
         feats = model(x_var)
@@ -107,11 +107,13 @@ if __name__ == '__main__':
         else:
             model = model_dict[params.model]( flatten = False )
     elif params.method in ['maml' , 'maml_approx']: 
-       raise ValueError('MAML do not support save feature')
+        raise ValueError('MAML do not support save feature')
     else:
         model = model_dict[params.model]()
 
-    model = model.cuda()
+    
+#     model = model.cuda()
+    model = to_device(model)
     tmp = torch.load(modelfile)
     state = tmp['state']
     state_keys = list(state.keys())
@@ -128,4 +130,4 @@ if __name__ == '__main__':
     dirname = os.path.dirname(outfile)
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
-    save_features(model, data_loader, outfile)
+    save_features(model, data_loader, outfile, params)
