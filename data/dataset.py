@@ -33,7 +33,7 @@ class SetDataset:
 
         self.cl_list = np.unique(self.meta['image_labels']).tolist()
 
-        self.sub_meta = {}
+        self.sub_meta = {} # class_1: [data_path_1, ..., data_path_n], class_n: [...]
         for cl in self.cl_list:
             self.sub_meta[cl] = []
 
