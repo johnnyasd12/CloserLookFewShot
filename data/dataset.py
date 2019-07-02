@@ -40,17 +40,17 @@ class SetDataset:
         for x,y in zip(self.meta['image_names'],self.meta['image_labels']):
             self.sub_meta[y].append(x)
 
-        self.sub_dataloader = [] 
-        sub_data_loader_params = dict(batch_size = batch_size,
+        self.sub_dataloaders = [] # there're k dataloaders, k is # classes
+        sub_data_loader_params = dict(batch_size = batch_size, # how many data to grab at current category???
                                   shuffle = True,
                                   num_workers = 0, #use main thread only or may receive multiple batches
                                   pin_memory = False)        
         for cl in self.cl_list:
             sub_dataset = SubDataset(self.sub_meta[cl], cl, transform = transform )
-            self.sub_dataloader.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
+            self.sub_dataloaders.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
 
     def __getitem__(self,i):
-        return next(iter(self.sub_dataloader[i]))
+        return next(iter(self.sub_dataloaders[i]))
 
     def __len__(self):
         return len(self.cl_list)
