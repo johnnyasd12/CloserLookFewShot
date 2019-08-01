@@ -5,4 +5,4 @@ data_dir['miniImagenet']    = './filelists/miniImagenet/'
 data_dir['omniglot']        = './filelists/omniglot/' 
 data_dir['emnist']          = './filelists/emnist/' 
 
-gpu_id                      = '1'
+gpu_id                      = None
