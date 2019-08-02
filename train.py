@@ -67,11 +67,11 @@ if __name__=='__main__':
          
     if 'Conv' in params.model:
         if params.dataset in ['omniglot', 'cross_char']:
-            image_size = 28
+            image_size = 28 if params.image_size is None else params.image_size
         else:
-            image_size = 84
+            image_size = 84 if params.image_size is None else params.image_size
     else:
-        image_size = 224
+        image_size = 224 if params.image_size is None else params.image_size
 
     if params.dataset in ['omniglot', 'cross_char']:
         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
