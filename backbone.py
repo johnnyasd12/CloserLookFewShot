@@ -192,7 +192,7 @@ class SimpleBlock(nn.Module):
 
 
 # Bottleneck block
-class BottleneckBlock(nn.Module):
+class BottleneckBlock(nn.Module): # utilized by ResNet50, ResNet101
     maml = False #Default
     def __init__(self, indim, outdim, half_res):
         super(BottleneckBlock, self).__init__()
@@ -259,7 +259,7 @@ class ConvNet(nn.Module):
         for i in range(depth):
             indim = 3 if i == 0 else 64
             outdim = 64
-            B = ConvBlock(indim, outdim, pool = ( i <4 ) ) #only pooling for fist 4 layers
+            B = ConvBlock(indim, outdim, pool = ( i <4 ) ) #only pooling for first 4 layers
             trunk.append(B)
 
         if flatten:
