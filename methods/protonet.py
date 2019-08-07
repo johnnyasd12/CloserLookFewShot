@@ -11,12 +11,14 @@ from methods.meta_template import MetaTemplate
 from my_utils import *
 
 class ProtoNet(MetaTemplate):
-    def __init__(self, model_func,  n_way, n_support):
-        super(ProtoNet, self).__init__( model_func,  n_way, n_support)
+    def __init__(self, model_func,  n_way, n_support, recons_func = None):
+        super(ProtoNet, self).__init__( model_func,  n_way, n_support, recons_func)
         self.loss_fn = nn.CrossEntropyLoss()
 
 
     def set_forward(self,x,is_feature = False):
+        ''' get the last output (score) from image or embedding
+        '''
         z_support, z_query  = self.parse_feature(x,is_feature)
 
         z_support   = z_support.contiguous()
@@ -27,8 +29,21 @@ class ProtoNet(MetaTemplate):
         scores = -dists
         return scores
 
+    def decoder_forward(self,x,is_feature=False):
+        ''' get the reconstructed output from image or embedding
+        '''
+        if is_feature:
+            embedding = x
+        else:
+            embedding = self.feature.forward(x)
+        
+        decoded_img = self.recons_func(embedding)
+        
+        return decoded_img
 
-    def set_forward_loss(self, x):
+    def set_forward_loss(self, x): # utilized by train_loop
+        ''' compute task loss
+        '''
         y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
 #         y_query = Variable(y_query.cuda())
         y_query = Variable(to_device(y_query))
@@ -36,6 +51,13 @@ class ProtoNet(MetaTemplate):
         scores = self.set_forward(x)
 
         return self.loss_fn(scores, y_query )
+    
+    def decoder_loss(self, x):
+        if self.recons_func:
+            decoded_img = self.decoder_forward(x)
+            loss = nn.MSELoss()(x,decoded_img) # TODO
+        else:
+            loss = 0
 
 
 def euclidean_dist( x, y):

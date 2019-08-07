@@ -72,7 +72,7 @@ if __name__=='__main__':
         else:
             image_size = 84 if params.image_size is None else params.image_size
     else:
-        image_size = 224 if params.image_size is None else params.image_size
+        image_size = 224 # if params.image_size is None else params.image_size
 
     if params.dataset in ['omniglot', 'cross_char']:
         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
@@ -99,6 +99,11 @@ if __name__=='__main__':
                 params.stop_epoch = 600 #default
     
 
+    if params.aux_recons == None:
+        recons_decoder = None
+    else:
+        recons_decoder = decoder_dict[params.aux_recons]
+
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)
         base_loader     = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
@@ -111,17 +116,17 @@ if __name__=='__main__':
             assert params.num_classes >= 1597, 'class number need to be larger than max label id in base class'
 
         if params.method == 'baseline':
-            model           = BaselineTrain( model_dict[params.model], params.num_classes)
+            model           = BaselineTrain( model_dict[params.model], params.num_classes, recons_func = recons_decoder)
         elif params.method == 'baseline++':
-            model           = BaselineTrain( model_dict[params.model], params.num_classes, loss_type = 'dist')
+            model           = BaselineTrain( model_dict[params.model], params.num_classes, loss_type = 'dist', recons_func = recons_decoder)
 
     elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
 
-        train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
+        train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot, recons_func = recons_decoder) 
         base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
-         
+        
         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot) 
         val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 

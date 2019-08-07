@@ -11,7 +11,7 @@ from packaging import version
 from my_utils import *
 
 class MetaTemplate(nn.Module):
-    def __init__(self, model_func, n_way, n_support, change_way = True):
+    def __init__(self, model_func, n_way, n_support, change_way = True, recons_func = None):
         super(MetaTemplate, self).__init__()
         self.n_way      = n_way
         self.n_support  = n_support
@@ -19,25 +19,34 @@ class MetaTemplate(nn.Module):
         self.feature    = model_func() # set feature backbone
         self.feat_dim   = self.feature.final_feat_dim
         self.change_way = change_way  #some methods allow different_way classification during training and test
+        self.recons_func = recons_func
 
     @abstractmethod
     def set_forward(self,x,is_feature):
-        ''' get the last output (score), not only embedding ???
+        ''' get the last output (score) from image or embedding
         '''
         pass
 
     @abstractmethod
-    def set_forward_loss(self, x):
+    def set_forward_loss(self, x): # utilized by train_loop
+        ''' compute task loss
+        '''
+        pass
+    
+    @abstractmethod
+    def decoder_loss(self, x):
+        ''' compute reconstruction loss
+        '''
         pass
 
     def forward(self,x):
         ''' get feature embedding Tensor???
-        :param x: ???
+        :param x: input image i think
         '''
         out  = self.feature.forward(x)
         return out
     
-    def parse_feature(self,x,is_feature):
+    def parse_feature(self,x,is_feature): # utilized by set_forward
         ''' parsing xs or zs to support and query feature embedding
         '''
         
@@ -117,7 +126,8 @@ class MetaTemplate(nn.Module):
             if self.change_way:
                 self.n_way  = x.size(0)
             optimizer.zero_grad()
-            loss = self.set_forward_loss( x )
+            recons_lambda = 1
+            loss = self.set_forward_loss( x ) + recons_lambda*self.decoder_loss(x)
             loss.backward()
             optimizer.step()
             if version.parse(torch.__version__) < version.parse("0.4.0"):
