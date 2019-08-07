@@ -15,6 +15,12 @@ model_dict = dict(
             ResNet50 = backbone.ResNet50,
             ResNet101 = backbone.ResNet101) 
 
+# reconstruction decoder
+decoder_dict = dict(
+    Conv = backbone.DeConvNet
+    FC = backbone.DeFCNet
+)
+
 def parse_args(script):
     parser = argparse.ArgumentParser(description= 'few-shot script %s' %(script))
     parser.add_argument('--dataset'     , default='CUB',        help='CUB/miniImagenet/cross/omniglot/cross_char')
@@ -25,8 +31,12 @@ def parse_args(script):
     parser.add_argument('--n_shot'      , default=5, type=int,  help='number of labeled data in each class, same as n_support') #baseline and baseline++ only use this parameter in finetuning
     parser.add_argument('--train_aug'   , action='store_true',  help='perform data augmentation or not during training ') #still required for save_features.py and test.py to find the model path correctly
 #     parser.add_argument('--gpu_id'      , default=None, type=int, help='which gpu to use')
+    
     # assign image resize
     parser.add_argument('--image_size', default=None, type=int, help='the rescaled image size')
+    # auxiliary reconstruction task
+    parser.add_argument('--recons_decoder'   , default=None, help='reconstruction decoder: FC/Conv')
+    
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
         parser.add_argument('--save_freq'   , default=50, type=int, help='Save frequency')
