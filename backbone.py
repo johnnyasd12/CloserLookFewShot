@@ -253,11 +253,11 @@ class BottleneckBlock(nn.Module): # utilized by ResNet50, ResNet101
 
 
 class ConvNet(nn.Module):
-    def __init__(self, depth, flatten = True):
+    def __init__(self, depth, flatten = True): # CUB/miniImgnet Conv input = 84*84*3
         super(ConvNet,self).__init__()
         trunk = []
         for i in range(depth):
-            indim = 3 if i == 0 else 64
+            indim = 3 if i == 0 else 64 # if the 1st block then input is image, otherwise 64 from pre-block
             outdim = 64
             B = ConvBlock(indim, outdim, pool = ( i <4 ) ) #only pooling for first 4 layers
             trunk.append(B)
@@ -266,10 +266,50 @@ class ConvNet(nn.Module):
             trunk.append(Flatten())
 
         self.trunk = nn.Sequential(*trunk)
-        self.final_feat_dim = 1600
+        self.final_feat_dim = 1600 # output = 64*5*5
 
     def forward(self,x):
         out = self.trunk(x)
+        return out
+
+class DeConvNet(nn.Module): # input: flattened 64*5*5
+    def __init__(self):
+        super(DeConvNet, self).__init__() # BUGFIX: not sure if correct (padding, output_padding, Tanh())
+        self.decoder = nn.Sequential( # input: b, 64, 5, 5
+            # TODO: reshape
+            
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2),  # b, 64, 10, 10
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 10, 10
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2, output_padding=(1,1)),  # b, 64, 21, 21
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 21, 21
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2),  # b, 64, 42, 42
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 42, 42
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2),  # b, 64, 84, 84
+            nn.ConvTranspose2d(64, 3, kernel_size=3, stride=1, padding=1),  # b, 3, 84, 84
+            nn.Tanh()
+        )
+        
+    def forward(self,x):
+        out = x.view(x.size(0),64,5,5)
+        out = self.decoder(out)
+        return out
+
+class DeFCNet(nn.Module):
+    def __init__(self):
+        super(DeFCNet, self).__init__()
+        self.decoder = nn.Sequential(
+            nn.Linear(1600,500), 
+            nn.ReLU(inplace=True), 
+            nn.Linear(500,3*84*84)
+            nn.Tanh()
+        )
+    
+    def forward(self,x):
+        out = self.decoder(x)
+        out = out.view(out.size(0),3,84,84)
         return out
 
 class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in only first two layers, else no pooling
