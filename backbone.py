@@ -278,18 +278,18 @@ class DeConvNet(nn.Module): # input: flattened 64*5*5
         self.decoder = nn.Sequential( # input: b, 64, 5, 5
             # TODO: reshape
             
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2),  # b, 64, 10, 10
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 10, 10
             nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 10, 10
             nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2, output_padding=(1,1)),  # b, 64, 21, 21
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2, output_padding=(1,1)),  # b, 64, 21, 21
             nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 21, 21
             nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2),  # b, 64, 42, 42
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 42, 42
             nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 42, 42
             nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2),  # b, 64, 84, 84
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 84, 84
             nn.ConvTranspose2d(64, 3, kernel_size=3, stride=1, padding=1),  # b, 3, 84, 84
-            nn.Tanh()
+            nn.Tanh() # BUGFIX: see how image is input to the model
         )
         
     def forward(self,x):
@@ -303,7 +303,7 @@ class DeFCNet(nn.Module):
         self.decoder = nn.Sequential(
             nn.Linear(1600,500), 
             nn.ReLU(inplace=True), 
-            nn.Linear(500,3*84*84)
+            nn.Linear(500,3*84*84),
             nn.Tanh()
         )
     

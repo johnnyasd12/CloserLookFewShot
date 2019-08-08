@@ -12,7 +12,7 @@ from my_utils import *
 
 class ProtoNet(MetaTemplate):
     def __init__(self, model_func,  n_way, n_support, recons_func = None):
-        super(ProtoNet, self).__init__( model_func,  n_way, n_support, recons_func)
+        super(ProtoNet, self).__init__( model_func,  n_way, n_support, recons_func=recons_func)
         self.loss_fn = nn.CrossEntropyLoss()
 
 
@@ -32,6 +32,9 @@ class ProtoNet(MetaTemplate):
     def decoder_forward(self,x,is_feature=False):
         ''' get the reconstructed output from image or embedding
         '''
+        x = Variable(to_device(x))
+        x = x.contiguous().view( self.n_way * (self.n_support + self.n_query), *x.size()[2:]) 
+        
         if is_feature:
             embedding = x
         else:
@@ -55,9 +58,13 @@ class ProtoNet(MetaTemplate):
     def decoder_loss(self, x):
         if self.recons_func:
             decoded_img = self.decoder_forward(x)
-            loss = nn.MSELoss()(x,decoded_img) # TODO
+            x = Variable(to_device(x))
+            x = x.view(x.size(0)*x.size(1),x.size(2),x.size(3),x.size(4))
+#             print('decoded_img shape =',decoded_img.shape)
+            loss = nn.MSELoss()(decoded_img,x) # TODO
         else:
             loss = 0
+        return loss
 
 
 def euclidean_dist( x, y):

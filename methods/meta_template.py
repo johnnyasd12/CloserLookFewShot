@@ -11,7 +11,7 @@ from packaging import version
 from my_utils import *
 
 class MetaTemplate(nn.Module):
-    def __init__(self, model_func, n_way, n_support, change_way = True, recons_func = None):
+    def __init__(self, model_func, n_way, n_support, recons_func, change_way = True):
         super(MetaTemplate, self).__init__()
         self.n_way      = n_way
         self.n_support  = n_support

@@ -17,8 +17,8 @@ model_dict = dict(
 
 # reconstruction decoder
 decoder_dict = dict(
-    Conv = backbone.DeConvNet
-    FC = backbone.DeFCNet
+    Conv = backbone.DeConvNet(),
+    FC = backbone.DeFCNet()
 )
 
 def parse_args(script):

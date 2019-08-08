@@ -17,7 +17,7 @@ from methods.protonet import ProtoNet
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
-from io_utils import model_dict, parse_args, get_resume_file
+from io_utils import model_dict, parse_args, get_resume_file, decoder_dict
 
 from my_utils import *
 
@@ -99,10 +99,12 @@ if __name__=='__main__':
                 params.stop_epoch = 600 #default
     
 
-    if params.aux_recons == None:
+    if params.recons_decoder == None:
+        print('params.recons_decoder == None')
         recons_decoder = None
     else:
-        recons_decoder = decoder_dict[params.aux_recons]
+        recons_decoder = decoder_dict[params.recons_decoder]
+        print(recons_decoder)
 
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)
