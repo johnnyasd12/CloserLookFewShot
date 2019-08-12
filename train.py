@@ -27,7 +27,8 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     else:
         raise ValueError('Unknown optimization, please define by yourself')
 
-    max_acc = 0       
+    max_acc = 0
+    best_epoch = 0
 
     for epoch in range(start_epoch,stop_epoch):
         model.train()
@@ -41,13 +42,14 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
         if acc > max_acc : #for baseline and baseline++, we don't use validation here so we let acc = -1
             print("best model! save...")
             max_acc = acc
+            best_epoch = epoch
             outfile = os.path.join(params.checkpoint_dir, 'best_model.tar')
             torch.save({'epoch':epoch, 'state':model.state_dict()}, outfile)
 
         if (epoch % params.save_freq==0) or (epoch==stop_epoch-1):
             outfile = os.path.join(params.checkpoint_dir, '{:d}.tar'.format(epoch))
             torch.save({'epoch':epoch, 'state':model.state_dict()}, outfile)
-    print('The best accuracy is',max_acc)
+    print('The best accuracy is',(str(max_acc)+'%'), 'at epoch', best_epoch)
     
     return model
 
@@ -104,7 +106,7 @@ if __name__=='__main__':
         recons_decoder = None
     else:
         recons_decoder = decoder_dict[params.recons_decoder]
-        print(recons_decoder)
+        print('recons_decoder:\n',recons_decoder)
 
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)
@@ -168,11 +170,15 @@ if __name__=='__main__':
     model = to_device(model)
 
     params.checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
+    
+    if params.recons_decoder: # extra decoder
+        params.checkpoint_dir += '_%sDecoder' %(params.recons_decoder)
     if params.train_aug:
         params.checkpoint_dir += '_aug'
     if not params.method  in ['baseline', 'baseline++']: 
         params.checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
-
+    
+    
     if not os.path.isdir(params.checkpoint_dir):
         print('making directory:',params.checkpoint_dir)
         os.makedirs(params.checkpoint_dir)
