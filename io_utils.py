@@ -32,6 +32,7 @@ def parse_args(script):
     parser.add_argument('--train_aug'   , action='store_true',  help='perform data augmentation or not during training ') #still required for save_features.py and test.py to find the model path correctly
 #     parser.add_argument('--gpu_id'      , default=None, type=int, help='which gpu to use')
     
+    # extra argument
     # assign image resize
     parser.add_argument('--image_size', default=None, type=int, help='the rescaled image size')
     # auxiliary reconstruction task
