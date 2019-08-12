@@ -65,7 +65,7 @@ class SimpleDataManager(DataManager):
 class SetDataManager(DataManager):
     ''' to get a data_loader
     '''
-    def __init__(self, image_size, n_way, n_support, n_query, n_eposide =100, recons_func = None):        
+    def __init__(self, image_size, n_way, n_support, n_query, n_eposide =100, recons_func = None): # n_episode spell wrong.....
         super(SetDataManager, self).__init__()
         self.image_size = image_size
         self.n_way = n_way
