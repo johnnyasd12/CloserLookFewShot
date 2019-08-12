@@ -20,7 +20,7 @@ from methods.protonet import ProtoNet
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
-from io_utils import model_dict, parse_args, get_resume_file, get_best_file , get_assigned_file
+from io_utils import model_dict, parse_args, get_resume_file, get_best_file , get_assigned_file, decoder_dict
 from my_utils import *
 
 def get_settings(params, split):
@@ -54,7 +54,15 @@ if __name__ == '__main__':
 
     iter_num = 600
 
-    few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot) 
+    if params.recons_decoder == None:
+        print('params.recons_decoder == None')
+        recons_decoder = None
+    else:
+        recons_decoder = decoder_dict[params.recons_decoder]
+        print('recons_decoder:\n',recons_decoder)
+    
+#     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot) # BUGFIX: decoder ?
+    few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot, recons_func = recons_decoder)
     
     # set meta-learning method and backbone
     if params.dataset in ['omniglot', 'cross_char']:
@@ -99,6 +107,9 @@ if __name__ == '__main__':
 
     # set save directory
     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
+    
+    if params.recons_decoder:
+        checkpoint_dir += '_%sDecoder' %(params.recons_decoder)
     if params.train_aug:
         checkpoint_dir += '_aug'
     if not params.method in ['baseline', 'baseline++'] :
@@ -180,11 +191,14 @@ if __name__ == '__main__':
         f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
         
     # use SetDataManager to transform original image???
+    # I wrote this ???
+    '''
     print('='*10 + 'start ploting' + '='*10)
     image_size, loadfile = get_settings(params, split)
     datamgr         = SetDataManager(image_size, n_eposide = iter_num, n_query = 15 , **few_shot_params)
     novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
     model.eval()
     acc_mean = model.test_loop( novel_loader)
+    '''
     
     torch.cuda.empty_cache()

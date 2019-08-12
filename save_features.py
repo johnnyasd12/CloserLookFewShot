@@ -77,6 +77,9 @@ if __name__ == '__main__':
         loadfile = configs.data_dir[params.dataset] + split + '.json'
 
     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
+    
+    if params.recons_decoder: # experiment with decoder model
+        checkpoint_dir += '_%sDecoder' %(params.recons_decoder)
     if params.train_aug:
         checkpoint_dir += '_aug'
     if not params.method in ['baseline', 'baseline++'] :
