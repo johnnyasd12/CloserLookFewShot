@@ -56,6 +56,8 @@ class ProtoNet(MetaTemplate):
         return self.loss_fn(scores, y_query )
     
     def decoder_loss(self, x):
+        ''' the reconstruction loss
+        '''
         if self.recons_func:
             decoded_img = self.decoder_forward(x)
             x = Variable(to_device(x))
