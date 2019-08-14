@@ -7,7 +7,7 @@ import random
 import re
 
 cwd = os.getcwd() 
-data_path = join(cwd,'ILSVRC2015/Data/CLS-LOC/train')
+data_path = join(cwd, 'preprocessed')#'ILSVRC2015/Data/CLS-LOC/train')
 savedir = './'
 dataset_list = ['base', 'val', 'novel']
 
@@ -33,11 +33,14 @@ for dataset in dataset_list:
                 folderlist.append(label)
                 filelists[dataset][label] = []
                 fnames = listdir( join(data_path, label) )
-                fname_number = [ int(re.split('_|\.', fname)[1]) for fname in fnames]
-                sorted_fnames = list(zip( *sorted(  zip(fnames, fname_number), key = lambda f_tuple: f_tuple[1] )))[0]
+#                 fname_number = [ int(re.split('_|\.', fname)[1]) for fname in fnames] # BUGFIX
+                fname_number = [ int(re.split('_|\.', fname)[0]) for fname in fnames] # BUGFIXED?
+#                 sorted_fnames = list(zip( *sorted(  zip(fnames, fname_number), key = lambda f_tuple: f_tuple[1] )))[0]
                  
-            fid = int(fid[-5:])-1
-            fname = join( data_path,label, sorted_fnames[fid] )
+#             fid = int(fid[-5:])-1
+            name = fid[-8:] + '.jpg'
+#             fname = join( data_path,label, sorted_fnames[fid] )
+            fname = join(data_path, label, name)
             filelists[dataset][label].append(fname)
 
     for key, filelist in filelists[dataset].items():
