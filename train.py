@@ -54,10 +54,10 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     return model
 
 if __name__=='__main__':
-    print('Program started at',get_time_now())
+    start_time = get_time_now()
+    print('Program started at',start_time)
     np.random.seed(10)
     params = parse_args('train')
-
 
     if params.dataset == 'cross':
         base_file = configs.data_dir['miniImagenet'] + 'all.json' 
@@ -217,3 +217,4 @@ if __name__=='__main__':
     model = train(base_loader, val_loader,  model, optimization, start_epoch, stop_epoch, params)
     
     torch.cuda.empty_cache()
+    print('Program start at', start_time, ', end at', get_time_now())
