@@ -11,7 +11,7 @@ from packaging import version
 from my_utils import *
 
 class MetaTemplate(nn.Module):
-    def __init__(self, model_func, n_way, n_support, recons_func, change_way = True):
+    def __init__(self, model_func, n_way, n_support, change_way = True):
         super(MetaTemplate, self).__init__()
         self.n_way      = n_way
         self.n_support  = n_support
@@ -19,7 +19,6 @@ class MetaTemplate(nn.Module):
         self.feature    = model_func() # set feature backbone
         self.feat_dim   = self.feature.final_feat_dim
         self.change_way = change_way  #some methods allow different_way classification during training and test
-        self.recons_func = recons_func
 
     @abstractmethod
     def set_forward(self,x,is_feature):
@@ -34,8 +33,8 @@ class MetaTemplate(nn.Module):
         pass
     
     @abstractmethod
-    def decoder_loss(self, x):
-        ''' compute reconstruction loss
+    def total_loss(self, x):
+        ''' compute whole objective function
         '''
         pass
 
@@ -127,7 +126,7 @@ class MetaTemplate(nn.Module):
                 self.n_way  = x.size(0)
             optimizer.zero_grad()
             recons_lambda = 1
-            loss = self.set_forward_loss( x ) + recons_lambda*self.decoder_loss(x)
+            loss = self.total_loss(x) #self.set_forward_loss( x ) + recons_lambda*self.decoder_loss(x)
             loss.backward()
             optimizer.step()
             if version.parse(torch.__version__) < version.parse("0.4.0"):

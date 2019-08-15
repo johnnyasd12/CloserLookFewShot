@@ -11,8 +11,8 @@ from methods.meta_template import MetaTemplate
 from my_utils import *
 
 class ProtoNet(MetaTemplate):
-    def __init__(self, model_func,  n_way, n_support, recons_func = None):
-        super(ProtoNet, self).__init__( model_func,  n_way, n_support, recons_func=recons_func)
+    def __init__(self, model_func,  n_way, n_support):
+        super(ProtoNet, self).__init__( model_func,  n_way, n_support)
         self.loss_fn = nn.CrossEntropyLoss()
 
 
@@ -29,6 +29,30 @@ class ProtoNet(MetaTemplate):
         scores = -dists
         return scores
 
+    def set_forward_loss(self, x): # utilized by train_loop
+        ''' compute task loss
+        '''
+        y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
+#         y_query = Variable(y_query.cuda())
+        y_query = Variable(to_device(y_query))
+
+        scores = self.set_forward(x)
+
+        return self.loss_fn(scores, y_query )
+    
+    def total_loss(self, x):
+        return self.set_forward_loss(x)
+
+
+class ProtoNetAE(ProtoNet):
+    def __init__(self, model_func,  n_way, n_support, recons_func = None, lambda_d = 1):
+        super(ProtoNetAE, self).__init__( model_func,  n_way, n_support)
+        self.recons_func = recons_func
+        self.lambda_d = lambda_d
+    
+    def total_loss(self, x):
+        return self.set_forward_loss(x) + self.decoder_loss(x)*self.lambda_d
+    
     def decoder_forward(self,x,is_feature=False):
         ''' get the reconstructed output from image or embedding
         '''
@@ -44,17 +68,6 @@ class ProtoNet(MetaTemplate):
         
         return decoded_img
 
-    def set_forward_loss(self, x): # utilized by train_loop
-        ''' compute task loss
-        '''
-        y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
-#         y_query = Variable(y_query.cuda())
-        y_query = Variable(to_device(y_query))
-
-        scores = self.set_forward(x)
-
-        return self.loss_fn(scores, y_query )
-    
     def decoder_loss(self, x):
         ''' the reconstruction loss
         '''

@@ -16,7 +16,7 @@ import data.feature_loader as feat_loader
 from data.datamgr import SetDataManager
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
-from methods.protonet import ProtoNet
+from methods.protonet import ProtoNet, ProtoNetAE
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         print('recons_decoder:\n',recons_decoder)
     
 #     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot) # BUGFIX: decoder ?
-    few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot, recons_func = recons_decoder)
+    few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
     
     # set meta-learning method and backbone
     if params.dataset in ['omniglot', 'cross_char']:
@@ -74,7 +74,10 @@ if __name__ == '__main__':
     elif params.method == 'baseline++':
         model           = BaselineFinetune( model_dict[params.model], loss_type = 'dist', **few_shot_params )
     elif params.method == 'protonet':
-        model           = ProtoNet( model_dict[params.model], **few_shot_params )
+        if recons_decoder is None:
+            model = ProtoNet( model_dict[params.model], **few_shot_params )
+        else:
+            model = ProtoNetAE(model_dict[params.model], **few_shot_params, recons_func = recons_decoder)
     elif params.method == 'matchingnet':
         model           = MatchingNet( model_dict[params.model], **few_shot_params )
     elif params.method in ['relationnet', 'relationnet_softmax']:

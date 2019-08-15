@@ -13,7 +13,7 @@ import backbone
 from data.datamgr import SimpleDataManager, SetDataManager
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
-from methods.protonet import ProtoNet
+from methods.protonet import ProtoNet, ProtoNetAE
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
@@ -128,7 +128,7 @@ if __name__=='__main__':
     elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
 
-        train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot, recons_func = recons_decoder) 
+        train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
         base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
         
@@ -138,7 +138,10 @@ if __name__=='__main__':
         #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
 
         if params.method == 'protonet':
-            model           = ProtoNet( model_dict[params.model], **train_few_shot_params )
+            if recons_decoder is None:
+                model = ProtoNet( model_dict[params.model], **train_few_shot_params )
+            else:
+                model = ProtoNetAE(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=1)
         elif params.method == 'matchingnet':
             model           = MatchingNet( model_dict[params.model], **train_few_shot_params )
         elif params.method in ['relationnet', 'relationnet_softmax']:
