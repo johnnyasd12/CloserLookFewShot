@@ -117,7 +117,7 @@ class MetaTemplate(nn.Module):
         '''
         pass
     
-    def train_loop(self, epoch, train_loader, optimizer ):
+    def train_loop(self, epoch, train_loader, optimizer ): # every epoch call this function
         print_freq = 50
 
         avg_loss=0
