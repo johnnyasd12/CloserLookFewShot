@@ -78,7 +78,7 @@ class BaselineTrain(nn.Module):
                 if l not in class_file.keys():
                     class_file[l] = []
                 class_file[l].append(f)
-       
+
         for cl in class_file:
             class_file[cl] = np.array(class_file[cl])
         
