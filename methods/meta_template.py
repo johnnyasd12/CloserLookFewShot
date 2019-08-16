@@ -9,6 +9,7 @@ from abc import abstractmethod
 
 from packaging import version
 from my_utils import *
+from tqdm import tqdm
 
 class MetaTemplate(nn.Module):
     def __init__(self, model_func, n_way, n_support, change_way = True):
@@ -117,10 +118,11 @@ class MetaTemplate(nn.Module):
         pass
     
     def train_loop(self, epoch, train_loader, optimizer ): # every epoch call this function
-        print_freq = 50
+        print_freq = 10
 
         avg_loss=0
-        for i, (x,_ ) in enumerate(train_loader):
+        tt = tqdm(train_loader)
+        for i, (x,_ ) in enumerate(tt):
             self.n_query = x.size(1) - self.n_support           
             if self.change_way:
                 self.n_way  = x.size(0)
@@ -129,14 +131,14 @@ class MetaTemplate(nn.Module):
             loss = self.total_loss(x) #self.set_forward_loss( x ) + recons_lambda*self.decoder_loss(x)
             loss.backward()
             optimizer.step()
-            if version.parse(torch.__version__) < version.parse("0.4.0"):
-                avg_loss = avg_loss+loss.data[0]
-            else:
-                avg_loss = avg_loss+loss.item()
+            
+            cur_loss = loss.item()
+            avg_loss = avg_loss+cur_loss
 
             if i % print_freq==0:
                 #print(optimizer.state_dict()['param_groups'][0]['lr'])
-                print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader), avg_loss/float(i+1)))
+#                 print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader), avg_loss/float(i+1)))
+                tt.set_description('Epoch %d: avg Loss = %.2f'%(epoch, avg_loss/float(i+1)))
     
     def test_loop(self, test_loader, record = None):
         ''' not for MAML, MAML will override this function
@@ -146,7 +148,8 @@ class MetaTemplate(nn.Module):
         acc_all = []
         
         iter_num = len(test_loader) 
-        for i, (x,_) in enumerate(test_loader): # episode
+        tt = tqdm(test_loader, desc='Validation:')
+        for i, (x,_) in enumerate(tt): # episode
             self.n_query = x.size(1) - self.n_support
             if self.change_way:
                 self.n_way  = x.size(0)

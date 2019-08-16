@@ -9,6 +9,7 @@ import torch.nn.functional as F
 
 from packaging import version
 from my_utils import *
+from tqdm import tqdm
 
 class BaselineTrain(nn.Module):
     def __init__(self, model_func, num_class, loss_type = 'softmax'):
@@ -37,23 +38,26 @@ class BaselineTrain(nn.Module):
         return self.loss_fn(scores, y )
     
     def train_loop(self, epoch, train_loader, optimizer):
-        print_freq = 50
+        print_freq = 10
         avg_loss=0
 
-        for i, (x,y) in enumerate(train_loader):
+        tt = tqdm(train_loader)
+        for i, (x,y) in enumerate(tt):
             optimizer.zero_grad()
             loss = self.forward_loss(x, y)
             loss.backward()
             optimizer.step()
             
-            if version.parse(torch.__version__) < version.parse("0.4.0"):
-                avg_loss = avg_loss+loss.data[0]
-            else:
-                avg_loss = avg_loss+loss.item()
+#             if version.parse(torch.__version__) < version.parse("0.4.0"):
+#                 avg_loss = avg_loss+loss.data[0]
+#             else:
+            cur_loss = loss.item()
+            avg_loss = avg_loss+cur_loss
 
             if i % print_freq==0:
                 #print(optimizer.state_dict()['param_groups'][0]['lr'])
-                print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader), avg_loss/float(i+1)  ))
+#                 print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader), avg_loss/float(i+1)  ))
+                tt.set_description('Epoch %d: avg Loss = %.2f'%(epoch, avg_loss/float(i+1)))
                      
     def test_loop(self, val_loader):
         return -1 #no validation, just save model during iteration
