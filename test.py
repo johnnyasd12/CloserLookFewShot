@@ -16,11 +16,11 @@ import data.feature_loader as feat_loader
 from data.datamgr import SetDataManager
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
-from methods.protonet import ProtoNet
+from methods.protonet import ProtoNet, ProtoNetAE
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
-from io_utils import model_dict, parse_args, get_resume_file, get_best_file , get_assigned_file
+from io_utils import model_dict, parse_args, get_resume_file, get_best_file , get_assigned_file, decoder_dict
 from my_utils import *
 
 def get_settings(params, split):
@@ -54,7 +54,15 @@ if __name__ == '__main__':
 
     iter_num = 600
 
-    few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot) 
+    if params.recons_decoder == None:
+        print('params.recons_decoder == None')
+        recons_decoder = None
+    else:
+        recons_decoder = decoder_dict[params.recons_decoder]
+        print('recons_decoder:\n',recons_decoder)
+    
+#     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot) # BUGFIX: decoder ?
+    few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
     
     # set meta-learning method and backbone
     if params.dataset in ['omniglot', 'cross_char']:
@@ -66,7 +74,10 @@ if __name__ == '__main__':
     elif params.method == 'baseline++':
         model           = BaselineFinetune( model_dict[params.model], loss_type = 'dist', **few_shot_params )
     elif params.method == 'protonet':
-        model           = ProtoNet( model_dict[params.model], **few_shot_params )
+        if recons_decoder is None:
+            model = ProtoNet( model_dict[params.model], **few_shot_params )
+        else:
+            model = ProtoNetAE(model_dict[params.model], **few_shot_params, recons_func = recons_decoder)
     elif params.method == 'matchingnet':
         model           = MatchingNet( model_dict[params.model], **few_shot_params )
     elif params.method in ['relationnet', 'relationnet_softmax']:
@@ -99,6 +110,9 @@ if __name__ == '__main__':
 
     # set save directory
     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
+    
+    if params.recons_decoder:
+        checkpoint_dir += '_%sDecoder' %(params.recons_decoder)
     if params.train_aug:
         checkpoint_dir += '_aug'
     if not params.method in ['baseline', 'baseline++'] :
@@ -172,6 +186,7 @@ if __name__ == '__main__':
         timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime()) 
         aug_str = '-aug' if params.train_aug else ''
         aug_str += '-adapted' if params.adaptation else ''
+        aug_str += ('-Decoder' + params.recons_decoder) if params.recons_decoder else ''
         if params.method in ['baseline', 'baseline++'] :
             exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
         else:
@@ -180,11 +195,14 @@ if __name__ == '__main__':
         f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
         
     # use SetDataManager to transform original image???
+    # I wrote this ???
+    '''
     print('='*10 + 'start ploting' + '='*10)
     image_size, loadfile = get_settings(params, split)
     datamgr         = SetDataManager(image_size, n_eposide = iter_num, n_query = 15 , **few_shot_params)
     novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
     model.eval()
     acc_mean = model.test_loop( novel_loader)
+    '''
     
     torch.cuda.empty_cache()

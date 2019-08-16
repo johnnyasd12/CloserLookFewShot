@@ -13,11 +13,11 @@ import backbone
 from data.datamgr import SimpleDataManager, SetDataManager
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
-from methods.protonet import ProtoNet
+from methods.protonet import ProtoNet, ProtoNetAE
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
-from io_utils import model_dict, parse_args, get_resume_file
+from io_utils import model_dict, parse_args, get_resume_file, decoder_dict
 
 from my_utils import *
 
@@ -27,7 +27,8 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     else:
         raise ValueError('Unknown optimization, please define by yourself')
 
-    max_acc = 0       
+    max_acc = 0
+    best_epoch = 0
 
     for epoch in range(start_epoch,stop_epoch):
         model.train()
@@ -41,20 +42,22 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
         if acc > max_acc : #for baseline and baseline++, we don't use validation here so we let acc = -1
             print("best model! save...")
             max_acc = acc
+            best_epoch = epoch
             outfile = os.path.join(params.checkpoint_dir, 'best_model.tar')
             torch.save({'epoch':epoch, 'state':model.state_dict()}, outfile)
 
         if (epoch % params.save_freq==0) or (epoch==stop_epoch-1):
             outfile = os.path.join(params.checkpoint_dir, '{:d}.tar'.format(epoch))
             torch.save({'epoch':epoch, 'state':model.state_dict()}, outfile)
-    print('The best accuracy is',max_acc)
+    print('The best accuracy is',(str(max_acc)+'%'), 'at epoch', best_epoch)
     
     return model
 
 if __name__=='__main__':
+    start_time = get_time_now()
+    print('Program started at',start_time)
     np.random.seed(10)
     params = parse_args('train')
-
 
     if params.dataset == 'cross':
         base_file = configs.data_dir['miniImagenet'] + 'all.json' 
@@ -72,7 +75,7 @@ if __name__=='__main__':
         else:
             image_size = 84 if params.image_size is None else params.image_size
     else:
-        image_size = 224 if params.image_size is None else params.image_size
+        image_size = 224 # if params.image_size is None else params.image_size
 
     if params.dataset in ['omniglot', 'cross_char']:
         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
@@ -99,6 +102,13 @@ if __name__=='__main__':
                 params.stop_epoch = 600 #default
     
 
+    if params.recons_decoder == None:
+        print('params.recons_decoder == None')
+        recons_decoder = None
+    else:
+        recons_decoder = decoder_dict[params.recons_decoder]
+        print('recons_decoder:\n',recons_decoder)
+
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)
         base_loader     = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
@@ -111,9 +121,9 @@ if __name__=='__main__':
             assert params.num_classes >= 1597, 'class number need to be larger than max label id in base class'
 
         if params.method == 'baseline':
-            model           = BaselineTrain( model_dict[params.model], params.num_classes)
+            model           = BaselineTrain( model_dict[params.model], params.num_classes, recons_func = recons_decoder)
         elif params.method == 'baseline++':
-            model           = BaselineTrain( model_dict[params.model], params.num_classes, loss_type = 'dist')
+            model           = BaselineTrain( model_dict[params.model], params.num_classes, loss_type = 'dist', recons_func = recons_decoder)
 
     elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
@@ -121,14 +131,17 @@ if __name__=='__main__':
         train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
         base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
-         
+        
         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot) 
         val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
         #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
 
         if params.method == 'protonet':
-            model           = ProtoNet( model_dict[params.model], **train_few_shot_params )
+            if recons_decoder is None:
+                model = ProtoNet( model_dict[params.model], **train_few_shot_params )
+            else:
+                model = ProtoNetAE(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=1)
         elif params.method == 'matchingnet':
             model           = MatchingNet( model_dict[params.model], **train_few_shot_params )
         elif params.method in ['relationnet', 'relationnet_softmax']:
@@ -161,11 +174,15 @@ if __name__=='__main__':
     model = to_device(model)
 
     params.checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
+    
+    if params.recons_decoder: # extra decoder
+        params.checkpoint_dir += '_%sDecoder' %(params.recons_decoder)
     if params.train_aug:
         params.checkpoint_dir += '_aug'
     if not params.method  in ['baseline', 'baseline++']: 
         params.checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
-
+    
+    
     if not os.path.isdir(params.checkpoint_dir):
         print('making directory:',params.checkpoint_dir)
         os.makedirs(params.checkpoint_dir)
@@ -203,3 +220,4 @@ if __name__=='__main__':
     model = train(base_loader, val_loader,  model, optimization, start_epoch, stop_epoch, params)
     
     torch.cuda.empty_cache()
+    print('Program start at', start_time, ', end at', get_time_now())

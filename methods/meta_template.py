@@ -22,22 +22,30 @@ class MetaTemplate(nn.Module):
 
     @abstractmethod
     def set_forward(self,x,is_feature):
-        ''' get the last output (score), not only embedding ???
+        ''' get the last output (score) from image or embedding
         '''
         pass
 
     @abstractmethod
-    def set_forward_loss(self, x):
+    def set_forward_loss(self, x): # utilized by train_loop
+        ''' compute task loss
+        '''
+        pass
+    
+    @abstractmethod
+    def total_loss(self, x):
+        ''' compute whole objective function
+        '''
         pass
 
     def forward(self,x):
         ''' get feature embedding Tensor???
-        :param x: ???
+        :param x: input image i think
         '''
         out  = self.feature.forward(x)
         return out
     
-    def parse_feature(self,x,is_feature):
+    def parse_feature(self,x,is_feature): # utilized by set_forward
         ''' parsing xs or zs to support and query feature embedding
         '''
         
@@ -108,7 +116,7 @@ class MetaTemplate(nn.Module):
         '''
         pass
     
-    def train_loop(self, epoch, train_loader, optimizer ):
+    def train_loop(self, epoch, train_loader, optimizer ): # every epoch call this function
         print_freq = 50
 
         avg_loss=0
@@ -117,7 +125,8 @@ class MetaTemplate(nn.Module):
             if self.change_way:
                 self.n_way  = x.size(0)
             optimizer.zero_grad()
-            loss = self.set_forward_loss( x )
+            recons_lambda = 1
+            loss = self.total_loss(x) #self.set_forward_loss( x ) + recons_lambda*self.decoder_loss(x)
             loss.backward()
             optimizer.step()
             if version.parse(torch.__version__) < version.parse("0.4.0"):

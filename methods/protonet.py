@@ -17,6 +17,8 @@ class ProtoNet(MetaTemplate):
 
 
     def set_forward(self,x,is_feature = False):
+        ''' get the last output (score) from image or embedding
+        '''
         z_support, z_query  = self.parse_feature(x,is_feature)
 
         z_support   = z_support.contiguous()
@@ -27,8 +29,9 @@ class ProtoNet(MetaTemplate):
         scores = -dists
         return scores
 
-
-    def set_forward_loss(self, x):
+    def set_forward_loss(self, x): # utilized by train_loop
+        ''' compute task loss
+        '''
         y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
 #         y_query = Variable(y_query.cuda())
         y_query = Variable(to_device(y_query))
@@ -36,6 +39,47 @@ class ProtoNet(MetaTemplate):
         scores = self.set_forward(x)
 
         return self.loss_fn(scores, y_query )
+    
+    def total_loss(self, x):
+        return self.set_forward_loss(x)
+
+
+class ProtoNetAE(ProtoNet):
+    def __init__(self, model_func,  n_way, n_support, recons_func = None, lambda_d = 1):
+        super(ProtoNetAE, self).__init__( model_func,  n_way, n_support)
+        self.recons_func = recons_func
+        self.lambda_d = lambda_d
+    
+    def total_loss(self, x):
+        return self.set_forward_loss(x) + self.decoder_loss(x)*self.lambda_d
+    
+    def decoder_forward(self,x,is_feature=False):
+        ''' get the reconstructed output from image or embedding
+        '''
+        x = Variable(to_device(x))
+        x = x.contiguous().view( self.n_way * (self.n_support + self.n_query), *x.size()[2:]) 
+        
+        if is_feature:
+            embedding = x
+        else:
+            embedding = self.feature.forward(x)
+        
+        decoded_img = self.recons_func(embedding)
+        
+        return decoded_img
+
+    def decoder_loss(self, x):
+        ''' the reconstruction loss
+        '''
+        if self.recons_func:
+            decoded_img = self.decoder_forward(x)
+            x = Variable(to_device(x))
+            x = x.view(x.size(0)*x.size(1),x.size(2),x.size(3),x.size(4))
+#             print('decoded_img shape =',decoded_img.shape)
+            loss = nn.MSELoss()(decoded_img,x) # TODO
+        else:
+            loss = 0
+        return loss
 
 
 def euclidean_dist( x, y):
