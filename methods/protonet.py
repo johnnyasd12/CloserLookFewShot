@@ -44,19 +44,19 @@ class ProtoNet(MetaTemplate):
         return self.set_forward_loss(x)
 
 
-class ProtoNetAE(ProtoNet):
+class ProtoNetAE(ProtoNet): # TODO: self.recons_func = recons_func()
     def __init__(self, model_func,  n_way, n_support, recons_func = None, lambda_d = 1):
         super(ProtoNetAE, self).__init__( model_func,  n_way, n_support)
         self.recons_func = recons_func
         self.lambda_d = lambda_d
     
     def total_loss(self, x):
-        return self.set_forward_loss(x) + self.decoder_loss(x)*self.lambda_d
+        return self.set_forward_loss(x) + self.reconstruct_loss(x)*self.lambda_d
     
     def decoder_forward(self,x,is_feature=False):
         ''' get the reconstructed output from image or embedding
         '''
-        x = Variable(to_device(x))
+#         x = Variable(to_device(x))
         x = x.contiguous().view( self.n_way * (self.n_support + self.n_query), *x.size()[2:]) 
         
         if is_feature:
@@ -68,12 +68,12 @@ class ProtoNetAE(ProtoNet):
         
         return decoded_img
 
-    def decoder_loss(self, x):
+    def reconstruct_loss(self, x):
         ''' the reconstruction loss
         '''
         if self.recons_func:
-            decoded_img = self.decoder_forward(x)
-            x = Variable(to_device(x))
+            x = Variable(to_device(x)) # TODO: done: switch this two rows?
+            decoded_img = self.decoder_forward(x) # TODO: done: switch this two rows?
             x = x.view(x.size(0)*x.size(1),x.size(2),x.size(3),x.size(4))
 #             print('decoded_img shape =',decoded_img.shape)
             loss = nn.MSELoss()(decoded_img,x) # TODO
@@ -81,6 +81,26 @@ class ProtoNetAE(ProtoNet):
             loss = 0
         return loss
 
+class ProtoNetAE2(ProtoNetAE):
+    def __init__(self, model_func,  n_way, n_support, recons_func = None, lambda_d = 1):
+        super(ProtoNetAE2, self).__init__( model_func,  n_way, n_support, 
+                                          recons_func = recons_func, lambda_d = lambda_d)
+        self.encoder = self.feature.trunk[:2] # TODO: changed when different architecture
+        self.extractor = self.feature.trunk[2:]
+        
+    def decoder_forward(self, x, is_feature = False):
+        x = Variable(to_device(x)) # TODO: delete this line???
+        x = x.contiguous().view( self.n_way * (self.n_support + self.n_query), *x.size()[2:]) 
+        
+        assert is_feature == False, "decoder_forward: is_feature must be False. "
+        if is_feature: # TODO: if is_feature
+            pass # aaaahhhhhh
+        else:
+            embedding = self.encoder.forward(x)
+        
+        decoded_img = self.recons_func(embedding)
+        
+        return decoded_img
 
 def euclidean_dist( x, y):
     # x: N x D

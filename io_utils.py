@@ -18,7 +18,8 @@ model_dict = dict(
 # reconstruction decoder
 decoder_dict = dict(
     Conv = backbone.DeConvNet(),
-    FC = backbone.DeFCNet()
+    FC = backbone.DeFCNet(), 
+    HiddenConv = backbone.DeConvNet2()
 )
 
 def parse_args(script):
@@ -36,7 +37,7 @@ def parse_args(script):
     # assign image resize
     parser.add_argument('--image_size', default=None, type=int, help='the rescaled image size')
     # auxiliary reconstruction task
-    parser.add_argument('--recons_decoder'   , default=None, help='reconstruction decoder: FC/Conv')
+    parser.add_argument('--recons_decoder'   , default=None, help='reconstruction decoder: FC/Conv/HiddenConv')
     
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class

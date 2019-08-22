@@ -16,7 +16,7 @@ import data.feature_loader as feat_loader
 from data.datamgr import SetDataManager
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
-from methods.protonet import ProtoNet, ProtoNetAE
+from methods.protonet import ProtoNet, ProtoNetAE, ProtoNetAE2
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
@@ -76,6 +76,8 @@ if __name__ == '__main__':
     elif params.method == 'protonet':
         if recons_decoder is None:
             model = ProtoNet( model_dict[params.model], **few_shot_params )
+        elif 'Hidden' in params.recons_decoder:
+            model = ProtoNetAE2(model_dict[params.model], **few_shot_params, recons_func = recons_decoder)
         else:
             model = ProtoNetAE(model_dict[params.model], **few_shot_params, recons_func = recons_decoder)
     elif params.method == 'matchingnet':

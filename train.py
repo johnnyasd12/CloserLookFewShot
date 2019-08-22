@@ -13,7 +13,7 @@ import backbone
 from data.datamgr import SimpleDataManager, SetDataManager
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
-from methods.protonet import ProtoNet, ProtoNetAE
+from methods.protonet import ProtoNet, ProtoNetAE, ProtoNetAE2
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
@@ -140,6 +140,8 @@ if __name__=='__main__':
         if params.method == 'protonet':
             if recons_decoder is None:
                 model = ProtoNet( model_dict[params.model], **train_few_shot_params )
+            elif 'Hidden' in params.recons_decoder:
+                model = ProtoNetAE2(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=1)
             else:
                 model = ProtoNetAE(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=1)
         elif params.method == 'matchingnet':

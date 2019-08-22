@@ -20,6 +20,7 @@ class MetaTemplate(nn.Module):
         self.feature    = model_func() # set feature backbone
         self.feat_dim   = self.feature.final_feat_dim
         self.change_way = change_way  #some methods allow different_way classification during training and test
+        print('model_function:\n',self.feature)
 
     @abstractmethod
     def set_forward(self,x,is_feature):
@@ -148,7 +149,7 @@ class MetaTemplate(nn.Module):
         acc_all = []
         
         iter_num = len(test_loader) 
-        tt = tqdm(test_loader, desc='Validation:')
+        tt = tqdm(test_loader, desc='Validation')
         for i, (x,_) in enumerate(tt): # episode
             self.n_query = x.size(1) - self.n_support
             if self.change_way:

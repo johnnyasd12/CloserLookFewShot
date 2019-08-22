@@ -256,7 +256,13 @@ class ConvNet(nn.Module):
     def __init__(self, depth, flatten = True): # CUB/miniImgnet Conv input = 84*84*3
         super(ConvNet,self).__init__()
         trunk = []
-        for i in range(depth):
+        for i in range(depth): 
+            ''' input = 3*84*84
+            -> [64*84*84 -> 64*42*42]
+            -> [64*42*42 -> 64*21*21]
+            -> [64*21*21 -> 64*10*10]
+            -> [64*10*10 -> 64*5*5]
+            '''
             indim = 3 if i == 0 else 64 # if the 1st block then input is image, otherwise 64 from pre-block
             outdim = 64
             B = ConvBlock(indim, outdim, pool = ( i <4 ) ) #only pooling for first 4 layers
@@ -272,7 +278,7 @@ class ConvNet(nn.Module):
         out = self.trunk(x)
         return out
 
-class DeConvNet(nn.Module): # input: flattened 64*5*5
+class DeConvNet(nn.Module): # for AE, input: flattened 64*5*5
     def __init__(self):
         super(DeConvNet, self).__init__() # BUGFIX: not sure if correct (padding, output_padding, Tanh())
         self.decoder = nn.Sequential( # input: b, 64, 5, 5
@@ -297,11 +303,11 @@ class DeConvNet(nn.Module): # input: flattened 64*5*5
         out = self.decoder(out)
         return out
 
-class DeFCNet(nn.Module):
+class DeFCNet(nn.Module): # for AE
     def __init__(self):
         super(DeFCNet, self).__init__()
         self.decoder = nn.Sequential(
-            nn.Linear(1600,500), 
+            nn.Linear(64*5*5,500), 
             nn.ReLU(inplace=True), 
             nn.Linear(500,3*84*84),
             nn.Tanh()
@@ -310,6 +316,23 @@ class DeFCNet(nn.Module):
     def forward(self,x):
         out = self.decoder(x)
         out = out.view(out.size(0),3,84,84)
+        return out
+
+class DeConvNet2(nn.Module):
+    def __init__(self):
+        super(DeConvNet2, self).__init__()
+        self.decoder = nn.Sequential( # input 64, 21, 21
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 42, 42
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 42, 42
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 84, 84
+            nn.ConvTranspose2d(64, 3, kernel_size=3, stride=1, padding=1),  # b, 3, 84, 84
+            nn.Tanh() # BUGFIX: see how image is input to the model
+        )
+        
+    def forward(self,x):
+        out = x.view(x.size(0),64,21,21)
+        out = self.decoder(out)
         return out
 
 class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in only first two layers, else no pooling
