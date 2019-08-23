@@ -139,7 +139,7 @@ class ConvBlock(nn.Module):
 # Simple ResNet Block
 class SimpleBlock(nn.Module):
     maml = False #Default
-    def __init__(self, indim, outdim, half_res):
+    def __init__(self, indim, outdim, half_res): # TODO: WAT is half_res??
         super(SimpleBlock, self).__init__()
         self.indim = indim
         self.outdim = outdim
