@@ -141,7 +141,7 @@ if __name__=='__main__':
             if recons_decoder is None:
                 model = ProtoNet( model_dict[params.model], **train_few_shot_params )
             elif 'Hidden' in params.recons_decoder:
-                model = ProtoNetAE2(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=1)
+                model = ProtoNetAE2(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda)
             else:
                 model = ProtoNetAE(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=1)
         elif params.method == 'matchingnet':
@@ -178,7 +178,7 @@ if __name__=='__main__':
     params.checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
     
     if params.recons_decoder: # extra decoder
-        params.checkpoint_dir += '_%sDecoder' %(params.recons_decoder)
+        params.checkpoint_dir += '_%sDecoder%s' %(params.recons_decoder,params.recons_lambda)
     if params.train_aug:
         params.checkpoint_dir += '_aug'
     if not params.method  in ['baseline', 'baseline++']: 

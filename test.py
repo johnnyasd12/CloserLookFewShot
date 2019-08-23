@@ -77,9 +77,9 @@ if __name__ == '__main__':
         if recons_decoder is None:
             model = ProtoNet( model_dict[params.model], **few_shot_params )
         elif 'Hidden' in params.recons_decoder:
-            model = ProtoNetAE2(model_dict[params.model], **few_shot_params, recons_func = recons_decoder)
+            model = ProtoNetAE2(model_dict[params.model], **few_shot_params, recons_func = recons_decoder, lambda_d=params.recons_lambda)
         else:
-            model = ProtoNetAE(model_dict[params.model], **few_shot_params, recons_func = recons_decoder)
+            model = ProtoNetAE(model_dict[params.model], **few_shot_params, recons_func = recons_decoder, lambda_d=params.recons_lambda)
     elif params.method == 'matchingnet':
         model           = MatchingNet( model_dict[params.model], **few_shot_params )
     elif params.method in ['relationnet', 'relationnet_softmax']:
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
     
     if params.recons_decoder:
-        checkpoint_dir += '_%sDecoder' %(params.recons_decoder)
+        checkpoint_dir += '_%sDecoder%s' %(params.recons_decoder, params.recons_lambda)
     if params.train_aug:
         checkpoint_dir += '_aug'
     if not params.method in ['baseline', 'baseline++'] :
@@ -188,7 +188,7 @@ if __name__ == '__main__':
         timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime()) 
         aug_str = '-aug' if params.train_aug else ''
         aug_str += '-adapted' if params.adaptation else ''
-        aug_str += ('-Decoder' + params.recons_decoder) if params.recons_decoder else ''
+        aug_str += ('-Decoder' + params.recons_decoder+str(params.recons_lambda)) if params.recons_decoder else ''
         if params.method in ['baseline', 'baseline++'] :
             exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
         else:

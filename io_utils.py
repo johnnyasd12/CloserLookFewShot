@@ -38,6 +38,8 @@ def parse_args(script):
     parser.add_argument('--image_size', default=None, type=int, help='the rescaled image size')
     # auxiliary reconstruction task
     parser.add_argument('--recons_decoder'   , default=None, help='reconstruction decoder: FC/Conv/HiddenConv')
+    # coefficient of reconstruction loss
+    parser.add_argument('--recons_lambda'   , default=1.0, type=float, help='lambda of reconstruction loss')
     
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
