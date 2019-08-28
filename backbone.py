@@ -149,7 +149,7 @@ class SimpleBlock(nn.Module):
             self.C2 = Conv2d_fw(outdim, outdim,kernel_size=3, padding=1,bias=False)
             self.BN2 = BatchNorm2d_fw(outdim)
         else:
-            self.C1 = nn.Conv2d(indim, outdim, kernel_size=3, stride=2 if half_res else 1, padding=1, bias=False)
+            self.C1 = nn.Conv2d(indim, outdim, kernel_size=3, stride=2 if half_res else 1, padding=1, bias=False) # ResNet18: 
             self.BN1 = nn.BatchNorm2d(outdim)
             self.C2 = nn.Conv2d(outdim, outdim,kernel_size=3, padding=1,bias=False)
             self.BN2 = nn.BatchNorm2d(outdim)
@@ -278,63 +278,6 @@ class ConvNet(nn.Module):
         out = self.trunk(x)
         return out
 
-class DeConvNet(nn.Module): # for AE, input: flattened 64*5*5
-    def __init__(self):
-        super(DeConvNet, self).__init__() # BUGFIX: not sure if correct (padding, output_padding, Tanh())
-        self.decoder = nn.Sequential( # input: b, 64, 5, 5
-            # TODO: reshape
-            
-            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 10, 10
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 10, 10
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2, output_padding=(1,1)),  # b, 64, 21, 21
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 21, 21
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 42, 42
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 42, 42
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 84, 84
-            nn.ConvTranspose2d(64, 3, kernel_size=3, stride=1, padding=1),  # b, 3, 84, 84
-            nn.Tanh() # BUGFIX: see how image is input to the model
-        )
-        
-    def forward(self,x):
-        out = x.view(x.size(0),64,5,5)
-        out = self.decoder(out)
-        return out
-
-class DeFCNet(nn.Module): # for AE
-    def __init__(self):
-        super(DeFCNet, self).__init__()
-        self.decoder = nn.Sequential(
-            nn.Linear(64*5*5,500), 
-            nn.ReLU(inplace=True), 
-            nn.Linear(500,3*84*84),
-            nn.Tanh()
-        )
-    
-    def forward(self,x):
-        out = self.decoder(x)
-        out = out.view(out.size(0),3,84,84)
-        return out
-
-class DeConvNet2(nn.Module):
-    def __init__(self):
-        super(DeConvNet2, self).__init__()
-        self.decoder = nn.Sequential( # input 64, 21, 21
-            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 42, 42
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 42, 42
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 84, 84
-            nn.ConvTranspose2d(64, 3, kernel_size=3, stride=1, padding=1),  # b, 3, 84, 84
-            nn.Tanh() # BUGFIX: see how image is input to the model
-        )
-        
-    def forward(self,x):
-        out = x.view(x.size(0),64,21,21)
-        out = self.decoder(out)
-        return out
-
 class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in only first two layers, else no pooling
     def __init__(self, depth):
         super(ConvNetNopool,self).__init__()
@@ -391,24 +334,40 @@ class ConvNetSNopool(nn.Module): #Relation net use a 4 layer conv with pooling i
         out = self.trunk(out)
         return out
 
+class DeResNet18(nn.Module):
+    def __init__(self, flattened=True):
+        self.flattened = flattened
+        if flattened: # flattened input = 512
+            self.conv0 = nn.ConvTranspose2d(512, 512, kernel_size=7) # 512*7*7
+        else: # not flattened input = 512*7*7
+            pass # TODO
+        self.conv1 = nn.ConvTranspose2d(512, 256, kernel_size=3)
+        
+    def forward(self, x):
+        if self.flattened:
+            out = x.view(x.size(0), 512, 1, 1)
+            out = self.conv0(out)
+        
+
+
 class ResNet(nn.Module):
     maml = False #Default
-    def __init__(self,block,list_of_num_layers, list_of_out_dims, flatten = True):
-        # list_of_num_layers specifies number of layers in each stage
+    def __init__(self,block,list_of_num_layers, list_of_out_dims, flatten = True): # not flatten only RelationNet?
+        # list_of_num_layers specifies number of layers in each stage (number of blocks?)
         # list_of_out_dims specifies number of output channel for each stage
-        super(ResNet,self).__init__()
+        super(ResNet,self).__init__() # input 224*224
         assert len(list_of_num_layers)==4, 'Can have only four stages'
         if self.maml:
             conv1 = Conv2d_fw(3, 64, kernel_size=7, stride=2, padding=3,
-                                               bias=False)
+                                               bias=False) # 64*112*112
             bn1 = BatchNorm2d_fw(64)
         else:
             conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                                               bias=False)
+                                               bias=False) # 64*112*112
             bn1 = nn.BatchNorm2d(64)
 
         relu = nn.ReLU()
-        pool1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        pool1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1) # 64*56*56
 
         init_layer(conv1)
         init_layer(bn1)
@@ -417,13 +376,13 @@ class ResNet(nn.Module):
         trunk = [conv1, bn1, relu, pool1]
 
         indim = 64
-        for i in range(4):
+        for i in range(4): # 4 stages
 
-            for j in range(list_of_num_layers[i]):
-                half_res = (i>=1) and (j==0)
-                B = block(indim, list_of_out_dims[i], half_res)
+            for j in range(list_of_num_layers[i]): # for ResNet18, num_layers is 2 for every stage (2,2,2,2)
+                half_res = (i>=1) and (j==0) # only stage 2 and 3's first block?
+                B = block(indim, list_of_out_dims[i], half_res) # for ResNet18, block is SimpleBlock
                 trunk.append(B)
-                indim = list_of_out_dims[i]
+                indim = list_of_out_dims[i] # for ResNet18, last one is 512
 
         if flatten:
             avgpool = nn.AvgPool2d(7)
@@ -437,6 +396,61 @@ class ResNet(nn.Module):
 
     def forward(self,x):
         out = self.trunk(x)
+        return out
+
+class DeConvNet(nn.Module): # for AE, input: flattened 64*5*5
+    def __init__(self):
+        super(DeConvNet, self).__init__() # BUGFIX: not sure if correct (padding, output_padding, Tanh())
+        self.decoder = nn.Sequential( # input: b, 64, 5, 5
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 10, 10
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 10, 10
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2, output_padding=(1,1)),  # b, 64, 21, 21
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 21, 21
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 42, 42
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 42, 42
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 84, 84
+            nn.ConvTranspose2d(64, 3, kernel_size=3, stride=1, padding=1),  # b, 3, 84, 84
+            nn.Tanh() # BUGFIX: see how image is input to the model
+        )
+        
+    def forward(self,x):
+        out = x.view(x.size(0),64,5,5)
+        out = self.decoder(out)
+        return out
+
+class DeFCNet(nn.Module): # for AE
+    def __init__(self):
+        super(DeFCNet, self).__init__()
+        self.decoder = nn.Sequential(
+            nn.Linear(64*5*5,500), 
+            nn.ReLU(inplace=True), 
+            nn.Linear(500,3*84*84),
+            nn.Tanh()
+        )
+    
+    def forward(self,x):
+        out = self.decoder(x)
+        out = out.view(out.size(0),3,84,84)
+        return out
+
+class DeConvNet2(nn.Module):
+    def __init__(self):
+        super(DeConvNet2, self).__init__()
+        self.decoder = nn.Sequential( # input 64, 21, 21
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 42, 42
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 42, 42
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 84, 84
+            nn.ConvTranspose2d(64, 3, kernel_size=3, stride=1, padding=1),  # b, 3, 84, 84
+            nn.Tanh() # BUGFIX: see how image is input to the model
+        )
+        
+    def forward(self,x):
+        out = x.view(x.size(0),64,21,21)
+        out = self.decoder(out)
         return out
 
 def Conv4():

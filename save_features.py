@@ -133,4 +133,5 @@ if __name__ == '__main__':
     dirname = os.path.dirname(outfile)
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
+    print('saving features to:', outfile)
     save_features(model, data_loader, outfile, params)

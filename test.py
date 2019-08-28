@@ -122,6 +122,7 @@ if __name__ == '__main__':
 
     #modelfile   = get_resume_file(checkpoint_dir)
     # load model file ???
+    print('loading from:',checkpoint_dir)
     if not params.method in ['baseline', 'baseline++'] : 
         if params.save_iter != -1:
             modelfile   = get_assigned_file(checkpoint_dir,params.save_iter)
