@@ -41,12 +41,35 @@ class TransformLoader:
         transform_funcs = [ self.parse_transform(x) for x in transform_list]
         transform = transforms.Compose(transform_funcs)
         return transform
+    
+    def get_simple_transform(self, aug = False):
+        if aug:
+            transform_list = ['RandomSizedCrop']
+        else:
+            transform_list = ['Scale','CenterCrop']
+        transform_list += ['ToTensor']
+        transform_funcs = [ self.parse_transform(x) for x in transform_list]
+        transform = transforms.Compose(transform_funcs)
+        return transform
 
 class DataManager:
     @abstractmethod
     def get_data_loader(self, data_file, aug):
         pass 
 
+class ResizeDataManager(DataManager):
+    def __init__(self, image_size, batch_size=1):
+        super(ResizeDataManager, self).__init__()
+        self.batch_size = batch_size
+        self.trans_loader = TransformLoader(image_size)
+        
+    def get_data_loader(self, data_file, aug):
+        transform = self.trans_loader.get_simple_transform(aug=aug)
+        dataset = SimpleDataset(data_file, transform)
+        data_loader_params = dict(batch_size = self.batch_size, shuffle = True, num_workers = 0, pin_memory = False) # pin_memory for fast load to GPU, but i don't need it
+        data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
+        return data_loader
+        
 
 class SimpleDataManager(DataManager):
     def __init__(self, image_size, batch_size, recons_func = None):        

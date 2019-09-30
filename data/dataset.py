@@ -7,6 +7,8 @@ import numpy as np
 import torchvision.transforms as transforms
 import os
 identity = lambda x:x
+
+
 class SimpleDataset:
     def __init__(self, data_file, transform, target_transform=identity):
         with open(data_file, 'r') as f:
@@ -17,9 +19,15 @@ class SimpleDataset:
 
     def __getitem__(self,i):
         image_path = os.path.join(self.meta['image_names'][i])
+#         timer = Timer('open to RGB')
         img = Image.open(image_path).convert('RGB')
+#         timer()
+#         timer = Timer('transform')
         img = self.transform(img)
+#         timer()
+#         timer = Timer('target_transform')
         target = self.target_transform(self.meta['image_labels'][i])
+#         timer()
         return img, target
 
     def __len__(self):
@@ -33,7 +41,7 @@ class SetDataset:
 
         self.cl_list = np.unique(self.meta['image_labels']).tolist()
 
-        self.sub_meta = {} # class_1: [data_path_1, ..., data_path_n], class_n: [...]
+        self.sub_meta = {} # class_1: [data_path_1, ..., data_path_n], class_k: [data_path_1, ..., ]
         for cl in self.cl_list:
             self.sub_meta[cl] = []
 
