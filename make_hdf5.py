@@ -13,6 +13,7 @@ parser.add_argument('--aug', action='store_true', help='use the augmented data o
 parser.add_argument('--channel_order', help='NCHW for PyTorch / NHWC for ???', required=True)
 parser.add_argument('--img_size', help='image size', required=True, type=int)
 parser.add_argument('--batch_size', help='The batch size when processing the data', default=50, type=int)
+parser.add_argument('--debug', action='store_true', help='debug mode on')
 
 args = parser.parse_args()
 # assert args.dataset is not None
@@ -36,8 +37,8 @@ for i, data in enumerate(t_loader):
         batch_x = np.transpose(batch_x, axis=(0,2,3,1))
     imgs_list.append(batch_x)
     labels_list.append(batch_y)
-#     if i==1:
-#         break
+    if i==2 and args.debug:
+        break
 
 imgs = np.concatenate(imgs_list, axis=0)
 labels = np.concatenate(labels_list, axis=0)
