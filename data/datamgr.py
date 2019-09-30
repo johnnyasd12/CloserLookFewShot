@@ -42,12 +42,22 @@ class TransformLoader:
         transform = transforms.Compose(transform_funcs)
         return transform
     
-    def get_simple_transform(self, aug = False):
+    def get_simple_transform(self, aug = False): # to make hdf5 file
         if aug:
             transform_list = ['RandomSizedCrop']
         else:
             transform_list = ['Scale','CenterCrop']
         transform_list += ['ToTensor']
+        transform_funcs = [ self.parse_transform(x) for x in transform_list]
+        transform = transforms.Compose(transform_funcs)
+        return transform
+    
+    def get_hdf5_transform(self, aug = False): # this + simple_transform = composed_transform
+        if aug:
+            transform_list = ['ImageJitter', 'RandomHorizontalFlip', 'ToTensor', 'Normalize']
+        else:
+            transform_list = ['ToTensor', 'Normalize']
+
         transform_funcs = [ self.parse_transform(x) for x in transform_list]
         transform = transforms.Compose(transform_funcs)
         return transform
@@ -57,7 +67,7 @@ class DataManager:
     def get_data_loader(self, data_file, aug):
         pass 
 
-class ResizeDataManager(DataManager):
+class ResizeDataManager(DataManager): # for making hdf5 file
     def __init__(self, image_size, batch_size=1):
         super(ResizeDataManager, self).__init__()
         self.batch_size = batch_size
@@ -69,7 +79,20 @@ class ResizeDataManager(DataManager):
         data_loader_params = dict(batch_size = self.batch_size, shuffle = True, num_workers = 0, pin_memory = False) # pin_memory for fast load to GPU, but i don't need it
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
         return data_loader
+
+class HDF5DataManager(DataManager):
+    def __init__(self, image_size, batch_size, recons_func = None):
+        super(HDF5DataManager, self).__init__()
+        self.batch_size = batch_size
+        self.trans_loader = TransformLoader(image_size)
         
+    def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
+        transform = self.trans_loader.get_hdf5_transform(aug)
+        dataset = HDF5Dataset(data_file, transform)
+        data_loader_params = dict(batch_size = self.batch_size, shuffle = True, num_workers = 12, pin_memory = True)       
+        data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
+
+        return data_loader
 
 class SimpleDataManager(DataManager):
     def __init__(self, image_size, batch_size, recons_func = None):        

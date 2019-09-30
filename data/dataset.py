@@ -8,6 +8,23 @@ import torchvision.transforms as transforms
 import os
 identity = lambda x:x
 
+import hdf5
+
+class HDF5Dataset:
+    def __init__(self, data_file, transform, target_transform=identity):
+        self.file = hdf5.File(data_file, 'r')
+        self.transform = transform
+        self.target_transform = target_transform
+        
+    def __getitem__(self, i):
+        img = self.file['images'][i,:,:,:]
+        target = self.file['labels'][i]
+        target = self.target_transform(target)
+        return img, target
+        
+    def __len__(self):
+        return self.file['labels'].shape[0]
+            
 
 class SimpleDataset:
     def __init__(self, data_file, transform, target_transform=identity):
