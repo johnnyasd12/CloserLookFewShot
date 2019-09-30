@@ -8,11 +8,11 @@ import torchvision.transforms as transforms
 import os
 identity = lambda x:x
 
-import hdf5
+import h5py
 
 class HDF5Dataset:
     def __init__(self, data_file, transform, target_transform=identity):
-        self.file = hdf5.File(data_file, 'r')
+        self.file = h5py.File(data_file, 'r')
         self.transform = transform
         self.target_transform = target_transform
         
