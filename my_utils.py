@@ -4,6 +4,29 @@ import random
 import configs
 import datetime
 
+import time
+
+class Timer:
+    def __init__(self, s):
+        self.name = s
+        self.start = {}
+        self.start['time'] = time.time()
+        self.start['clock'] = time.clock()
+        self.start['process_time'] = time.process_time()
+        self.end = {}
+        self.duration = {}
+        self.duration['name'] = s
+    
+    def __call__(self):
+        self.keys = ['time', 'clock', 'process_time']
+        self.end['time'] = time.time()
+        self.end['clock'] = time.clock()
+        self.end['process_time'] = time.process_time()
+        for name in self.keys:
+            self.duration[name] = self.end[name] - self.start[name]
+        print(self.duration)
+
+
 def feature_evaluation(cl_data_file, model, n_way = 5, n_support = 5, n_query = 15, adaptation = False, recons_func = None):
     ''' sample 1 episode to do evaluation
     :param cl_data_file: extracted features and ys
