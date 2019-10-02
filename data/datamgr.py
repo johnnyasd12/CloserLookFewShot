@@ -5,7 +5,7 @@ from PIL import Image
 import numpy as np
 import torchvision.transforms as transforms
 import data.additional_transforms as add_transforms
-from data.dataset import SimpleDataset, SetDataset, EpisodicBatchSampler
+from data.dataset import SimpleDataset, SetDataset, EpisodicBatchSampler, HDF5Dataset
 from abc import abstractmethod
 
 class TransformLoader:
@@ -89,7 +89,7 @@ class HDF5DataManager(DataManager):
     def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
         transform = self.trans_loader.get_hdf5_transform(aug)
         dataset = HDF5Dataset(data_file, transform)
-        data_loader_params = dict(batch_size = self.batch_size, shuffle = True, num_workers = 12, pin_memory = True)       
+        data_loader_params = dict(batch_size = self.batch_size, shuffle = True, num_workers = 12, pin_memory = True)       # TODO: tune pin_memory
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
 
         return data_loader

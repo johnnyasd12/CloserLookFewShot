@@ -12,18 +12,30 @@ import h5py
 
 class HDF5Dataset:
     def __init__(self, data_file, transform, target_transform=identity):
-        self.file = h5py.File(data_file, 'r')
+        self.file_path = data_file
+        self.imgs = None
+        self.labels = None
+        with h5py.File(self.file_path, 'r') as file:
+            self.dataset_len = len(file["labels"])
+        
+#         self.file = h5py.File(data_file, 'r')
         self.transform = transform
         self.target_transform = target_transform
         
     def __getitem__(self, i):
-        img = self.file['images'][i,:,:,:]
-        target = self.file['labels'][i]
+        if self.imgs is None:
+            self.imgs = h5py.File(self.file_path, 'r')["images"]
+            self.labels = h5py.File(self.file_path, 'r')["labels"]
+        img = self.imgs[i]
+        target = self.labels[i]
+#         img = self.file['images'][i,:,:,:]
+#         target = self.file['labels'][i]
         target = self.target_transform(target)
         return img, target
         
     def __len__(self):
-        return self.file['labels'].shape[0]
+#         return self.file['labels'].shape[0]
+        return self.dataset_len
             
 
 class SimpleDataset:
