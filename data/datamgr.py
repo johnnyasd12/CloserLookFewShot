@@ -5,8 +5,11 @@ from PIL import Image
 import numpy as np
 import torchvision.transforms as transforms
 import data.additional_transforms as add_transforms
-from data.dataset import SimpleDataset, SetDataset, EpisodicBatchSampler, HDF5Dataset
+from data.dataset import SimpleDataset, SetDataset, EpisodicBatchSampler, HDF5Dataset, AugSetDataset
 from abc import abstractmethod
+
+import torchvision.transforms.functional as TF
+import random
 
 class TransformLoader:
     def __init__(self, image_size, 
@@ -61,6 +64,21 @@ class TransformLoader:
         transform_funcs = [ self.parse_transform(x) for x in transform_list]
         transform = transforms.Compose(transform_funcs)
         return transform
+    
+    def get_aug_transform(self, aug_type, transform_target):
+        '''
+        :param aug_type: str, 'rotate', 
+        :param transform_target: str, 'sample', 'batch'
+        '''
+        def wrapper(img):
+            if aug_type == 'rotate':
+                a = 30
+                angle = random.randint(-a, a)
+                transformed_img = TF.rotate(img, angle)
+                return transformed_img
+            else:
+                print('not finished!!!')
+        return wrapper
 
 class DataManager:
     @abstractmethod
@@ -107,6 +125,65 @@ class SimpleDataManager(DataManager):
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
 
         return data_loader
+
+class AugSetDataManager(DataManager):
+    def __init__(self, image_size, n_way, n_support, n_query, n_episode =100, aug_type = None, recons_func = None):
+        ''' to get a data_loader
+        :param aug_type: str, 'rotate', ...
+        '''
+        super(AugSetDataManager, self).__init__()
+        self.image_size = image_size
+        self.n_way = n_way
+        self.batch_size = n_support + n_query
+        self.n_episode = n_episode
+
+        self.trans_loader = TransformLoader(image_size)
+        self.dataset = None
+        self.aug_type = aug_type
+
+    def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
+#         transform = self.trans_loader.get_composed_transform(aug) # TODO: maybe change here?
+        pre_transform = self.trans_loader.get_simple_transform(aug)
+        post_transform = self.trans_loader.get_hdf5_transform(aug)
+        dataset = AugSetDataset( data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform )
+        self.dataset = dataset
+        sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
+        collate_fn = self.get_collate()
+        data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True, collate_fn=collate_fn)
+        data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
+        return data_loader
+    
+    def get_collate(self):
+        def wrapper(self, batch):
+            self.dataset.set_aug_transform(self.aug_type)
+            return batch
+        return wrapper
+
+#     def collate_fn_task(self, batch): # TODO: deprecate this
+#         '''
+#         type(batch) = list, len(batch) = n_way
+#         type(batch[0] = list, len(batch[0]) = 2)
+#         type(batch[0][0] = Torch.Tensor, shape = [batch_size, ...]) (img)
+#         type(batch[0][1] = Torch.Tensor, shape = [batch_size]) (target)
+#         '''
+#         a = batch[0][0]
+#         b = batch[0][1]
+#         print(a.shape, b.shape)
+#         # initialize transform
+        
+#         # randomly set transform parameter
+        
+#         # compose several transforms
+        
+#         # apply transform on batch data
+#         for (cls_batch_x, cls_batch_y) in batch:
+            
+#             # to PIL image
+            
+#             # transform
+            
+#             # to torch tensor
+#             pass
 
 class SetDataManager(DataManager):
     ''' to get a data_loader

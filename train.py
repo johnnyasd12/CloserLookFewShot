@@ -10,7 +10,7 @@ import glob
 
 import configs
 import backbone
-from data.datamgr import SimpleDataManager, SetDataManager
+from data.datamgr import SimpleDataManager, SetDataManager, AugSetDataManager
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
 from methods.protonet import ProtoNet, ProtoNetAE, ProtoNetAE2
@@ -129,11 +129,17 @@ if __name__=='__main__':
         n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
 
         train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
-        base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)
-        base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
-        
         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot) 
-        val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
+        if params.task_aug is None:
+            base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)
+            val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
+        else:
+            aug_type = params.aug_type
+            base_datamgr            = AugSetDataManager(image_size, n_query = n_query, aug_type=aug_type
+                                                        **train_few_shot_params)
+            val_datamgr             = AugSetDataManager(image_size, n_query = n_query, 
+                                                        **test_few_shot_params)
+        base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
         #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
 

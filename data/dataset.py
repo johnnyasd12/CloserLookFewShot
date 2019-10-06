@@ -10,6 +10,122 @@ identity = lambda x:x
 
 import h5py
 
+
+class AugSetDataset:
+    def __init__(self, data_file, batch_size, pre_transform, post_transform): # only ONE Class for one iteration
+        with open(data_file, 'r') as f: # data_file is json
+            self.meta = json.load(f)
+
+        self.cl_list = np.unique(self.meta['image_labels']).tolist()
+
+        self.sub_meta = {} # ALL images, content = class_1: [data_path_1, ..., data_path_n], class_k: [data_path_1, ..., ]
+        for cl in self.cl_list:
+            self.sub_meta[cl] = []
+
+        for x,y in zip(self.meta['image_names'],self.meta['image_labels']):
+            self.sub_meta[y].append(x)
+
+        self.sub_dataloaders = [] # there're k dataloaders, k is # classes
+        self.sub_datasets = []
+        sub_data_loader_params = dict(batch_size = batch_size, # how many data to grab at current category???
+                                  shuffle = True,
+                                  num_workers = 0, #use main thread only or may receive multiple batches
+                                  pin_memory = False)        
+        for cl in self.cl_list:
+            # TODO: AugSubDataset(trsf_type, trsf_param_list) NO, param_list NOT for dataset
+            
+            sub_dataset = AugSubDataset(self.sub_meta[cl], cl, pre_transform=pre_transform, post_transform=post_transform )
+            self.sub_datasets.append(sub_dataset)
+            self.sub_dataloaders.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
+
+    def __getitem__(self,i):
+        return next(iter(self.sub_dataloaders[i]))
+
+    def __len__(self):
+        return len(self.cl_list)
+    
+    def set_aug_transform(self, aug_param):
+        for sub_dataset in self.sub_datasets:
+            sub_dataset.set_aug_transform(param)
+
+class AugSubDataset: # one iteration is one image of one class
+    def __init__(self, sub_meta, cl, pre_transform, post_transform=transforms.ToTensor(), aug_transform=identity, target_transform=identity):
+        self.sub_meta = sub_meta # list of image names(dirs)
+        self.cl = cl 
+        
+        self.pre_transform = pre_transform
+        self.aug_transform = aug_transform
+        self.post_transform = post_transform
+        
+        self.target_transform = target_transform
+        
+
+    def __getitem__(self,i):
+        #print( '%d -%d' %(self.cl,i))
+        image_path = os.path.join( self.sub_meta[i])
+        img = Image.open(image_path).convert('RGB')
+        img = self.pre_transform(img)
+        img = self.aug_transform(img)
+        img = self.post_transform(img)
+        target = self.target_transform(self.cl)
+        return img, target
+
+    def __len__(self):
+        return len(self.sub_meta)
+    
+    def set_aug_transform(self, aug_transform):
+        '''
+        :param aug_param: dictionary, 'aug_type':'rotate', 'param':dict(...)
+        '''
+        self.aug_transform = aug_transform
+
+class SetDataset:
+    def __init__(self, data_file, batch_size, transform):
+        with open(data_file, 'r') as f: # data_file is json
+            self.meta = json.load(f)
+
+        self.cl_list = np.unique(self.meta['image_labels']).tolist()
+
+        self.sub_meta = {} # ALL images, content = class_1: [data_path_1, ..., data_path_n], class_k: [data_path_1, ..., ]
+        for cl in self.cl_list:
+            self.sub_meta[cl] = []
+
+        for x,y in zip(self.meta['image_names'],self.meta['image_labels']):
+            self.sub_meta[y].append(x)
+
+        self.sub_dataloaders = [] # there're k dataloaders, k is # classes
+        sub_data_loader_params = dict(batch_size = batch_size, # how many data to grab at current category???
+                                  shuffle = True,
+                                  num_workers = 0, #use main thread only or may receive multiple batches
+                                  pin_memory = False)        
+        for cl in self.cl_list:
+            sub_dataset = SubDataset(self.sub_meta[cl], cl, transform = transform )
+            self.sub_dataloaders.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
+
+    def __getitem__(self,i):
+        return next(iter(self.sub_dataloaders[i]))
+
+    def __len__(self):
+        return len(self.cl_list)
+
+class SubDataset: # one iteration is one image of one class
+    def __init__(self, sub_meta, cl, transform=transforms.ToTensor(), target_transform=identity):
+        self.sub_meta = sub_meta # list of image names(dirs)
+        self.cl = cl 
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __getitem__(self,i):
+        #print( '%d -%d' %(self.cl,i))
+        image_path = os.path.join( self.sub_meta[i])
+        img = Image.open(image_path).convert('RGB')
+        img = self.transform(img)
+        target = self.target_transform(self.cl)
+        return img, target
+
+    def __len__(self):
+        return len(self.sub_meta)
+
 class HDF5Dataset:
     def __init__(self, data_file, transform, target_transform=identity):
         self.file_path = data_file
@@ -62,55 +178,7 @@ class SimpleDataset:
     def __len__(self):
         return len(self.meta['image_names'])
 
-
-class SetDataset:
-    def __init__(self, data_file, batch_size, transform):
-        with open(data_file, 'r') as f: # data_file is json
-            self.meta = json.load(f)
-
-        self.cl_list = np.unique(self.meta['image_labels']).tolist()
-
-        self.sub_meta = {} # class_1: [data_path_1, ..., data_path_n], class_k: [data_path_1, ..., ]
-        for cl in self.cl_list:
-            self.sub_meta[cl] = []
-
-        for x,y in zip(self.meta['image_names'],self.meta['image_labels']):
-            self.sub_meta[y].append(x)
-
-        self.sub_dataloaders = [] # there're k dataloaders, k is # classes
-        sub_data_loader_params = dict(batch_size = batch_size, # how many data to grab at current category???
-                                  shuffle = True,
-                                  num_workers = 0, #use main thread only or may receive multiple batches
-                                  pin_memory = False)        
-        for cl in self.cl_list:
-            sub_dataset = SubDataset(self.sub_meta[cl], cl, transform = transform )
-            self.sub_dataloaders.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
-
-    def __getitem__(self,i):
-        return next(iter(self.sub_dataloaders[i]))
-
-    def __len__(self):
-        return len(self.cl_list)
-
-class SubDataset:
-    def __init__(self, sub_meta, cl, transform=transforms.ToTensor(), target_transform=identity):
-        self.sub_meta = sub_meta
-        self.cl = cl 
-        self.transform = transform
-        self.target_transform = target_transform
-
-    def __getitem__(self,i):
-        #print( '%d -%d' %(self.cl,i))
-        image_path = os.path.join( self.sub_meta[i])
-        img = Image.open(image_path).convert('RGB')
-        img = self.transform(img)
-        target = self.target_transform(self.cl)
-        return img, target
-
-    def __len__(self):
-        return len(self.sub_meta)
-
-class EpisodicBatchSampler(object):
+class EpisodicBatchSampler(object): # to sample n_way classes index for every iteration
     def __init__(self, n_classes, n_way, n_episodes):
         self.n_classes = n_classes
         self.n_way = n_way
