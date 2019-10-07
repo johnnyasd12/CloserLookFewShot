@@ -44,9 +44,9 @@ class AugSetDataset:
     def __len__(self):
         return len(self.cl_list)
     
-    def set_aug_transform(self, aug_param):
+    def set_aug_transform(self, aug_transform):
         for sub_dataset in self.sub_datasets:
-            sub_dataset.set_aug_transform(param)
+            sub_dataset.set_aug_transform(aug_transform)
 
 class AugSubDataset: # one iteration is one image of one class
     def __init__(self, sub_meta, cl, pre_transform, post_transform=transforms.ToTensor(), aug_transform=identity, target_transform=identity):

@@ -135,9 +135,9 @@ if __name__=='__main__':
             val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
         else:
             aug_type = params.aug_type
-            base_datamgr            = AugSetDataManager(image_size, n_query = n_query, aug_type=aug_type
+            base_datamgr            = AugSetDataManager(image_size, n_query = n_query, aug_type=aug_type, 
                                                         **train_few_shot_params)
-            val_datamgr             = AugSetDataManager(image_size, n_query = n_query, 
+            val_datamgr             = AugSetDataManager(image_size, n_query = n_query, aug_type=aug_type, 
                                                         **test_few_shot_params)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 

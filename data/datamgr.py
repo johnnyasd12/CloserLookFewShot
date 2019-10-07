@@ -55,6 +55,15 @@ class TransformLoader:
         transform = transforms.Compose(transform_funcs)
         return transform
     
+    def get_crop_transform(self, aug = False): # same as get_simple_transform, but no ToTensor operation
+        if aug:
+            transform_list = ['RandomSizedCrop']
+        else:
+            transform_list = ['Scale','CenterCrop']
+        transform_funcs = [ self.parse_transform(x) for x in transform_list]
+        transform = transforms.Compose(transform_funcs)
+        return transform
+    
     def get_hdf5_transform(self, aug = False): # this + simple_transform = composed_transform
         if aug:
             transform_list = ['ImageJitter', 'RandomHorizontalFlip', 'ToTensor', 'Normalize']
@@ -74,10 +83,11 @@ class TransformLoader:
             if aug_type == 'rotate':
                 a = 30
                 angle = random.randint(-a, a)
-                transformed_img = TF.rotate(img, angle)
-                return transformed_img
+                img = TF.rotate(img, angle)
+#                 img = TF.to_pil_image(img, mode='RGB')
+                return img
             else:
-                print('not finished!!!')
+                raise ValueError('not invalid aug_type:', aug_type)
         return wrapper
 
 class DataManager:
@@ -143,20 +153,25 @@ class AugSetDataManager(DataManager):
 
     def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
 #         transform = self.trans_loader.get_composed_transform(aug) # TODO: maybe change here?
-        pre_transform = self.trans_loader.get_simple_transform(aug)
+        pre_transform = self.trans_loader.get_crop_transform(aug)
         post_transform = self.trans_loader.get_hdf5_transform(aug)
         dataset = AugSetDataset( data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform )
         self.dataset = dataset
         sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
         collate_fn = self.get_collate()
-        data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True, collate_fn=collate_fn)
+        data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True, collate_fn=collate_fn) # BUGFIX: num_workers > 0 then get error
+        
+        
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
         return data_loader
     
     def get_collate(self):
-        def wrapper(self, batch):
-            self.dataset.set_aug_transform(self.aug_type)
-            return batch
+        def wrapper(batch):
+            transform = self.trans_loader.get_aug_transform(self.aug_type, transform_target='batch')
+            self.dataset.set_aug_transform(transform)
+            # if auto_collation then default_collate, else default_convert
+            return torch.utils.data._utils.collate.default_collate(batch)
+#             return torch.utils.data._utils.collate.default_convert(batch)
         return wrapper
 
 #     def collate_fn_task(self, batch): # TODO: deprecate this
