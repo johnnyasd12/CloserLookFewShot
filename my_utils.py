@@ -102,7 +102,7 @@ def to_device(tensor):
     return tensor
 
 def get_time_now():
-    return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    return datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
 def cl_file_to_z_all(cl_data_file, n_way, n_support, n_query):
     class_list = cl_data_file.keys()
