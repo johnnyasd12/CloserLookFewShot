@@ -130,16 +130,18 @@ if __name__=='__main__':
 
         train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot) 
-        if params.task_aug is None:
+        if params.aug_target is None:
             assert params.aug_type is None
             base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)
             val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
         else:
             aug_type = params.aug_type
             assert aug_type is not None
-            base_datamgr            = AugSetDataManager(image_size, n_query = n_query, aug_type=aug_type, 
+            base_datamgr            = AugSetDataManager(image_size, n_query = n_query, 
+                                                        aug_type=aug_type, aug_target=params.aug_target, 
                                                         **train_few_shot_params)
-            val_datamgr             = AugSetDataManager(image_size, n_query = n_query, aug_type=aug_type, 
+            val_datamgr             = AugSetDataManager(image_size, n_query = n_query, 
+                                                        aug_type=aug_type, aug_target='all', 
                                                         **test_few_shot_params)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 

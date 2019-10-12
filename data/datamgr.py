@@ -74,16 +74,24 @@ class TransformLoader:
         transform = transforms.Compose(transform_funcs)
         return transform
     
-    def get_aug_transform(self, aug_type, transform_target):
+    def get_aug_transform(self, aug_type, aug_target):
         '''
         :param aug_type: str, 'rotate', 
-        :param transform_target: str, 'sample', 'batch'
+        :param aug_target: str, 'sample', 'batch', 'all'
         '''
+        if aug_type == 'rotate':
+            a = 20
+            if aug_target == 'all':
+                angle = 30
+            elif aug_target == 'batch': # random select for every batch
+                angle = random.randint(-a, a)
         def wrapper(img):
             if aug_type == 'rotate':
-                a = 30
-                angle = random.randint(-a, a)
-                img = TF.rotate(img, angle)
+                nonlocal angle
+                expand = False # no, not wat i want
+                if aug_target == 'sample': # random select for every call
+                    angle = random.randint(-a, a)
+                img = TF.rotate(img, angle, expand=expand)
 #                 img = TF.to_pil_image(img, mode='RGB')
                 return img
             else:
@@ -137,7 +145,7 @@ class SimpleDataManager(DataManager):
         return data_loader
 
 class AugSetDataManager(DataManager):
-    def __init__(self, image_size, n_way, n_support, n_query, n_episode =100, aug_type = None, recons_func = None):
+    def __init__(self, image_size, n_way, n_support, n_query, aug_type, aug_target, n_episode =100, recons_func = None):
         ''' to get a data_loader
         :param aug_type: str, 'rotate', ...
         '''
@@ -148,18 +156,24 @@ class AugSetDataManager(DataManager):
         self.n_episode = n_episode
 
         self.trans_loader = TransformLoader(image_size)
+        
         self.dataset = None
         self.aug_type = aug_type
+        self.aug_target = aug_target
 
     def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
 #         transform = self.trans_loader.get_composed_transform(aug) # TODO: maybe change here?
         pre_transform = self.trans_loader.get_crop_transform(aug)
         post_transform = self.trans_loader.get_hdf5_transform(aug)
-        dataset = AugSetDataset( data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform )
+        dataset = AugSetDataset( data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_target=self.aug_target)
+        if self.aug_type:
+            transform = self.trans_loader.get_aug_transform(self.aug_type, aug_target=self.aug_target)
+            dataset.set_aug_transform(transform)
         self.dataset = dataset
         sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
         collate_fn = self.get_collate()
-        data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True, collate_fn=collate_fn) # BUGFIX: num_workers > 0 then get error
+        num_workers = 0 if self.aug_target=='batch' else 12 # BUGFIX: there's a bug when multiprocessing, but we can still multi-process when aug_target != 'batch' because only batch need align set_aug_transform for every batch?
+        data_loader_params = dict(batch_sampler = sampler,  num_workers = num_workers, pin_memory = True, collate_fn=collate_fn)
         
         
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
@@ -167,7 +181,7 @@ class AugSetDataManager(DataManager):
     
     def get_collate(self):
         def wrapper(batch):
-            transform = self.trans_loader.get_aug_transform(self.aug_type, transform_target='batch')
+            transform = self.trans_loader.get_aug_transform(self.aug_type, aug_target=self.aug_target)
             self.dataset.set_aug_transform(transform)
             # if auto_collation then default_collate, else default_convert
             return torch.utils.data._utils.collate.default_collate(batch)

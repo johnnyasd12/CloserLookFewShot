@@ -40,7 +40,7 @@ def parse_args(script):
     parser.add_argument('--recons_decoder'   , default=None, help='reconstruction decoder: FC/Conv/HiddenConv')
     # coefficient of reconstruction loss
     parser.add_argument('--recons_lambda'   , default=1.0, type=float, help='lambda of reconstruction loss')
-    parser.add_argument('--task_aug', default=None, choices=['task', 'sample'], help='data augmentation by task or by sample')
+    parser.add_argument('--aug_target', default=None, choices=['task', 'sample'], help='data augmentation by task or by sample')
     parser.add_argument('--aug_type', default=None, choices=['rotate'], help='task augmentation type: rotate/...')
     
     if script == 'train':
