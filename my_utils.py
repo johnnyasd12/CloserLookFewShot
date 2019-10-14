@@ -10,7 +10,10 @@ import time
 
 
 class Timer2:
-    def __init__(self, name, enabled):
+    def __init__(self, name, enabled, verbose=1): # TODO: verbose (then delete enabled)
+        '''
+        :param verbose: 0 to print NOTHING, 1 to print common, 2 to print detail
+        '''
 #         self.name = name
         self.start_t = {}
         self.last_t = {}
@@ -28,6 +31,7 @@ class Timer2:
         self.duration = {}
         self.duration['from'] = name
         self.enabled = enabled
+        self.verbose = verbose
         if self.enabled:
             print(name, 'started')
     
