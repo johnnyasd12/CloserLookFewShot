@@ -43,7 +43,6 @@ def parse_args(script):
     parser.add_argument('--recons_decoder'   , default=None, help='reconstruction decoder: FC/Conv/HiddenConv')
     # coefficient of reconstruction loss
     parser.add_argument('--recons_lambda'   , default=0, type=float, help='lambda of reconstruction loss') # TODO: default=None? 0? will bug?
-    parser.add_argument('--aug_target', default=None, choices=['task', 'sample'], help='data augmentation by task or by sample')
     parser.add_argument('--aug_type', default=None, choices=['rotate'], help='task augmentation type: rotate/...')
     
     if script == 'train':
@@ -53,13 +52,22 @@ def parse_args(script):
         parser.add_argument('--stop_epoch'  , default=-1, type=int, help ='Stopping epoch') #for meta-learning methods, each epoch contains 100 episodes. The default epoch number is dataset dependent. See train.py
         parser.add_argument('--resume'      , action='store_true', help='continue from previous trained model with largest epoch')
         parser.add_argument('--warmup'      , action='store_true', help='continue from baseline, neglected if resume is true') #never used in the paper
+        
+        parser.add_argument('--aug_target', default=None, choices=['task', 'sample'], help='data augmentation by task or by sample')
+        
     elif script == 'save_features':
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
         parser.add_argument('--save_iter', default=-1, type=int,help ='save feature from the model trained in x epoch, use the best model if x is -1')
+        
+        parser.add_argument('--aug_target', default=None, choices=['all', 'test-sample'], help='data augmentation by sample or all')
+        
     elif script == 'test':
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
         parser.add_argument('--save_iter', default=-1, type=int,help ='saved feature from the model trained in x epoch, use the best model if x is -1')
         parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
+        
+        parser.add_argument('--aug_target', default=None, choices=['all', 'test-sample'], help='data augmentation by sample or all')
+        
     else:
         raise ValueError('Unknown script')
         

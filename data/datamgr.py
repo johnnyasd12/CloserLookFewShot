@@ -144,6 +144,42 @@ class SimpleDataManager(DataManager):
 
         return data_loader
 
+class AugSimpleDataManager(DataManager):
+    def __init__(self, image_size, batch_size, aug_type, aug_target, recons_func = None):
+        # only support all the same augmentation for now
+        super(SimpleDataManager, self).__init__()
+        self.batch_size = batch_size
+        self.trans_loader = TransformLoader(image_size)
+        
+        self.aug_type = aug_type
+        assert aug_target == 'all' # 'test-sample'
+        self.aug_target = aug_target
+
+    def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
+#         transform = self.trans_loader.get_composed_transform(aug)
+        pre_transform = self.trans_loader.get_crop_transform(aug)
+        post_transform = self.trans_loader.get_hdf5_transform(aug)
+        aug_transform = self.trans_loader.get_aug_transform(self.aug_type, self.aug_target)
+#         dataset = SimpleDataset(data_file, transform)
+        dataset = AugSimpleDataset(data_file, pre_transform=pre_transform, post_transform=post_transform, aug_target=self.aug_target)
+        dataset.set_aug_transform(aug_transform) # TODO: AugSimple set_aug_transform
+        self.dataset = dataset
+        collate_fn = self.get_collate() # to get different transform for every batch
+        num_workers = 6 # TODO: or???
+        data_loader_params = dict(batch_size = self.batch_size, shuffle = True, num_workers = num_workers, pin_memory = True, collate_fn=collate_fn)
+        data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
+
+        return data_loader
+    
+    def get_collate(self):
+        def wrapper(batch):
+            transform = self.trans_loader.get_aug_transform(self.aug_type, aug_target=self.aug_target)
+            self.dataset.set_aug_transform(transform)
+            # if auto_collation then default_collate, else default_convert
+            return torch.utils.data._utils.collate.default_collate(batch)
+#             return torch.utils.data._utils.collate.default_convert(batch)
+        return wrapper
+
 class AugSetDataManager(DataManager):
     def __init__(self, image_size, n_way, n_support, n_query, aug_type, aug_target, n_episode =100, recons_func = None):
         ''' to get a data_loader
@@ -165,13 +201,12 @@ class AugSetDataManager(DataManager):
 #         transform = self.trans_loader.get_composed_transform(aug) # TODO: maybe change here?
         pre_transform = self.trans_loader.get_crop_transform(aug)
         post_transform = self.trans_loader.get_hdf5_transform(aug)
+        aug_transform = self.trans_loader.get_aug_transform(self.aug_type, aug_target=self.aug_target)
         dataset = AugSetDataset( data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_target=self.aug_target)
-        if self.aug_type:
-            transform = self.trans_loader.get_aug_transform(self.aug_type, aug_target=self.aug_target)
-            dataset.set_aug_transform(transform)
+        dataset.set_aug_transform(aug_transform)
         self.dataset = dataset
         sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
-        collate_fn = self.get_collate()
+        collate_fn = self.get_collate() # to get different transform for every batch
         num_workers = 0 if self.aug_target=='batch' else 12 # BUGFIX: there's a bug when multiprocessing, but we can still multi-process when aug_target != 'batch' because only batch need align set_aug_transform for every batch?
         data_loader_params = dict(batch_sampler = sampler,  num_workers = num_workers, pin_memory = True, collate_fn=collate_fn)
         

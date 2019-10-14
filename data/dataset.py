@@ -88,11 +88,56 @@ class AugSubDataset: # one iteration is one image of one class
     
     def set_aug_transform(self, aug_transform):
         '''
-        :param aug_param: dictionary, 'aug_type':'rotate', 'param':dict(...)
+        :param aug_transform: the transform function
         '''
 #         print('set_aug_transform called')
         self.aug_transform = aug_transform
 #         self.debug_flag += 1
+#         print('self.debug_flag =', self.debug_flag)
+
+class AugSimpleDataset:
+    def __init__(self, data_file, pre_transform, post_transform, aug_transform=identity, target_transform=identity, aug_target='all'):
+        with open(data_file, 'r') as f:
+            self.meta = json.load(f)
+        
+        self.pre_transform = pre_transform
+        self.aug_transform = aug_transform
+        self.post_transform = post_transform
+        
+        self.target_transform = target_transform
+        
+        self.debug_flag = 0
+        self.aug_target = aug_target
+
+    def __getitem__(self,i):
+        image_path = os.path.join(self.meta['image_names'][i])
+#         timer = Timer('open to RGB')
+        img = Image.open(image_path).convert('RGB')
+        img = self.pre_transform(img)
+        img = self.aug_transform(img)
+        if self.debug_flag <= 2 and self.aug_target=='all':
+            folder = 'debug-'+self.aug_target
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            filename = str(self.debug_flag) + '-' + str(self.cl) + '-' + str(i) + '.jpg'
+            print('saving', filename)
+            file_path = os.path.join(folder, filename)
+            img.save(file_path)
+        img = self.post_transform(img)
+        target = self.target_transform(self.meta['image_labels'][i])
+#         timer()
+        return img, target
+
+    def __len__(self):
+        return len(self.meta['image_names'])
+    
+    def set_aug_transform(self, aug_transform):
+        '''
+        :param aug_transform: the transform function
+        '''
+#         print('set_aug_transform called')
+        self.aug_transform = aug_transform
+        self.debug_flag += 1
 #         print('self.debug_flag =', self.debug_flag)
 
 class SetDataset:
