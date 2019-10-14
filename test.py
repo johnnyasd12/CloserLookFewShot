@@ -20,10 +20,12 @@ from methods.protonet import ProtoNet, ProtoNetAE, ProtoNetAE2
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
-from io_utils import model_dict, parse_args, get_resume_file, get_best_file , get_assigned_file, decoder_dict
+# from io_utils import model_dict, parse_args, get_resume_file, get_best_file , get_assigned_file, decoder_dict, get_checkpoint_dir
+from io_utils import *
 from my_utils import *
+import pandas as pd
 
-def get_settings(params, split):
+def get_img_settings(params, split):
     if 'Conv' in params.model:
         if params.dataset in ['omniglot', 'cross_char']:
             image_size = 28
@@ -64,7 +66,7 @@ if __name__ == '__main__':
 #     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot) # BUGFIX: decoder ?
     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
     
-    # set meta-learning method and backbone
+    # ======== set meta-learning method and backbone ========
     if params.dataset in ['omniglot', 'cross_char']:
         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
         params.model = 'Conv4S'
@@ -111,15 +113,16 @@ if __name__ == '__main__':
     model = to_device(model)
 
     # set save directory
-    checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
+#     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
     
-    if params.recons_decoder:
-        checkpoint_dir += '_%sDecoder%s' %(params.recons_decoder, params.recons_lambda)
-    if params.train_aug:
-        checkpoint_dir += '_aug'
-    if not params.method in ['baseline', 'baseline++'] :
-        checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
-
+#     if params.recons_decoder:
+#         checkpoint_dir += '_%sDecoder%s' %(params.recons_decoder, params.recons_lambda)
+#     if params.train_aug:
+#         checkpoint_dir += '_aug'
+#     if not params.method in ['baseline', 'baseline++'] :
+#         checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
+    checkpoint_dir = get_checkpoint_dir(params)
+    
     #modelfile   = get_resume_file(checkpoint_dir)
     # load model file ???
     print('loading from:',checkpoint_dir)
@@ -141,7 +144,7 @@ if __name__ == '__main__':
     
     
     if params.method in ['maml', 'maml_approx']: #maml do not support testing with feature
-        image_size, load_file = get_settings(params, split)
+        image_size, load_file = get_img_settings(params, split)
 #         if 'Conv' in params.model:
 #             if params.dataset in ['omniglot', 'cross_char']:
 #                 image_size = 28
@@ -185,23 +188,50 @@ if __name__ == '__main__':
         acc_mean = np.mean(acc_all)
         acc_std  = np.std(acc_all)
         print('%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
+    
+    
+    timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+    acc_str = '%4.2f%% +- %4.2f%%' % (acc_mean, 1.96* acc_std/np.sqrt(iter_num))
+    
+    # writing settings into csv
+    acc_mean_str = '%4.2f' % (acc_mean)
+    acc_std_str = '%4.2f' %(acc_std)
+    extra_dict = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str}
+    
+    csv_path = './record/results.csv'
+    csv_backup_path = './record/results_backup_'+timestamp+'.csv'
+    print('reading:', csv_path)
+    df = pd.read_csv(csv_path)
+    new_df = params2df(params, extra_dict)
+    out_df = pd.concat([df, new_df], axis=0, join='outer', sort=False)
+    print('saving to:', csv_backup_path)
+    with open(csv_backup_path, 'w') as f:
+        out_df.to_csv(f, header=True, index=False)
+    print('saving to:', csv_path)
+    with open(csv_path, 'w') as f:
+        out_df.to_csv(f, header=True, index=False)
+    
+    # writing settings into txt
     with open('./record/results.txt' , 'a') as f:
-        timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime()) 
+        # this part should modify for every argument change
         aug_str = '-aug' if params.train_aug else ''
         aug_str += '-adapted' if params.adaptation else ''
         aug_str += ('-Decoder' + params.recons_decoder+str(params.recons_lambda)) if params.recons_decoder else ''
+        aug_str += ('-'+params.aug_target+'('+params.aug_type+')') if params.aug_type else ''
+        
         if params.method in ['baseline', 'baseline++'] :
             exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
         else:
             exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
-        acc_str = '%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num))
-        f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_str)  )
+        acc_descr = '%d Test Acc = ' %(iter_num)
+        acc_descr += acc_str
+        f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_descr)  )
         
     # use SetDataManager to transform original image???
     # I wrote this ???
     '''
     print('='*10 + 'start ploting' + '='*10)
-    image_size, loadfile = get_settings(params, split)
+    image_size, loadfile = get_img_settings(params, split)
     datamgr         = SetDataManager(image_size, n_eposide = iter_num, n_query = 15 , **few_shot_params)
     novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
     model.eval()

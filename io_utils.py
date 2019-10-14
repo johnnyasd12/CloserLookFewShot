@@ -4,6 +4,9 @@ import glob
 import argparse
 import backbone
 
+import configs
+import pandas as pd
+
 # embedding model architecture
 model_dict = dict(
             Conv4 = backbone.Conv4,
@@ -31,7 +34,7 @@ def parse_args(script):
     parser.add_argument('--test_n_way'  , default=5, type=int,  help='class num to classify for testing (validation) ') #baseline and baseline++ only use this parameter in finetuning
     parser.add_argument('--n_shot'      , default=5, type=int,  help='number of labeled data in each class, same as n_support') #baseline and baseline++ only use this parameter in finetuning
     parser.add_argument('--train_aug'   , action='store_true',  help='perform data augmentation or not during training ') #still required for save_features.py and test.py to find the model path correctly
-#     parser.add_argument('--gpu_id'      , default=None, type=int, help='which gpu to use')
+    parser.add_argument('--gpu_id'      , default=None, type=int, help='which gpu to use')
     
     # extra argument
     # assign image resize
@@ -39,7 +42,7 @@ def parse_args(script):
     # auxiliary reconstruction task
     parser.add_argument('--recons_decoder'   , default=None, help='reconstruction decoder: FC/Conv/HiddenConv')
     # coefficient of reconstruction loss
-    parser.add_argument('--recons_lambda'   , default=1.0, type=float, help='lambda of reconstruction loss')
+    parser.add_argument('--recons_lambda'   , default=0, type=float, help='lambda of reconstruction loss') # TODO: default=None? 0? will bug?
     parser.add_argument('--aug_target', default=None, choices=['task', 'sample'], help='data augmentation by task or by sample')
     parser.add_argument('--aug_type', default=None, choices=['rotate'], help='task augmentation type: rotate/...')
     
@@ -63,6 +66,17 @@ def parse_args(script):
 
     return parser.parse_args()
 
+def get_checkpoint_dir(params):
+    checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
+    if params.recons_decoder: # extra decoder
+        checkpoint_dir += '_%sDecoder%s' %(params.recons_decoder,params.recons_lambda)
+    if params.train_aug:
+        checkpoint_dir += '_aug'
+    if not params.method  in ['baseline', 'baseline++']: 
+        checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
+    if params.aug_type is not None:
+        checkpoint_dir += '_%s-%s' %(params.aug_type, params.aug_target)
+    return checkpoint_dir
 
 def get_assigned_file(checkpoint_dir,num):
     assign_file = os.path.join(checkpoint_dir, '{:d}.tar'.format(num))
@@ -85,3 +99,26 @@ def get_best_file(checkpoint_dir):
         return best_file
     else:
         return get_resume_file(checkpoint_dir)
+
+def params2df(params, extra_dict):
+    params_dict = params.__dict__.copy()
+    new_dict = {**params_dict, **extra_dict} if extra_dict is not None else params_dict
+    for key,value in new_dict.items(): # make value to be list
+        new_dict[key] = [value]
+    new_df = pd.DataFrame.from_dict(new_dict)
+    return new_df
+
+if __name__ == '__main__':
+    filename = 'test_exp.csv'
+    df = pd.read_csv(filename)
+    print('read_csv:\n', df.tail())
+    
+    params = parse_args('test')
+    extra_dict = {'test_acc_mean':70, 'test_acc_std':0.68, 'time':'191013_193906'}
+    new_df = params2df(params, extra_dict)
+    out_df = pd.concat([df, new_df], axis=0, join='outer', sort=False)
+    print('out_df\n', out_df.tail())
+    with open(filename, 'w') as f:
+        out_df.to_csv(f, header=True, index=False)
+    
+    
