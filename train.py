@@ -17,7 +17,7 @@ from methods.protonet import ProtoNet, ProtoNetAE, ProtoNetAE2
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
-from io_utils import model_dict, parse_args, get_resume_file, decoder_dict
+from io_utils import model_dict, parse_args, get_resume_file, decoder_dict, get_checkpoint_dir
 
 from my_utils import *
 
@@ -185,14 +185,9 @@ if __name__=='__main__':
 #     model = model.cuda()
     model = to_device(model)
 
-    params.checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
+
     
-    if params.recons_decoder: # extra decoder
-        params.checkpoint_dir += '_%sDecoder%s' %(params.recons_decoder,params.recons_lambda)
-    if params.train_aug:
-        params.checkpoint_dir += '_aug'
-    if not params.method  in ['baseline', 'baseline++']: 
-        params.checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
+    params.checkpoint_dir = get_checkpoint_dir(params)
     
     
     if not os.path.isdir(params.checkpoint_dir):
@@ -211,6 +206,7 @@ if __name__=='__main__':
             start_epoch = tmp['epoch']+1
             model.load_state_dict(tmp['state'])
     elif params.warmup: #We also support warmup from pretrained baseline feature, but we never used in our paper
+        # TODO: checkpoint_dir for resume haven't synchronize
         baseline_checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, 'baseline')
         if params.train_aug:
             baseline_checkpoint_dir += '_aug'

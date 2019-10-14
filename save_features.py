@@ -14,7 +14,7 @@ from methods.protonet import ProtoNet
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
-from io_utils import model_dict, parse_args, get_resume_file, get_best_file, get_assigned_file 
+from io_utils import model_dict, parse_args, get_resume_file, get_best_file, get_assigned_file, get_checkpoint_dir
 
 from my_utils import *
 
@@ -50,6 +50,7 @@ if __name__ == '__main__':
     params = parse_args('save_features')
     assert params.method != 'maml' and params.method != 'maml_approx', 'maml do not support save_feature and run'
 
+    # TODO: integrate image_size & load_file with test.py (differ from train.py)
     if 'Conv' in params.model:
         if params.dataset in ['omniglot', 'cross_char']:
             image_size = 28
@@ -76,15 +77,16 @@ if __name__ == '__main__':
     else:
         loadfile = configs.data_dir[params.dataset] + split + '.json'
 
-    checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
+#     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
     
-    if params.recons_decoder: # experiment with decoder model
-        checkpoint_dir += '_%sDecoder%s' %(params.recons_decoder, params.recons_lambda)
-    if params.train_aug:
-        checkpoint_dir += '_aug'
-    if not params.method in ['baseline', 'baseline++'] :
-        checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
-
+#     if params.recons_decoder: # experiment with decoder model
+#         checkpoint_dir += '_%sDecoder%s' %(params.recons_decoder, params.recons_lambda)
+#     if params.train_aug:
+#         checkpoint_dir += '_aug'
+#     if not params.method in ['baseline', 'baseline++'] :
+#         checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
+    checkpoint_dir = get_checkpoint_dir(params)
+    
     if params.save_iter != -1:
         modelfile   = get_assigned_file(checkpoint_dir,params.save_iter)
 #    elif params.method in ['baseline', 'baseline++'] :
@@ -97,7 +99,11 @@ if __name__ == '__main__':
     else:
         outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + ".hdf5") 
 
-    datamgr         = SimpleDataManager(image_size, batch_size = 64)
+    if params.aug_type is None:
+        datamgr         = SimpleDataManager(image_size, batch_size = 64)
+    else:
+        datamgr         = AugSimpleDataManager(image_size, batch_size = 64, 
+                                               aug_type=params.aug_type, aug_target='all')
     data_loader      = datamgr.get_data_loader(loadfile, aug = False)
 
     if params.method in ['relationnet', 'relationnet_softmax']:
