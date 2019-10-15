@@ -14,15 +14,16 @@ transformtypedict=dict(Brightness=ImageEnhance.Brightness, Contrast=ImageEnhance
 
 class ImageJitter(object):
     def __init__(self, transformdict):
+        # [(IMageEnhacne.Brightness, 0.4), (ImageEnhance.Contrast, 0.4), (ImageEnhance.Sharpness, 0.4)]
         self.transforms = [(transformtypedict[k], transformdict[k]) for k in transformdict]
 
 
     def __call__(self, img):
         out = img
-        randtensor = torch.rand(len(self.transforms))
+        randtensor = torch.rand(len(self.transforms)) # from 0 to 1
 
         for i, (transformer, alpha) in enumerate(self.transforms):
-            r = alpha*(randtensor[i]*2.0 -1.0) + 1
+            r = alpha*(randtensor[i]*2.0 -1.0) + 1 # (-0.4 ~ 0.4) + 1 = 0.6 ~ 1.4
             out = transformer(out).enhance(r).convert('RGB')
 
         return out
