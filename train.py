@@ -141,7 +141,7 @@ if __name__=='__main__':
                                                         aug_type=aug_type, aug_target=params.aug_target, 
                                                         **train_few_shot_params)
             val_datamgr             = AugSetDataManager(image_size, n_query = n_query, 
-                                                        aug_type=aug_type, aug_target='all', 
+                                                        aug_type=aug_type, aug_target='test-sample', 
                                                         **test_few_shot_params)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 

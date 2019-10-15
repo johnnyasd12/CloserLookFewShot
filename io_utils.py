@@ -44,7 +44,8 @@ def parse_args(script):
     # coefficient of reconstruction loss
     parser.add_argument('--recons_lambda'   , default=0, type=float, help='lambda of reconstruction loss') # TODO: default=None? 0? will bug?
     parser.add_argument('--aug_type', default=None, choices=['rotate'], help='task augmentation type: rotate/...')
-    
+    parser.add_argument('--aug_target', default=None, choices=['batch', 'sample'], help='data augmentation by task or by sample')
+        
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
         parser.add_argument('--save_freq'   , default=50, type=int, help='Save frequency')
@@ -52,21 +53,20 @@ def parse_args(script):
         parser.add_argument('--stop_epoch'  , default=-1, type=int, help ='Stopping epoch') #for meta-learning methods, each epoch contains 100 episodes. The default epoch number is dataset dependent. See train.py
         parser.add_argument('--resume'      , action='store_true', help='continue from previous trained model with largest epoch')
         parser.add_argument('--warmup'      , action='store_true', help='continue from baseline, neglected if resume is true') #never used in the paper
+#         parser.add_argument('--test_aug_target', default=None, choices=['all', 'test-sample'], help='val data augmentation by sample or all')
         
-        parser.add_argument('--aug_target', default=None, choices=['task', 'sample'], help='data augmentation by task or by sample')
         
     elif script == 'save_features':
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
         parser.add_argument('--save_iter', default=-1, type=int,help ='save feature from the model trained in x epoch, use the best model if x is -1')
         
-        parser.add_argument('--aug_target', default=None, choices=['all', 'test-sample'], help='data augmentation by sample or all')
+#         parser.add_argument('--test_aug_target', default=None, choices=['all', 'test-sample'], help='test data augmentation by sample or all')
         
     elif script == 'test':
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
         parser.add_argument('--save_iter', default=-1, type=int,help ='saved feature from the model trained in x epoch, use the best model if x is -1')
         parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
         
-        parser.add_argument('--aug_target', default=None, choices=['all', 'test-sample'], help='data augmentation by sample or all')
         
     else:
         raise ValueError('Unknown script')
@@ -88,24 +88,29 @@ def get_checkpoint_dir(params):
 
 def get_assigned_file(checkpoint_dir,num):
     assign_file = os.path.join(checkpoint_dir, '{:d}.tar'.format(num))
+    print('get assigned file:', assign_file)
     return assign_file
 
 def get_resume_file(checkpoint_dir):
     filelist = glob.glob(os.path.join(checkpoint_dir, '*.tar'))
     if len(filelist) == 0:
+        print('NO .tar file, get_resume_file failed. ')
         return None
 
     filelist =  [ x  for x in filelist if os.path.basename(x) != 'best_model.tar' ]
     epochs = np.array([int(os.path.splitext(os.path.basename(x))[0]) for x in filelist])
     max_epoch = np.max(epochs)
     resume_file = os.path.join(checkpoint_dir, '{:d}.tar'.format(max_epoch))
+    print('get resume file with max epoch:', resume_file)
     return resume_file
 
 def get_best_file(checkpoint_dir):    
     best_file = os.path.join(checkpoint_dir, 'best_model.tar')
     if os.path.isfile(best_file):
+        print('best file:', best_file)
         return best_file
     else:
+        print('NOT found best file:',best_file,' , go get resume file')
         return get_resume_file(checkpoint_dir)
 
 def params2df(params, extra_dict):

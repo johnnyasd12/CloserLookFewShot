@@ -115,14 +115,14 @@ class AugSimpleDataset:
         img = Image.open(image_path).convert('RGB')
         img = self.pre_transform(img)
         img = self.aug_transform(img)
-        if self.debug_flag <= 2 and self.aug_target=='all':
-            folder = 'debug-'+self.aug_target
-            if not os.path.exists(folder):
-                os.makedirs(folder)
-            filename = str(self.debug_flag) + '-' + str(self.cl) + '-' + str(i) + '.jpg'
-            print('saving', filename)
-            file_path = os.path.join(folder, filename)
-            img.save(file_path)
+#         if self.debug_flag <= 2 and self.aug_target=='test-sample':
+#             folder = 'debug-'+self.aug_target
+#             if not os.path.exists(folder):
+#                 os.makedirs(folder)
+#             filename = str(self.debug_flag) + '-' + str(i) + '.jpg'
+#             print('saving', filename)
+#             file_path = os.path.join(folder, filename)
+#             img.save(file_path)
         img = self.post_transform(img)
         target = self.target_transform(self.meta['image_labels'][i])
 #         timer()

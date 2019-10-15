@@ -7,7 +7,7 @@ import h5py
 
 import configs
 import backbone
-from data.datamgr import SimpleDataManager
+from data.datamgr import SimpleDataManager, AugSimpleDataManager
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
 from methods.protonet import ProtoNet
@@ -86,6 +86,7 @@ if __name__ == '__main__':
 #     if not params.method in ['baseline', 'baseline++'] :
 #         checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
     checkpoint_dir = get_checkpoint_dir(params)
+    print('checkpoint_dir:', checkpoint_dir)
     
     if params.save_iter != -1:
         modelfile   = get_assigned_file(checkpoint_dir,params.save_iter)
@@ -103,7 +104,7 @@ if __name__ == '__main__':
         datamgr         = SimpleDataManager(image_size, batch_size = 64)
     else:
         datamgr         = AugSimpleDataManager(image_size, batch_size = 64, 
-                                               aug_type=params.aug_type, aug_target='all')
+                                               aug_type=params.aug_type, aug_target='test-sample') # aug_target='all' or 'test-sample'
     data_loader      = datamgr.get_data_loader(loadfile, aug = False)
 
     if params.method in ['relationnet', 'relationnet_softmax']:

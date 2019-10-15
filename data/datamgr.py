@@ -5,7 +5,7 @@ from PIL import Image
 import numpy as np
 import torchvision.transforms as transforms
 import data.additional_transforms as add_transforms
-from data.dataset import SimpleDataset, SetDataset, EpisodicBatchSampler, HDF5Dataset, AugSetDataset
+from data.dataset import SimpleDataset, SetDataset, EpisodicBatchSampler, HDF5Dataset, AugSetDataset, AugSimpleDataset
 from abc import abstractmethod
 
 import torchvision.transforms.functional as TF
@@ -80,19 +80,21 @@ class TransformLoader:
         :param aug_target: str, 'sample', 'batch', 'all'
         '''
         if aug_type == 'rotate':
-            a = 20
+            a = 15
             if aug_target == 'all':
-                angle = 30
+                angle = 25
             elif aug_target == 'batch': # random select for every batch
                 angle = random.randint(-a, a)
         def wrapper(img):
             if aug_type == 'rotate':
                 nonlocal angle
-                expand = False # no, not wat i want
                 if aug_target == 'sample': # random select for every call
                     angle = random.randint(-a, a)
-                img = TF.rotate(img, angle, expand=expand)
-#                 img = TF.to_pil_image(img, mode='RGB')
+                elif aug_target == 'test-sample': # random select for every call
+                    a1, a2 = 15, 25
+                    angle = random.randint(a1,a2)*(-1)**random.randint(0,1)
+                
+                img = TF.rotate(img, angle, expand=False)
                 return img
             else:
                 raise ValueError('not invalid aug_type:', aug_type)
@@ -147,12 +149,12 @@ class SimpleDataManager(DataManager):
 class AugSimpleDataManager(DataManager):
     def __init__(self, image_size, batch_size, aug_type, aug_target, recons_func = None):
         # only support all the same augmentation for now
-        super(SimpleDataManager, self).__init__()
+        super(AugSimpleDataManager, self).__init__()
         self.batch_size = batch_size
         self.trans_loader = TransformLoader(image_size)
         
         self.aug_type = aug_type
-        assert aug_target == 'all' # 'test-sample'
+        assert aug_target == 'all' or aug_target == 'test-sample'
         self.aug_target = aug_target
 
     def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
@@ -165,7 +167,7 @@ class AugSimpleDataManager(DataManager):
         dataset.set_aug_transform(aug_transform) # TODO: AugSimple set_aug_transform
         self.dataset = dataset
         collate_fn = self.get_collate() # to get different transform for every batch
-        num_workers = 6 # TODO: or???
+        num_workers = 12 # TODO: or???
         data_loader_params = dict(batch_size = self.batch_size, shuffle = True, num_workers = num_workers, pin_memory = True, collate_fn=collate_fn)
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
 
