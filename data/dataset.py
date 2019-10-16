@@ -71,7 +71,7 @@ class AugSubDataset: # one iteration is one image of one class
         img = img.convert('RGB')
         img = self.pre_transform(img)
         img = self.aug_transform(img)
-#         if self.debug_flag <= 2 and self.aug_target=='sample':
+#         if self.debug_flag <= 2 and self.aug_target=='batch':
 #             folder = 'debug-'+self.aug_target
 #             if not os.path.exists(folder):
 #                 os.makedirs(folder)

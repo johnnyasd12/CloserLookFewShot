@@ -83,15 +83,17 @@ class TransformLoader:
             '''
             :param abs_angle_range: tuple
             '''
-            angle = random.randint(*abs_angle_range)*(-1)**random.randint(0,1) # 0 +- angle_range
+            # only one side
+            angle = random.randint(*abs_angle_range)*(-1)#**random.randint(0,1) # 0 +- angle_range
             return angle
         
         def get_random_factor(abs_perturb_range):
             '''
             :param abs_perturb_range: tuple
             '''
+            # only one side
             lower, upper = abs_perturb_range
-            perturb = lower + (upper-lower)*random.random()*(-1)**random.randint(0,1) # 1+-(0~b)
+            perturb = (lower + (upper-lower)*random.random())*(-1)#**random.randint(0,1) # 1+-(0~b) 
             factor = 1 + perturb
             return factor
         
