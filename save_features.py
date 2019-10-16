@@ -104,7 +104,7 @@ if __name__ == '__main__':
         datamgr         = SimpleDataManager(image_size, batch_size = 64)
     else:
         datamgr         = AugSimpleDataManager(image_size, batch_size = 64, 
-                                               aug_type=params.aug_type, aug_target='test-sample') # aug_target='all' or 'test-sample'
+                                               aug_type=params.aug_type, aug_target='test-sample') # aug_target= 'all' or 'test-sample', NO 'test-batch'
     data_loader      = datamgr.get_data_loader(loadfile, aug = False)
 
     if params.method in ['relationnet', 'relationnet_softmax']:
