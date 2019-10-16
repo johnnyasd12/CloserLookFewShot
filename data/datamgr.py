@@ -97,117 +97,79 @@ class TransformLoader:
             factor = 1 + perturb
             return factor
         
-        if True:
-            params = {}
-            params['rotate'] = {
-                'train_range':(0, 20), # should +/-
-                'test_range':(15, 25), # should +/-
-                'angle':None
-            }
-            params['bright'] = {
-                'train_range':(0, 0.3), # should 1 +/- range
-                'test_range':(0.25, 0.5), # should 1 +/- range
-                'factor':None
-            }
-            params['contrast'] = {
-                'train_range':(0, 0.3), # should 1 +/- range
-                'test_range':(0.25, 0.5), # should 1 +/- range
-                'factor':None
-            }
+
+        params = {}
+        params['rotate'] = {
+            'train_range':(0, 20), # should +/-
+            'test_range':(15, 25), # should +/-
+            'angle':None
+        }
+        params['bright'] = {
+            'train_range':(0, 0.3), # should 1 +/- range
+            'test_range':(0.25, 0.5), # should 1 +/- range
+            'factor':None
+        }
+        params['contrast'] = {
+            'train_range':(0, 0.3), # should 1 +/- range
+            'test_range':(0.25, 0.5), # should 1 +/- range
+            'factor':None
+        }
+
+        # Deciding transform parameters
+        if aug_target == 'batch': # random select for every batch
+            params['rotate']['angle'] = get_random_rotate_angle(params['rotate']['train_range'])
+            params['bright']['factor'] = get_random_factor(params['bright']['train_range'])
+            params['contrast']['factor'] = get_random_factor(params['contrast']['train_range'])
+
+        elif aug_target == 'test-batch': # random select for every batch
+            params['rotate']['angle'] = get_random_rotate_angle(params['rotate']['test_range'])
+            params['bright']['factor'] = get_random_factor(params['bright']['test_range'])
+            params['contrast']['factor'] = get_random_factor(params['contrast']['test_range'])
+        
+        def wrapper(img):
+
+            nonlocal params
+
+            if aug_target == 'batch' or aug_target == 'test-batch':
+                pass # nothing to do
 
             # Deciding transform parameters
-            if aug_target == 'batch': # random select for every batch
+            elif aug_target == 'sample':
                 params['rotate']['angle'] = get_random_rotate_angle(params['rotate']['train_range'])
                 params['bright']['factor'] = get_random_factor(params['bright']['train_range'])
                 params['contrast']['factor'] = get_random_factor(params['contrast']['train_range'])
-                
-            elif aug_target == 'test-batch': # random select for every batch
+
+            elif aug_target == 'test-sample':
                 params['rotate']['angle'] = get_random_rotate_angle(params['rotate']['test_range'])
                 params['bright']['factor'] = get_random_factor(params['bright']['test_range'])
                 params['contrast']['factor'] = get_random_factor(params['contrast']['test_range'])
-        
-        else:
-            if aug_type == 'rotate':
-                a = 15
-    #             if aug_target == 'all':
-    #                 angle = 25
-                if aug_target == 'batch': # random select for every batch
-                    angle = random.randint(-a, a)
-            elif aug_type == 'bright':
-                b = 0.3
-                if aug_target == 'batch':
-                    factor = 1 + b*random.random()*(-1)**random.randint(0,1) # 1+-(0~b)
-        
-        def wrapper(img):
-            if True:
-                
-                nonlocal params
-                
-                if aug_target == 'batch' or aug_target == 'test-batch':
-                    pass # nothing to do
-                
-                # Deciding transform parameters
-                elif aug_target == 'sample':
-                    params['rotate']['angle'] = get_random_rotate_angle(params['rotate']['train_range'])
-                    params['bright']['factor'] = get_random_factor(params['bright']['train_range'])
-                    params['contrast']['factor'] = get_random_factor(params['contrast']['train_range'])
-                
-                elif aug_target == 'test-sample':
-                    params['rotate']['angle'] = get_random_rotate_angle(params['rotate']['test_range'])
-                    params['bright']['factor'] = get_random_factor(params['bright']['test_range'])
-                    params['contrast']['factor'] = get_random_factor(params['contrast']['test_range'])
-                    
-                else:
-                    raise ValueError('Invalid aug_target: %s' %(aug_target))
-            
-                # Process the image
-                if aug_type == 'rotate':
-                    img = TF.rotate(img, params['rotate']['angle'])
-                    print('rotate angle:', params['rotate']['angle'])
-                
-                elif aug_type == 'bright':
-                    img = TF.adjust_brightness(img, params['bright']['factor'])
-                    print('bright factor:', params['bright']['factor'])
-                    
-                elif aug_type == 'contrast':
-                    img = TF.adjust_contrast(img, params['contrast']['factor'])
-                    print('contrast factor:', params['contrast']['factor'])
-                    
-                elif aug_type == 'mix':
-                    img = TF.adjust_contrast(img, params['contrast']['factor'])
-                    img = TF.adjust_brightness(img, params['bright']['factor'])
-                    img = TF.rotate(img, params['rotate']['angle'])
-                    
-                else:
-                    raise ValueError('Invalid aug_type: %s' %(aug_type))
-            
+
             else:
-                if aug_type == 'rotate':
-                    nonlocal angle
-                    if aug_target == 'sample': # random select for every call
-                        angle = random.randint(-a, a)
-                    elif aug_target == 'test-sample': # random select for every call
-                        a1, a2 = 15, 25
-                        angle = random.randint(a1,a2)*(-1)**random.randint(0,1)
-                    img = TF.rotate(img, angle, expand=False)
+                raise ValueError('Invalid aug_target: %s' %(aug_target))
 
-                elif aug_type == 'bright':
-                    nonlocal factor
-                    nonlocal b
-                    if aug_target == 'sample':
-                        factor = 1 + b*random.random()*(-1)**random.randint(0,1) # 1+-(0~b)
-                    elif aug_target == 'test-sample':
-                        b1, b2 = 0.25, 0.5
-                        b = b1 + (b2-b1)*random.random() # b1~b2
-                        factor = 1 + b*(-1)**random.randint(0,1)
-    #                 print('factor:', factor)
-                    img = TF.adjust_brightness(img, factor)
+            # Process the image
+            if aug_type == 'rotate':
+                img = TF.rotate(img, params['rotate']['angle'])
+                print('rotate angle:', params['rotate']['angle'])
 
-                else:
-                    raise ValueError('Invalid aug_type:', aug_type)
-            
+            elif aug_type == 'bright':
+                img = TF.adjust_brightness(img, params['bright']['factor'])
+                print('bright factor:', params['bright']['factor'])
+
+            elif aug_type == 'contrast':
+                img = TF.adjust_contrast(img, params['contrast']['factor'])
+                print('contrast factor:', params['contrast']['factor'])
+
+            elif aug_type == 'mix':
+                img = TF.adjust_contrast(img, params['contrast']['factor'])
+                img = TF.adjust_brightness(img, params['bright']['factor'])
+                img = TF.rotate(img, params['rotate']['angle'])
+
+            else:
+                raise ValueError('Invalid aug_type: %s' %(aug_type))
             
             return img
+        
         return wrapper
 
 class DataManager:
