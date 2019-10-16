@@ -150,15 +150,15 @@ class TransformLoader:
             # Process the image
             if aug_type == 'rotate':
                 img = TF.rotate(img, params['rotate']['angle'])
-                print('rotate angle:', params['rotate']['angle'])
+#                 print('rotate angle:', params['rotate']['angle'])
 
             elif aug_type == 'bright':
                 img = TF.adjust_brightness(img, params['bright']['factor'])
-                print('bright factor:', params['bright']['factor'])
+#                 print('bright factor:', params['bright']['factor'])
 
             elif aug_type == 'contrast':
                 img = TF.adjust_contrast(img, params['contrast']['factor'])
-                print('contrast factor:', params['contrast']['factor'])
+#                 print('contrast factor:', params['contrast']['factor'])
 
             elif aug_type == 'mix':
                 img = TF.adjust_contrast(img, params['contrast']['factor'])
