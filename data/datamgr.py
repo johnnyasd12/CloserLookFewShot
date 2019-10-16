@@ -64,7 +64,7 @@ class TransformLoader:
         transform = transforms.Compose(transform_funcs)
         return transform
     
-    def get_hdf5_transform(self, aug = False): # this + simple_transform = composed_transform
+    def get_hdf5_transform(self, aug = False): # simple_transform + this = composed_transform
         if aug:
             transform_list = ['ImageJitter', 'RandomHorizontalFlip', 'ToTensor', 'Normalize']
         else:
@@ -76,15 +76,20 @@ class TransformLoader:
     
     def get_aug_transform(self, aug_type, aug_target):
         '''
-        :param aug_type: str, 'rotate', 
+        :param aug_type: str, 'rotate', 'bright'
         :param aug_target: str, 'sample', 'batch', 'all'
         '''
         if aug_type == 'rotate':
             a = 15
-            if aug_target == 'all':
-                angle = 25
-            elif aug_target == 'batch': # random select for every batch
+#             if aug_target == 'all':
+#                 angle = 25
+            if aug_target == 'batch': # random select for every batch
                 angle = random.randint(-a, a)
+        elif aug_type == 'bright':
+            b = 0.3
+            if aug_target == 'batch':
+                factor = 1 + b*random.random()*(-1)**random.randint(0,1) # 1+-(0~b)
+        
         def wrapper(img):
             if aug_type == 'rotate':
                 nonlocal angle
@@ -93,11 +98,24 @@ class TransformLoader:
                 elif aug_target == 'test-sample': # random select for every call
                     a1, a2 = 15, 25
                     angle = random.randint(a1,a2)*(-1)**random.randint(0,1)
-                
                 img = TF.rotate(img, angle, expand=False)
-                return img
+                
+            elif aug_type == 'bright':
+                nonlocal factor
+                nonlocal b
+                if aug_target == 'sample':
+                    factor = 1 + b*random.random()*(-1)**random.randint(0,1) # 1+-(0~b)
+                elif aug_target == 'test-sample':
+                    b1, b2 = 0.25, 0.5
+                    b = b1 + (b2-b1)*random.random() # b1~b2
+                    factor = 1 + b*(-1)**random.randint(0,1)
+#                 print('factor:', factor)
+                img = TF.adjust_brightness(img, factor)
+            
             else:
                 raise ValueError('not invalid aug_type:', aug_type)
+            
+            return img
         return wrapper
 
 class DataManager:

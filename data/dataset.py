@@ -92,7 +92,7 @@ class AugSubDataset: # one iteration is one image of one class
         '''
 #         print('set_aug_transform called')
         self.aug_transform = aug_transform
-#         self.debug_flag += 1
+        self.debug_flag += 1
 #         print('self.debug_flag =', self.debug_flag)
 
 class AugSimpleDataset:
