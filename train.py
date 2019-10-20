@@ -17,8 +17,8 @@ from methods.protonet import ProtoNet, ProtoNetAE, ProtoNetAE2
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
-from io_utils import model_dict, parse_args, get_resume_file, decoder_dict, get_checkpoint_dir
-
+# from io_utils import model_dict, parse_args, get_resume_file, decoder_dict, get_checkpoint_dir
+from io_utils import *
 from my_utils import *
 
 def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch, params):    
@@ -59,6 +59,8 @@ if __name__=='__main__':
     np.random.seed(10)
     params = parse_args('train')
 
+    get_model_func = True
+    
     if params.dataset == 'cross':
         base_file = configs.data_dir['miniImagenet'] + 'all.json' 
         val_file   = configs.data_dir['CUB'] + 'val.json' 
@@ -77,9 +79,13 @@ if __name__=='__main__':
     else:
         image_size = 224 # if params.image_size is None else params.image_size
 
-    if params.dataset in ['omniglot', 'cross_char']:
-        assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
-        params.model = 'Conv4S'
+    # TODO: maybe can delete this part after implementing get_model()
+    if get_model_func:
+        model = get_model(params)
+    else:
+        if params.dataset in ['omniglot', 'cross_char']:
+            assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
+            params.model = 'Conv4S'
 
     optimization = 'Adam'
 
@@ -102,34 +108,32 @@ if __name__=='__main__':
                 params.stop_epoch = 600 #default
     
 
-    if params.recons_decoder == None:
-        print('params.recons_decoder == None')
-        recons_decoder = None
-    else:
-        recons_decoder = decoder_dict[params.recons_decoder]
-        print('recons_decoder:\n',recons_decoder)
-
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)
         base_loader     = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
         val_datamgr     = SimpleDataManager(image_size, batch_size = 64)
         val_loader      = val_datamgr.get_data_loader( val_file, aug = False)
         
-        if params.dataset == 'omniglot':
-            assert params.num_classes >= 4112, 'class number need to be larger than max label id in base class'
-        if params.dataset == 'cross_char':
-            assert params.num_classes >= 1597, 'class number need to be larger than max label id in base class'
+        if get_model_func:
+            pass
+        else:
+            if params.dataset == 'omniglot':
+                assert params.num_classes >= 4112, 'class number need to be larger than max label id in base class'
+            if params.dataset == 'cross_char':
+                assert params.num_classes >= 1597, 'class number need to be larger than max label id in base class'
 
-        if params.method == 'baseline':
-            model           = BaselineTrain( model_dict[params.model], params.num_classes)
-        elif params.method == 'baseline++':
-            model           = BaselineTrain( model_dict[params.model], params.num_classes, loss_type = 'dist')
+            if params.method == 'baseline':
+                model           = BaselineTrain( model_dict[params.model], params.num_classes)
+            elif params.method == 'baseline++':
+                model           = BaselineTrain( model_dict[params.model], params.num_classes, loss_type = 'dist')
 
     elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
 
-        train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
-        test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot) 
+#         train_few_shot_params    = dict(n_way = params.train_n_way, n_support = params.n_shot) 
+#         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot) 
+        train_few_shot_params    = get_few_shot_params(params, 'train')
+        test_few_shot_params     = get_few_shot_params(params, 'test')
         if params.aug_target is None:
             assert params.aug_type is None
             base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)
@@ -145,39 +149,52 @@ if __name__=='__main__':
                                                         **test_few_shot_params)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
         val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
-        #a batch for SetDataManager: a [n_way, n_support + n_query, dim, w, h] tensor        
+        #a batch for SetDataManager: a [n_way, n_support + n_query, n_channel, w, h] tensor        
 
-        if params.method == 'protonet':
-            if recons_decoder is None:
-                model = ProtoNet( model_dict[params.model], **train_few_shot_params )
-            elif 'Hidden' in params.recons_decoder:
-                model = ProtoNetAE2(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda)
+        if get_model_func:
+            pass
+        else:
+            if params.recons_decoder == None:
+                print('params.recons_decoder == None')
+                recons_decoder = None
             else:
-                model = ProtoNetAE(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=1)
-        elif params.method == 'matchingnet':
-            model           = MatchingNet( model_dict[params.model], **train_few_shot_params )
-        elif params.method in ['relationnet', 'relationnet_softmax']:
-            if params.model == 'Conv4': 
-                feature_model = backbone.Conv4NP
-            elif params.model == 'Conv6': 
-                feature_model = backbone.Conv6NP
-            elif params.model == 'Conv4S': 
-                feature_model = backbone.Conv4SNP
-            else:
-                feature_model = lambda: model_dict[params.model]( flatten = False )
-            loss_type = 'mse' if params.method == 'relationnet' else 'softmax'
+                recons_decoder = decoder_dict[params.recons_decoder]
+                print('recons_decoder:\n',recons_decoder)
 
-            model           = RelationNet( feature_model, loss_type = loss_type , **train_few_shot_params )
-        elif params.method in ['maml' , 'maml_approx']:
-            backbone.ConvBlock.maml = True
-            backbone.SimpleBlock.maml = True
-            backbone.BottleneckBlock.maml = True
-            backbone.ResNet.maml = True
-            model           = MAML(  model_dict[params.model], approx = (params.method == 'maml_approx') , **train_few_shot_params )
-            if params.dataset in ['omniglot', 'cross_char']: #maml use different parameter in omniglot
-                model.n_task     = 32
-                model.task_update_num = 1
-                model.train_lr = 0.1
+
+            if params.method == 'protonet':
+                if recons_decoder is None:
+                    model = ProtoNet( model_dict[params.model], **train_few_shot_params )
+                elif 'Hidden' in params.recons_decoder:
+                    model = ProtoNetAE2(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda)
+                else:
+                    model = ProtoNetAE(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda) # WTFFFFFFFF lambda_d just 1
+            elif params.method == 'matchingnet':
+                model           = MatchingNet( model_dict[params.model], **train_few_shot_params )
+            elif params.method in ['relationnet', 'relationnet_softmax']:
+                if params.model == 'Conv4': 
+                    feature_model = backbone.Conv4NP
+                elif params.model == 'Conv6': 
+                    feature_model = backbone.Conv6NP
+                elif params.model == 'Conv4S': 
+                    feature_model = backbone.Conv4SNP
+                else:
+                    feature_model = lambda: model_dict[params.model]( flatten = False )
+                loss_type = 'mse' if params.method == 'relationnet' else 'softmax'
+
+                model           = RelationNet( feature_model, loss_type = loss_type , **train_few_shot_params )
+            elif params.method in ['maml' , 'maml_approx']:
+                backbone.ConvBlock.maml = True
+                backbone.SimpleBlock.maml = True
+                backbone.BottleneckBlock.maml = True
+                backbone.ResNet.maml = True
+                model           = MAML(  model_dict[params.model], approx = (params.method == 'maml_approx') , **train_few_shot_params )
+                if params.dataset in ['omniglot', 'cross_char']: #maml use different parameter in omniglot
+                    model.n_task     = 32
+                    model.task_update_num = 1
+                    model.train_lr = 0.1
+    
+    
     else:
         raise ValueError('Unknown method')
 
