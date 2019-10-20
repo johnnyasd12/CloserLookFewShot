@@ -417,6 +417,7 @@ class DeResNet18(nn.Module):
         if self.flattened:
             out = x.view(x.size(0), 512, 1, 1)
         out = self.trunk(out)
+        return out
         
 
 
