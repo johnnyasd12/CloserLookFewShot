@@ -136,22 +136,56 @@ class ConvBlock(nn.Module):
         out = self.trunk(x)
         return out
 
-# Simple ResNet Block
-class SimpleBlock(nn.Module):
-    maml = False #Default
-    def __init__(self, indim, outdim, half_res): # TODO: WAT is half_res??
-        super(SimpleBlock, self).__init__()
+# Simple Block for Decoder of ResAE18
+class DeSimpleBlock(nn.Module):
+    maml = False
+    def __init__(self, indim, outdim, double_res):
+        super(DeSimpleBlock, self).__init__()
         self.indim = indim
         self.outdim = outdim
         if self.maml:
+            raise ValueError('DeSimpleBlock do not support maml.')
+        else:
+            self.CT1 = nn.ConvTranspose2d(indim, indim, kernel_size=3, stride=1, 
+                                          padding=1, output_padding=0, bias=False)
+            self.BN1 = nn.BatchNorm2d(indim)
+            self.relu1 = nn.ReLU(inplace=True)
+            self.CT2 = nn.ConvTranspose2d(indim, outdim, kernel_size=3, 
+                                          stride=2 if double_res else 1, padding=1, 
+                                          output_padding=1 if double_res else 0, bias=False)
+            self.BN2 = nn.BatchNorm2d(outdim)
+            self.relu2 = nn.ReLU(inplace=True)
+            
+            self.parametrized_layers = [self.CT1, self.CT2, self.BN1, self.BN2]
+            
+            for layer in self.parametrized_layers:
+                init_layer(layer)
+    
+    def forward(self, x):
+        out = self.CT1(x)
+        out = self.BN1(out)
+        out = self.relu1(out)
+        out = self.CT2(out)
+        out = self.BN2(out)
+        out = self.relu2(out)
+        return out
+
+# Simple ResNet Block
+class SimpleBlock(nn.Module):
+    maml = False #Default
+    def __init__(self, indim, outdim, half_res): # half_res means output size would be half
+        super(SimpleBlock, self).__init__()
+        self.indim = indim
+        self.outdim = outdim
+        if self.maml: # no need check this so far
             self.C1 = Conv2d_fw(indim, outdim, kernel_size=3, stride=2 if half_res else 1, padding=1, bias=False)
             self.BN1 = BatchNorm2d_fw(outdim)
-            self.C2 = Conv2d_fw(outdim, outdim,kernel_size=3, padding=1,bias=False)
+            self.C2 = Conv2d_fw(outdim, outdim, kernel_size=3, padding=1,bias=False)
             self.BN2 = BatchNorm2d_fw(outdim)
         else:
             self.C1 = nn.Conv2d(indim, outdim, kernel_size=3, stride=2 if half_res else 1, padding=1, bias=False) # ResNet18: 
             self.BN1 = nn.BatchNorm2d(outdim)
-            self.C2 = nn.Conv2d(outdim, outdim,kernel_size=3, padding=1,bias=False)
+            self.C2 = nn.Conv2d(outdim, outdim, kernel_size=3, padding=1,bias=False)
             self.BN2 = nn.BatchNorm2d(outdim)
         self.relu1 = nn.ReLU(inplace=True)
         self.relu2 = nn.ReLU(inplace=True)
@@ -335,39 +369,75 @@ class ConvNetSNopool(nn.Module): #Relation net use a 4 layer conv with pooling i
         return out
 
 class DeResNet18(nn.Module):
+    maml = False
     def __init__(self, flattened=True):
-        self.flattened = flattened
+        super(DeResNet18,self).__init__()
         if flattened: # flattened input = 512
-            self.conv0 = nn.ConvTranspose2d(512, 512, kernel_size=7) # 512*7*7
+            CT0 = nn.ConvTranspose2d(512, 512, kernel_size=7) # 512*7*7
+            bn0 = nn.BatchNorm2d(512)
+            relu = nn.ReLU()
         else: # not flattened input = 512*7*7
-            pass # TODO
-        self.conv1 = nn.ConvTranspose2d(512, 256, kernel_size=3)
+            raise ValueError('DeResNet18 only support flattened input. ')
+        
+        init_layer(CT0) # useless
+        init_layer(bn0)
+        if flattened:
+            trunk = [CT0, bn0]
+        else:
+            trunk = []
+        
+        indim = 512
+        list_of_out_dims = [512, 256, 128, 64]
+        list_of_num_blocks = [2, 2, 2, 2]
+        block = DeSimpleBlock
+        if self.maml:
+            raise ValueError('DeResNet18 do not support maml.')
+        else:
+            for i in range(4): # 4 stages
+                for j in range(list_of_num_blocks[i]): # every stage is 2 for ResNet18
+                    double_res = (i<=2) and (j==1)
+                    B = block(indim, list_of_out_dims[i], double_res)
+                    trunk.append(B)
+                    indim = list_of_out_dims[i] # NOT SURE
+        CT1 = nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2, 
+                                 padding=1, output_padding=1) # 64*56*56 -> 64*112*112
+        bn = nn.BatchNorm2d(64)
+        CT2 = nn.ConvTranspose2d(64, 3, kernel_size=7, stride=2, 
+                                 padding=3, output_padding=1) # 64*112*112 -> 3*224*224
+        tanh = nn.Tanh()
+        
+        init_layer(CT1) # useless
+        init_layer(CT2) # useless
+        init_layer(bn)
+        trunk += [CT1, bn, CT2, tanh]
+        self.trunk = nn.Sequential(*trunk)
+        self.flattened = flattened
         
     def forward(self, x):
         if self.flattened:
             out = x.view(x.size(0), 512, 1, 1)
-            out = self.conv0(out)
+        out = self.trunk(out)
         
 
 
 class ResNet(nn.Module):
     maml = False #Default
-    def __init__(self,block,list_of_num_layers, list_of_out_dims, flatten = True): # not flatten only RelationNet?
-        # list_of_num_layers specifies number of layers in each stage (number of blocks?)
+    def __init__(self,block,list_of_num_blocks, list_of_out_dims, flatten = True): # not flatten only RelationNet?
+        # list_of_num_blocks specifies number of blocks in each stage
         # list_of_out_dims specifies number of output channel for each stage
         super(ResNet,self).__init__() # input 224*224
-        assert len(list_of_num_layers)==4, 'Can have only four stages'
+        assert len(list_of_num_blocks)==4, 'Can have only four stages'
         if self.maml:
             conv1 = Conv2d_fw(3, 64, kernel_size=7, stride=2, padding=3,
-                                               bias=False) # 64*112*112
+                                               bias=False) # 64*112*112 (1)
             bn1 = BatchNorm2d_fw(64)
         else:
             conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                                               bias=False) # 64*112*112
+                                               bias=False) # 64*112*112 (1)
             bn1 = nn.BatchNorm2d(64)
 
         relu = nn.ReLU()
-        pool1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1) # 64*56*56
+        pool1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1) # 64*56*56 (1)
 
         init_layer(conv1)
         init_layer(bn1)
@@ -377,20 +447,43 @@ class ResNet(nn.Module):
 
         indim = 64
         for i in range(4): # 4 stages
-
-            for j in range(list_of_num_layers[i]): # for ResNet18, num_layers is 2 for every stage (2,2,2,2)
+            for j in range(list_of_num_blocks[i]): # every stage is 2 for ResNet18
+                ''' for ResNet 18:
+                list_of_num_blocks = [2, 2, 2, 2], so num_layer is 2 for every stage
+                block = SimpleBlock
+                list_of_out_dims = [64, 128, 256, 512]
+                
+                SimpleBlock():
+                    conv1(indim, outdim, kernel=3, stride=2 if half_res else 1, pad=1)
+                    bn1()
+                    conv2(outdim, outdim, kernel=3, stride=1, pad=1)
+                    bn2()
+                    if indim != outdim:
+                        shortcut_layer = conv12(indim, outdim, kernel=1, stride=2 if half_res else 1)
+                    else:
+                        shortcut_layer = identity
+                
+                block 0-0: half_res=False,  (k=3, s=1, p=1) + (k=3, s=1, p=1),  64*56*56
+                block 0-1: half_res=False, 64*56*56
+                block 1-0: half_res=True, (k=3, s=2, p=1) + (k=3, s=1, p=1), 128*28*28 (1)
+                block 1-1: half_res=False, 128*28*28
+                block 2-0: half_res=True, 256*14*14 (1)
+                block 2-1: half_res=False, 256*14*14
+                block 3-0: half_res=True, 512*7*7 (1)
+                block 3-1: half_res=False, 512*7*7
+                '''
                 half_res = (i>=1) and (j==0) # only stage 2 and 3's first block?
-                B = block(indim, list_of_out_dims[i], half_res) # for ResNet18, block is SimpleBlock
+                B = block(indim, list_of_out_dims[i], half_res)
                 trunk.append(B)
-                indim = list_of_out_dims[i] # for ResNet18, last one is 512
+                indim = list_of_out_dims[i]
 
         if flatten:
-            avgpool = nn.AvgPool2d(7)
+            avgpool = nn.AvgPool2d(7) # 512*1*1
             trunk.append(avgpool)
-            trunk.append(Flatten())
+            trunk.append(Flatten()) # 512 for ResNet18
             self.final_feat_dim = indim
         else:
-            self.final_feat_dim = [ indim, 7, 7]
+            self.final_feat_dim = [ indim, 7, 7] # 512*7*7 for ResNet18 (RelationNet?)
 
         self.trunk = nn.Sequential(*trunk)
 

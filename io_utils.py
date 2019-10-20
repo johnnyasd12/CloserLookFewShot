@@ -29,7 +29,8 @@ model_dict = dict(
 decoder_dict = dict(
     Conv = backbone.DeConvNet(),
     FC = backbone.DeFCNet(), 
-    HiddenConv = backbone.DeConvNet2()
+    HiddenConv = backbone.DeConvNet2(), 
+    Res18 = backbone.DeResNet18()
 )
 
 def parse_args(script):
@@ -47,7 +48,7 @@ def parse_args(script):
     # assign image resize
     parser.add_argument('--image_size', default=None, type=int, help='the rescaled image size')
     # auxiliary reconstruction task
-    parser.add_argument('--recons_decoder'   , default=None, help='reconstruction decoder: FC/Conv/HiddenConv')
+    parser.add_argument('--recons_decoder'   , default=None, choices=['FC','Conv','HiddenConv','Res18'], help='reconstruction decoder: FC/Conv/HiddenConv/Res18')
     # coefficient of reconstruction loss
     parser.add_argument('--recons_lambda'   , default=0, type=float, help='lambda of reconstruction loss') # TODO: default=None? 0? will bug?
     parser.add_argument('--aug_type', default=None, choices=['rotate', 'bright'], help='task augmentation type: rotate/...')

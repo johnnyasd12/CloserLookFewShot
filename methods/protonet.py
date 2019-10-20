@@ -82,11 +82,11 @@ class ProtoNetAE(ProtoNet): # TODO: self.recons_func = recons_func()
         return loss
 
 class ProtoNetAE2(ProtoNetAE):
-    def __init__(self, model_func,  n_way, n_support, recons_func = None, lambda_d = 1):
+    def __init__(self, model_func,  n_way, n_support, recons_func = None, lambda_d = 1, extract_layer = 2):
         super(ProtoNetAE2, self).__init__( model_func,  n_way, n_support, 
                                           recons_func = recons_func, lambda_d = lambda_d)
-        self.encoder = self.feature.trunk[:2] # TODO: changed when different architecture
-        self.extractor = self.feature.trunk[2:]
+        self.encoder = self.feature.trunk[:extract_layer] # TODO: changed when different architecture
+        self.extractor = self.feature.trunk[extract_layer:]
         
     def decoder_forward(self, x, is_feature = False):
         x = Variable(to_device(x)) # TODO: delete this line???
