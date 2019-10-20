@@ -14,7 +14,8 @@ from methods.protonet import ProtoNet
 from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
-from io_utils import model_dict, parse_args, get_resume_file, get_best_file, get_assigned_file, get_checkpoint_dir
+# from io_utils import model_dict, parse_args, get_resume_file, get_best_file, get_assigned_file, get_checkpoint_dir
+from io_utils import *
 
 from my_utils import *
 
@@ -50,6 +51,7 @@ if __name__ == '__main__':
     params = parse_args('save_features')
     assert params.method != 'maml' and params.method != 'maml_approx', 'maml do not support save_feature and run'
 
+    
     # TODO: integrate image_size & load_file with test.py (differ from train.py)
     if 'Conv' in params.model:
         if params.dataset in ['omniglot', 'cross_char']:
@@ -109,21 +111,21 @@ if __name__ == '__main__':
 
     if params.method in ['relationnet', 'relationnet_softmax']:
         if params.model == 'Conv4': 
-            model = backbone.Conv4NP()
+            backbone_net = backbone.Conv4NP()
         elif params.model == 'Conv6': 
-            model = backbone.Conv6NP()
+            backbone_net = backbone.Conv6NP()
         elif params.model == 'Conv4S': 
-            model = backbone.Conv4SNP()
+            backbone_net = backbone.Conv4SNP()
         else:
-            model = model_dict[params.model]( flatten = False )
+            backbone_net = model_dict[params.model]( flatten = False )
     elif params.method in ['maml' , 'maml_approx']: 
         raise ValueError('MAML do not support save feature')
     else:
-        model = model_dict[params.model]()
+        backbone_net = model_dict[params.model]()
 
     
-#     model = model.cuda()
-    model = to_device(model)
+#     backbone_net = backbone_net.cuda()
+    backbone_net = to_device(backbone_net)
     tmp = torch.load(modelfile)
     state = tmp['state']
     state_keys = list(state.keys())
@@ -134,11 +136,11 @@ if __name__ == '__main__':
         else:
             state.pop(key)
             
-    model.load_state_dict(state)
-    model.eval()
+    backbone_net.load_state_dict(state)
+    backbone_net.eval()
 
     dirname = os.path.dirname(outfile)
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
     print('saving features to:', outfile)
-    save_features(model, data_loader, outfile, params)
+    save_features(backbone_net, data_loader, outfile, params)
