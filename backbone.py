@@ -424,16 +424,21 @@ class DeResNet(nn.Module):
     def __init__(self, block, list_of_num_blocks, list_of_out_dims, flattened=True):
         super(DeResNet,self).__init__()
         if flattened: # flattened input = 512
-            CT0 = nn.ConvTranspose2d(512, 512, kernel_size=7) # 512*7*7
-            bn0 = nn.BatchNorm2d(512)
+#             CT0 = nn.ConvTranspose2d(512, 512, kernel_size=7) # 512*7*7
+#             bn0 = nn.BatchNorm2d(512)
+            # TODO: upsample
+            upsample0 = nn.Upsample(size=(7,7))
+            
+            
             relu = nn.ReLU()
         else: # not flattened input = 512*7*7
-            raise ValueError('DeResNet18 only support flattened input. ')
+            raise ValueError('DeResNet only support flattened input. ')
         
-        init_layer(CT0) # useless
-        init_layer(bn0)
+#         init_layer(CT0) # useless
+#         init_layer(bn0)
         if flattened:
-            trunk = [CT0, bn0]
+#             trunk = [CT0, bn0]
+            trunk = [upsample0]
         else:
             trunk = []
         
@@ -446,7 +451,7 @@ class DeResNet(nn.Module):
         else:
             for i in range(4): # 4 stages
                 for j in range(list_of_num_blocks[i]): # every stage is 2 for ResNet18
-                    double_res = (i<=2) and (j==1)
+                    double_res = (i<=2) and (j==list_of_num_blocks[i]-1)
                     B = block(indim, list_of_out_dims[i], double_res)
                     trunk.append(B)
                     indim = list_of_out_dims[i] # NOT SURE
