@@ -52,6 +52,11 @@ class MetaTemplate(nn.Module):
         '''
         
 #         x = Variable(x.cuda())
+        
+#         print('x.shape =', x.shape, ', x.max() =', x.max(),' ,x.min() =', x.min())
+#         print('0.min = %s, 0.max = %s' % (x[:,:,0,:,:].min(),x[:,:,0,:,:].max()))
+#         print('1.min = %s, 1.max = %s' % (x[:,:,1,:,:].min(),x[:,:,1,:,:].max()))
+#         print('2.min = %s, 2.max = %s' % (x[:,:,2,:,:].min(),x[:,:,2,:,:].max()))
         x = Variable(to_device(x))
         if is_feature:
             z_all = x

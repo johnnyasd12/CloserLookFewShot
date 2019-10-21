@@ -10,7 +10,20 @@ from torch.nn.utils.weight_norm import WeightNorm
 
 from my_utils import *
 
-# Basic ResNet model
+# to reconstruct image back
+torch.autograd.set_detect_anomaly(True)
+def img_standardize(img, normalize_param = dict(mean= [0.485, 0.456, 0.406] , std=[0.229, 0.224, 0.225])):
+    img = img + 1 # DO NOT DO in-place modification
+    img = img / 2 # DO NOT DO in-place modification
+    
+    means = normalize_param['mean']
+    stds = normalize_param['std']
+    
+    for channel in range(3):
+        # here do the in-place operation but its okay because here is already not original images
+        img[:,channel,:,:] = img[:,channel,:,:] - means[channel]#.sub(normalize_param['mean'][channel])
+        img[:,channel,:,:] = img[:,channel,:,:] / stds[channel]#.div(normalize_param['std'][channel])
+    return img
 
 def init_layer(L):
     # Initialization using fan-in
@@ -422,6 +435,11 @@ class DeResNet(nn.Module):
         if self.flattened:
             out = x.view(x.size(0), 512, 1, 1)
         out = self.trunk(out)
+        out = img_standardize(out)
+#         print('out.shape =', out.shape, ', out.max() =', out.max(),' ,out.min() =', out.min())
+#         print('out0.min = %s, out0.max = %s' % (out[:,0,:,:].min(),out[:,0,:,:].max()))
+#         print('out1.min = %s, out1.max = %s' % (out[:,1,:,:].min(),out[:,1,:,:].max()))
+#         print('out2.min = %s, out2.max = %s' % (out[:,2,:,:].min(),out[:,2,:,:].max()))
         return out
 
 class ResNet(nn.Module):
@@ -516,6 +534,7 @@ class DeConvNet(nn.Module): # for AE, input: flattened 64*5*5
     def forward(self,x):
         out = x.view(x.size(0),64,5,5)
         out = self.decoder(out)
+        out = img_standardize(out)
         return out
 
 class DeFCNet(nn.Module): # for AE
@@ -531,6 +550,7 @@ class DeFCNet(nn.Module): # for AE
     def forward(self,x):
         out = self.decoder(x)
         out = out.view(out.size(0),3,84,84)
+        out = img_standardize(out)
         return out
 
 class DeConvNet2(nn.Module):
@@ -548,6 +568,7 @@ class DeConvNet2(nn.Module):
     def forward(self,x):
         out = x.view(x.size(0),64,21,21)
         out = self.decoder(out)
+        out = img_standardize(out)
         return out
 
 def Conv4():
