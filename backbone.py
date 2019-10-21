@@ -368,57 +368,6 @@ class ConvNetSNopool(nn.Module): #Relation net use a 4 layer conv with pooling i
         out = self.trunk(out)
         return out
 
-# class DeResNet18(nn.Module):
-#     maml = False
-#     def __init__(self, flattened=True):
-#         super(DeResNet18,self).__init__()
-#         if flattened: # flattened input = 512
-#             CT0 = nn.ConvTranspose2d(512, 512, kernel_size=7) # 512*7*7
-#             bn0 = nn.BatchNorm2d(512)
-#             relu = nn.ReLU()
-#         else: # not flattened input = 512*7*7
-#             raise ValueError('DeResNet18 only support flattened input. ')
-        
-#         init_layer(CT0) # useless
-#         init_layer(bn0)
-#         if flattened:
-#             trunk = [CT0, bn0]
-#         else:
-#             trunk = []
-        
-#         indim = 512
-#         list_of_out_dims = [512, 256, 128, 64]
-#         list_of_num_blocks = [2, 2, 2, 2]
-#         block = DeSimpleBlock
-#         if self.maml:
-#             raise ValueError('DeResNet18 do not support maml.')
-#         else:
-#             for i in range(4): # 4 stages
-#                 for j in range(list_of_num_blocks[i]): # every stage is 2 for ResNet18
-#                     double_res = (i<=2) and (j==1)
-#                     B = block(indim, list_of_out_dims[i], double_res)
-#                     trunk.append(B)
-#                     indim = list_of_out_dims[i] # NOT SURE
-#         CT1 = nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2, 
-#                                  padding=1, output_padding=1) # 64*56*56 -> 64*112*112
-#         bn = nn.BatchNorm2d(64)
-#         CT2 = nn.ConvTranspose2d(64, 3, kernel_size=7, stride=2, 
-#                                  padding=3, output_padding=1) # 64*112*112 -> 3*224*224
-#         tanh = nn.Tanh()
-        
-#         init_layer(CT1) # useless
-#         init_layer(CT2) # useless
-#         init_layer(bn)
-#         trunk += [CT1, bn, CT2, tanh]
-#         self.trunk = nn.Sequential(*trunk)
-#         self.flattened = flattened
-        
-#     def forward(self, x):
-#         if self.flattened:
-#             out = x.view(x.size(0), 512, 1, 1)
-#         out = self.trunk(out)
-#         return out
-
 class DeResNet(nn.Module):
     maml = False
     def __init__(self, block, list_of_num_blocks, list_of_out_dims, flattened=True):
@@ -619,8 +568,10 @@ def Conv4S():
 def Conv4SNP():
     return ConvNetSNopool(4)
 
-def ResNet10( flatten = True):
+def ResNet10(flatten=True):
+    # WTF i dunno why SimpleBlock cost less memory
     return ResNet(SimpleBlock, [1,1,1,1],[64,128,256,512], flatten)
+#     return ResNet(BottleneckBlock, [1,1,1,1],[64,128,256,512], flatten)
 
 def DeResNet10(flatten=True):
     return DeResNet(DeSimpleBlock, [1,1,1,1], [512,256,128,64], flatten)
