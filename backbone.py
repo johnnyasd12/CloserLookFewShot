@@ -101,16 +101,24 @@ class Conv2d_fw(nn.Conv2d): #used in MAML to forward input with fast weight
         return out
             
 class BatchNorm2d_fw(nn.BatchNorm2d): #used in MAML to forward input with fast weight 
-    def __init__(self, num_features):
+    def __init__(self, num_features, gpu_id): # TODO: initialize gpu_id in MAML
         super(BatchNorm2d_fw, self).__init__(num_features)
         self.weight.fast = None
         self.bias.fast = None
+        if gpu_id:
+            self.device = torch.device('cuda:'+str(gpu_id))
+        else:
+            self.device = None
 
     def forward(self, x):
 #         running_mean = torch.zeros(x.data.size()[1]).cuda()
 #         running_var = torch.ones(x.data.size()[1]).cuda()
-        running_mean = to_device(torch.zeros(x.data.size()[1]))
-        running_var = to_device(torch.ones(x.data.size()[1]))
+        if self.device is None:
+            running_mean = to_device(torch.zeros(x.data.size()[1]))
+            running_var = to_device(torch.ones(x.data.size()[1]))
+        else:
+            running_mean = torch.zeros(x.data.size()[1]).to(self.device)
+            running_var = torch.ones(x.data.size()[1]).to(self.device)
         
         if self.weight.fast is not None and self.bias.fast is not None:
             out = F.batch_norm(x, running_mean, running_var, self.weight.fast, self.bias.fast, training = True, momentum = 1)
@@ -601,7 +609,7 @@ def DeResNet10(flatten=True):
     return DeResNet(DeSimpleBlock, [1,1,1,1], [512,256,128,64], flatten, indim=512)
 
 def DeResNet10_2(flatten=False):
-    return DeResNet(DeSimpleBlock, [1,1], [512,256], flatten, indim=128)
+    return DeResNet(DeSimpleBlock, [1,1], [128,64], flatten, indim=128)
 
 def ResNet18( flatten = True):
     return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten)

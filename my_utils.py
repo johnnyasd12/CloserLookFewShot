@@ -5,6 +5,7 @@ import configs
 import datetime
 
 import time
+import os
 
 # global_datasets = [] # for multi-processsing
 
@@ -81,6 +82,9 @@ def feature_evaluation(cl_data_file, model, n_way = 5, n_support = 5, n_query = 
     y = np.repeat(range( n_way ), n_query )
     acc = np.mean(pred == y)*100 
     return acc
+
+def set_gpu_id(gpu_id):
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
 def to_device(tensor):
     if configs.gpu_id:

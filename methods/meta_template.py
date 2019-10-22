@@ -21,6 +21,7 @@ class MetaTemplate(nn.Module):
         self.feat_dim   = self.feature.final_feat_dim
         self.change_way = change_way  #some methods allow different_way classification during training and test
         print('model_function:\n',self.feature)
+        self.device = None
 
     @abstractmethod
     def set_forward(self,x,is_feature):
@@ -47,6 +48,10 @@ class MetaTemplate(nn.Module):
         out  = self.feature.forward(x)
         return out
     
+    def to(self, device):
+        self.device = device
+        return super(MetaTemplate, self).to(device)
+    
     def parse_feature(self,x,is_feature): # utilized by set_forward
         ''' parsing xs or zs to support and query feature embedding
         '''
@@ -57,7 +62,11 @@ class MetaTemplate(nn.Module):
 #         print('0.min = %s, 0.max = %s' % (x[:,:,0,:,:].min(),x[:,:,0,:,:].max()))
 #         print('1.min = %s, 1.max = %s' % (x[:,:,1,:,:].min(),x[:,:,1,:,:].max()))
 #         print('2.min = %s, 2.max = %s' % (x[:,:,2,:,:].min(),x[:,:,2,:,:].max()))
-        x = Variable(to_device(x))
+        if self.device is None:
+            x = Variable(to_device(x))
+        else:
+            x = x.cuda()
+        
         if is_feature:
             z_all = x
         else:
@@ -78,7 +87,11 @@ class MetaTemplate(nn.Module):
         
         
 #         x = Variable(x.cuda())
-        x = Variable(to_device(x))
+        if self.device is None:
+            x = Variable(to_device(x))
+        else:
+            x = x.cuda()
+        
         x_reshape = x.contiguous().view(self.n_way, self.n_support+self.n_query, -1)
         x_support = x_reshape[:, :self.n_support]
         x_query = x_reshape[:, self.n_support:]
@@ -179,17 +192,27 @@ class MetaTemplate(nn.Module):
         y_support = torch.from_numpy(np.repeat(range( self.n_way ), self.n_support ))
         
 #         y_support = Variable(y_support.cuda())
-        y_support = Variable(to_device(y_support))
+        if self.device is None:
+            y_support = Variable(to_device(y_support))
+        else:
+            y_support = Variable(y_support.cuda())
 
         linear_clf = nn.Linear(self.feat_dim, self.n_way)
 #         linear_clf = linear_clf.cuda()
-        linear_clf = to_device(linar_clf)
+        if self.device is None:
+            linear_clf = to_device(linear_clf)
+        else:
+            linear_clf = linear_clf.cuda()
 
         set_optimizer = torch.optim.SGD(linear_clf.parameters(), lr = 0.01, momentum=0.9, dampening=0.9, weight_decay=0.001)
 
         loss_function = nn.CrossEntropyLoss()
 #         loss_function = loss_function.cuda()
-        loss_function = to_device(loss_function)
+        if self.device is None:
+            loss_function = to_device(loss_function)
+        else:
+            loss_function = loss_function.cuda()
+        
         
         batch_size = 4
         support_size = self.n_way* self.n_support
@@ -198,7 +221,11 @@ class MetaTemplate(nn.Module):
             for i in range(0, support_size , batch_size):
                 set_optimizer.zero_grad()
 #                 selected_id = torch.from_numpy( rand_id[i: min(i+batch_size, support_size) ]).cuda()
-                selected_id = to_device(torch.from_numpy( rand_id[i: min(i+batch_size, support_size) ]))
+                if self.device is None:
+                    selected_id = to_device(torch.from_numpy( rand_id[i: min(i+batch_size, support_size) ]))
+                else:
+                    selected_id = torch.from_numpy(rand_id[i:min(i+batch_size,support_size)]).cuda()
+                
                 z_batch = z_support[selected_id]
                 y_batch = y_support[selected_id] 
                 scores = linear_clf(z_batch)

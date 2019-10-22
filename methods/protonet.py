@@ -34,7 +34,10 @@ class ProtoNet(MetaTemplate):
         '''
         y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
 #         y_query = Variable(y_query.cuda())
-        y_query = Variable(to_device(y_query))
+        if self.device is None:
+            y_query = Variable(to_device(y_query))
+        else:
+            y_query = Variable(y_query.cuda())
 
         scores = self.set_forward(x)
 
@@ -72,7 +75,11 @@ class ProtoNetAE(ProtoNet): # TODO: self.recons_func = recons_func()
         ''' the reconstruction loss
         '''
         if self.recons_func:
-            x = Variable(to_device(x)) # TODO: done: switch this two rows?
+            if self.device is None:
+                x = Variable(to_device(x)) # TODO: done: switch this two rows?
+            else:
+                x = Variable(x.cuda())
+            
             decoded_img = self.decoder_forward(x) # TODO: done: switch this two rows?
             x = x.view(x.size(0)*x.size(1),x.size(2),x.size(3),x.size(4))
 #             print('decoded_img shape =',decoded_img.shape)
@@ -89,7 +96,7 @@ class ProtoNetAE2(ProtoNetAE):
         self.extractor = self.feature.trunk[extract_layer:]
         
     def decoder_forward(self, x, is_feature = False):
-        x = Variable(to_device(x)) # TODO: delete this line???
+#         x = Variable(to_device(x)) # TODO: delete this line???
         x = x.contiguous().view( self.n_way * (self.n_support + self.n_query), *x.size()[2:]) 
         
         assert is_feature == False, "decoder_forward: is_feature must be False. "

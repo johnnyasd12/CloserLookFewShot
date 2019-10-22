@@ -59,6 +59,8 @@ if __name__=='__main__':
     np.random.seed(10)
     params = parse_args('train')
 
+    if params.gpu_id:
+        set_gpu_id(params.gpu_id)
     get_model_func = True
     
     if params.dataset == 'cross':
@@ -198,9 +200,15 @@ if __name__=='__main__':
     else:
         raise ValueError('Unknown method')
 
-    
+    if params.gpu_id:
+        device = torch.device('cuda:'+str(params.gpu_id))
+    else:
+        device = None
 #     model = model.cuda()
-    model = to_device(model)
+    if device is None:
+        model = to_device(model)
+    else:
+        model = model.cuda()
 
 
     

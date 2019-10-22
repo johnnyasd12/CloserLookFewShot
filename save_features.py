@@ -25,14 +25,20 @@ def save_features(model, data_loader, outfile, params):
     all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
     all_feats=None
     count=0
-        
+    if params.gpu_id:
+        device = torch.device('cuda:'+str(params.gpu_id))
+    else:
+        device = None
+    
     for i, (x,y) in enumerate(data_loader):
         if i%10 == 0:
             print('{:d}/{:d}'.format(i, len(data_loader)))
         
-        
 #         x = x.cuda()
-        x = to_device(x)
+        if device is None:
+            x = to_device(x)
+        else:
+            x = x.cuda()
         
         x_var = Variable(x)
         feats = model(x_var)
@@ -49,8 +55,10 @@ def save_features(model, data_loader, outfile, params):
 
 if __name__ == '__main__':
     params = parse_args('save_features')
+    
     assert params.method != 'maml' and params.method != 'maml_approx', 'maml do not support save_feature and run'
-
+    if params.gpu_id:
+        set_gpu_id(params.gpu_id)
     
     # TODO: integrate image_size & load_file with test.py (differ from train.py)
     if 'Conv' in params.model:
@@ -123,10 +131,20 @@ if __name__ == '__main__':
     else:
         backbone_net = model_dict[params.model]()
 
-    
+    if params.gpu_id:
+        device = torch.device('cuda:'+str(params.gpu_id))
+    else:
+        device = None
 #     backbone_net = backbone_net.cuda()
-    backbone_net = to_device(backbone_net)
-    tmp = torch.load(modelfile)
+    if device is None:
+        backbone_net = to_device(backbone_net)
+    else:
+        backbone_net = backbone_net.cuda()
+    
+    if params.gpu_id is None:
+        tmp = torch.load(modelfile)
+    else:
+        tmp = torch.load(modelfile, map_location='cuda:0')#+str(params.gpu_id))
     state = tmp['state']
     state_keys = list(state.keys())
     for i, key in enumerate(state_keys):

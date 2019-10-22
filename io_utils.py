@@ -44,7 +44,7 @@ def parse_args(script):
     parser.add_argument('--test_n_way'  , default=5, type=int,  help='class num to classify for testing (validation) ') #baseline and baseline++ only use this parameter in finetuning
     parser.add_argument('--n_shot'      , default=5, type=int,  help='number of labeled data in each class, same as n_support') #baseline and baseline++ only use this parameter in finetuning
     parser.add_argument('--train_aug'   , action='store_true',  help='perform data augmentation or not during training ') #still required for save_features.py and test.py to find the model path correctly
-    parser.add_argument('--gpu_id'      , default=None, type=int, help='which gpu to use')
+    parser.add_argument('--gpu_id'      , default=None, type=str, help='which gpu to use')
     
     # extra argument
     # assign image resize

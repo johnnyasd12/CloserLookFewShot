@@ -52,6 +52,8 @@ if __name__ == '__main__':
     print('test.py start')
     params = parse_args('test')
 
+    if params.gpu_id:
+        set_gpu_id(params.gpu_id)
     get_model_func = True
     
     acc_all = []
@@ -116,9 +118,15 @@ if __name__ == '__main__':
         else:
             raise ValueError('Unknown method')
 
-    
+    if params.gpu_id:
+        device = torch.device('cuda:'+str(params.gpu_id))
+    else:
+        device = None
 #     model = model.cuda()
-    model = to_device(model)
+    if device is None:
+        model = to_device(model)
+    else:
+        model = model.cuda()
 
     # set save directory
 #     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
@@ -140,7 +148,10 @@ if __name__ == '__main__':
         else:
             modelfile   = get_best_file(checkpoint_dir)
         if modelfile is not None:
-            tmp = torch.load(modelfile)
+            if params.gpu_id is None:
+                tmp = torch.load(modelfile)
+            else:
+                tmp = torch.load(modelfile, map_location='cuda:0')#+str(params.gpu_id))
             model.load_state_dict(tmp['state'])
 
     # train/val/novel
