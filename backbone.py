@@ -383,7 +383,7 @@ class ConvNetSNopool(nn.Module): #Relation net use a 4 layer conv with pooling i
 
 class DeResNet(nn.Module):
     maml = False
-    def __init__(self, block, list_of_num_blocks, list_of_out_dims, flattened=True):
+    def __init__(self, block, list_of_num_blocks, list_of_out_dims, flattened=True, indim=512):
         super(DeResNet,self).__init__()
         if flattened: # flattened input = 512
 #             CT0 = nn.ConvTranspose2d(512, 512, kernel_size=7) # 512*7*7
@@ -393,8 +393,8 @@ class DeResNet(nn.Module):
             
             
             relu = nn.ReLU()
-        else: # not flattened input = 512*7*7
-            raise ValueError('DeResNet only support flattened input. ')
+#         else: # not flattened input = 512*7*7
+#             raise ValueError('DeResNet only support flattened input. ')
         
 #         init_layer(CT0) # useless
 #         init_layer(bn0)
@@ -404,14 +404,15 @@ class DeResNet(nn.Module):
         else:
             trunk = []
         
-        indim = 512
+#         indim = 512
+        n_stages = len(list_of_out_dims)
 #         list_of_out_dims = [512, 256, 128, 64]
 #         list_of_num_blocks = [2, 2, 2, 2]
 #         block = DeSimpleBlock
         if self.maml:
             raise ValueError('DeResNet18 do not support maml.')
         else:
-            for i in range(4): # 4 stages
+            for i in range(n_stages): # 4 stages
                 for j in range(list_of_num_blocks[i]): # every stage is 2 for ResNet18
                     double_res = (i<=2) and (j==list_of_num_blocks[i]-1)
                     B = block(indim, list_of_out_dims[i], double_res)
@@ -434,6 +435,8 @@ class DeResNet(nn.Module):
     def forward(self, x):
         if self.flattened:
             out = x.view(x.size(0), 512, 1, 1)
+        else:
+            out = x
         out = self.trunk(out)
         out = img_standardize(out)
 #         print('out.shape =', out.shape, ', out.max() =', out.max(),' ,out.min() =', out.min())
@@ -562,7 +565,7 @@ class DeConvNet2(nn.Module):
             nn.ReLU(inplace=True),
             nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 84, 84
             nn.ConvTranspose2d(64, 3, kernel_size=3, stride=1, padding=1),  # b, 3, 84, 84
-            nn.Tanh() # BUGFIX: see how image is input to the model
+            nn.Tanh()
         )
         
     def forward(self,x):
@@ -595,13 +598,16 @@ def ResNet10(flatten=True):
 #     return ResNet(BottleneckBlock, [1,1,1,1],[64,128,256,512], flatten)
 
 def DeResNet10(flatten=True):
-    return DeResNet(DeSimpleBlock, [1,1,1,1], [512,256,128,64], flatten)
+    return DeResNet(DeSimpleBlock, [1,1,1,1], [512,256,128,64], flatten, indim=512)
+
+def DeResNet10_2(flatten=False):
+    return DeResNet(DeSimpleBlock, [1,1], [512,256], flatten, indim=128)
 
 def ResNet18( flatten = True):
     return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten)
 
 def DeResNet18(flatten=True):
-    return DeResNet(DeSimpleBlock, [2,2,2,2], [512,256,128,64], flatten)
+    return DeResNet(DeSimpleBlock, [2,2,2,2], [512,256,128,64], flatten, indim=512)
 
 def ResNet34( flatten = True):
     return ResNet(SimpleBlock, [3,4,6,3],[64,128,256,512], flatten)

@@ -31,7 +31,8 @@ decoder_dict = dict(
     FC = backbone.DeFCNet(), 
     HiddenConv = backbone.DeConvNet2(), 
     Res18 = backbone.DeResNet18(), 
-    Res10 = backbone.DeResNet10()
+    Res10 = backbone.DeResNet10(), 
+    HiddenRes10 = backbone.DeResNet10_2(), 
 )
 
 def parse_args(script):
@@ -49,7 +50,7 @@ def parse_args(script):
     # assign image resize
     parser.add_argument('--image_size', default=None, type=int, help='the rescaled image size')
     # auxiliary reconstruction task
-    parser.add_argument('--recons_decoder'   , default=None, choices=['FC','Conv','HiddenConv','Res18','Res10'], help='reconstruction decoder: FC/Conv/HiddenConv/Res18/Res10')
+    parser.add_argument('--recons_decoder'   , default=None, choices=['FC','Conv','HiddenConv','Res18','Res10','HiddenRes10'], help='reconstruction decoder')
     # coefficient of reconstruction loss
     parser.add_argument('--recons_lambda'   , default=0, type=float, help='lambda of reconstruction loss') # TODO: default=None? 0? will bug?
     parser.add_argument('--aug_type', default=None, choices=['rotate', 'bright'], help='task augmentation type: rotate/...')
@@ -151,7 +152,10 @@ def get_model(params):
         if recons_decoder is None:
             model = ProtoNet( model_dict[params.model], **train_few_shot_params )
         elif 'Hidden' in params.recons_decoder:
-            model = ProtoNetAE2(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda)
+            if params.recons_decoder == 'HiddenConv':
+                model = ProtoNetAE2(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2)
+            elif params.recons_decoder == 'HiddenRes10':
+                model = ProtoNetAE2(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 6)
         else:
             model = ProtoNetAE(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda) # WTFFFFFFFF lambda_d just 1
     elif params.method == 'matchingnet':
