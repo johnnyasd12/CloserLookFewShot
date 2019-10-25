@@ -84,7 +84,8 @@ class TransformLoader:
             :param abs_angle_range: tuple
             '''
             # only one side
-            angle = random.randint(*abs_angle_range)*(-1)#**random.randint(0,1) # 0 +- angle_range
+#             angle = random.randint(*abs_angle_range)*(-1)#**random.randint(0,1)
+            angle = random.randint(*abs_angle_range)#**random.randint(0,1)
             return angle
         
         def get_random_factor(abs_perturb_range):
@@ -93,23 +94,30 @@ class TransformLoader:
             '''
             # only one side
             lower, upper = abs_perturb_range
-            perturb = (lower + (upper-lower)*random.random())*(-1)#**random.randint(0,1) # 1+-(0~b) 
+            assert lower <= upper
+            perturb = (lower + (upper-lower)*random.random())#*(-1)#**random.randint(0,1)
             factor = 1 + perturb
             return factor
         
 
         params = {}
         params['rotate'] = {
-            'train_range':(0, 20), # should +/-
-            'test_range':(15, 25), # should +/-
+#             'train_range':(0, 20), # should +/-
+#             'test_range':(15, 25), # should +/-
+            'train_range':(-15, -10), # should +/-
+            'test_range':(10, 15), # should +/-
             'angle':None
         }
         params['bright'] = {
-            'train_range':(0, 0.3), # should 1 +/- range
-            'test_range':(0.25, 0.5), # should 1 +/- range
+#             'train_range':(0, 0.3), # should 1 +/- range
+#             'test_range':(0.25, 0.5), # should 1 +/- range
+            'train_range':(-0.6, -0.2), # should 1 +/- range
+            'test_range':(0.3, 0.5), # should 1 +/- range
             'factor':None
         }
         params['contrast'] = {
+#             'train_range':(0, 0.3), # should 1 +/- range
+#             'test_range':(0.25, 0.5), # should 1 +/- range
             'train_range':(0, 0.3), # should 1 +/- range
             'test_range':(0.25, 0.5), # should 1 +/- range
             'factor':None
