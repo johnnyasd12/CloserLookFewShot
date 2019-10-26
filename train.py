@@ -29,6 +29,11 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
 
     max_acc = 0
     best_epoch = 0
+    
+    if params.patience is not None:
+        early_stopping = EarlyStopping(patience=params.patience, verbose=False, delta=0, mode='max')
+    else:
+        early_stopping = None
 
     for epoch in range(start_epoch,stop_epoch):
         model.train()
@@ -49,6 +54,13 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
         if (epoch % params.save_freq==0) or (epoch==stop_epoch-1):
             outfile = os.path.join(params.checkpoint_dir, '{:d}.tar'.format(epoch))
             torch.save({'epoch':epoch, 'state':model.state_dict()}, outfile)
+        
+        if early_stopping is not None:
+            early_stopping(acc, model)
+            if early_stopping.early_stop:
+                print('Early Stop, no improvement more than %d epoch. ' % params.patience)
+                break
+        
     print('The best accuracy is',(str(max_acc)+'%'), 'at epoch', best_epoch)
     
     return model

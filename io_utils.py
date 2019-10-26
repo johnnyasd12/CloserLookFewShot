@@ -53,7 +53,7 @@ def parse_args(script):
     parser.add_argument('--recons_decoder'   , default=None, choices=['FC','Conv','HiddenConv','Res18','Res10','HiddenRes10'], help='reconstruction decoder')
     # coefficient of reconstruction loss
     parser.add_argument('--recons_lambda'   , default=0, type=float, help='lambda of reconstruction loss') # TODO: default=None? 0? will bug?
-    parser.add_argument('--aug_type', default=None, choices=['rotate', 'bright', 'contrast', 'mix'], help='task augmentation type')
+    parser.add_argument('--aug_type', default=None, choices=['rotate', 'bright', 'contrast', 'mix'], help='task augmentation mode') # TODO: rename to aug_mode
     parser.add_argument('--aug_target', default=None, choices=['batch', 'sample'], help='data augmentation by task or by sample')
         
     if script == 'train':
@@ -63,7 +63,9 @@ def parse_args(script):
         parser.add_argument('--stop_epoch'  , default=-1, type=int, help ='Stopping epoch') #for meta-learning methods, each epoch contains 100 episodes. The default epoch number is dataset dependent. See train.py
         parser.add_argument('--resume'      , action='store_true', help='continue from previous trained model with largest epoch')
         parser.add_argument('--warmup'      , action='store_true', help='continue from baseline, neglected if resume is true') #never used in the paper
+        
 #         parser.add_argument('--test_aug_target', default=None, choices=['all', 'test-sample'], help='val data augmentation by sample or all')
+        parser.add_argument('--patience'    , default=50, type=int, help='early stopping patience')
         
         
     elif script == 'save_features':
