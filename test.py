@@ -153,6 +153,7 @@ if __name__ == '__main__':
             else:
                 tmp = torch.load(modelfile, map_location='cuda:0')#+str(params.gpu_id))
             model.load_state_dict(tmp['state'])
+            load_epoch = int(tmp['epoch'])
 
     # train/val/novel
     split = params.split
@@ -215,7 +216,7 @@ if __name__ == '__main__':
     # writing settings into csv
     acc_mean_str = '%4.2f' % (acc_mean)
     acc_std_str = '%4.2f' %(acc_std)
-    extra_dict = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str}
+    extra_dict = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str, 'epoch':load_epoch}
     
     csv_path = './record/results.csv'
     csv_backup_path = './record/results_backup_'+timestamp+'.csv'
