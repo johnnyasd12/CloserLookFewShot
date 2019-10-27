@@ -65,7 +65,7 @@ def parse_args(script):
         parser.add_argument('--warmup'      , action='store_true', help='continue from baseline, neglected if resume is true') #never used in the paper
         
 #         parser.add_argument('--test_aug_target', default=None, choices=['all', 'test-sample'], help='val data augmentation by sample or all')
-        parser.add_argument('--patience'    , default=50, type=int, help='early stopping patience')
+        parser.add_argument('--patience'    , default=None, type=int, help='early stopping patience')
         
         
     elif script == 'save_features':

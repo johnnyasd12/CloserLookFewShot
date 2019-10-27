@@ -58,7 +58,7 @@ if __name__ == '__main__':
     
     acc_all = []
 
-    iter_num = 600
+    iter_num = 1000
 
     if get_model_func:
         model = get_model(params)
@@ -207,7 +207,8 @@ if __name__ == '__main__':
         acc_all  = np.asarray(acc_all)
         acc_mean = np.mean(acc_all)
         acc_std  = np.std(acc_all)
-        print('%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
+        print('loaded from %d epoch model.' %(load_epoch))
+        print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
     
     
     timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
