@@ -132,8 +132,9 @@ def plot_PIL(img):
 
 def feature_evaluation(cl_data_file, model, n_way = 5, n_support = 5, n_query = 15, adaptation = False, recons_func = None):
     ''' sample 1 episode to do evaluation
-    :param cl_data_file: extracted features and ys
+    :param cl_data_file: dictionary, keys=label_idx, values = all extracted features
     :param recons_func: temporary no use
+    :return: accuracy (%)
     '''
     class_list = cl_data_file.keys()
 

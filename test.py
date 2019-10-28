@@ -201,6 +201,9 @@ if __name__ == '__main__':
         cl_data_file = feat_loader.init_loader(test_file)
 
         for i in tqdm(range(iter_num)):
+            # TODO: fix data list? can only fix class list?
+            
+            
             acc = feature_evaluation(cl_data_file, model, n_query = 15, adaptation = params.adaptation, **few_shot_params)
             # TODO: draw something here ???
             acc_all.append(acc)

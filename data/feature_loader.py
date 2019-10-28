@@ -22,12 +22,15 @@ class SimpleHDF5Dataset:
         return self.total
 
 def init_loader(filename):
+    '''
+    :return: dictionary, key = class_idx, content = list of all_data_features?
+    '''
     with h5py.File(filename, 'r') as f:
         fileset = SimpleHDF5Dataset(f)
 
     #labels = [ l for l  in fileset.all_labels if l != 0]
-    feats = fileset.all_feats_dset
-    labels = fileset.all_labels
+    feats = fileset.all_feats_dset # list?
+    labels = fileset.all_labels # list?
     while np.sum(feats[-1]) == 0:
         feats  = np.delete(feats,-1,axis = 0)
         labels = np.delete(labels,-1,axis = 0)

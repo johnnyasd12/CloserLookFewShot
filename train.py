@@ -31,7 +31,8 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     best_epoch = 0
     
     if params.patience is not None:
-        early_stopping = EarlyStopping(patience=params.patience, verbose=False, delta=0, mode='max')
+        stop_delta = 0.3
+        early_stopping = EarlyStopping(patience=params.patience, verbose=False, delta=stop_delta, mode='max')
     else:
         early_stopping = None
 
@@ -58,7 +59,7 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
         if early_stopping is not None:
             early_stopping(acc, model)
             if early_stopping.early_stop:
-                print('Early Stop, no improvement more than %d epoch. ' % params.patience)
+                print('EarlyStop: not improved more than %f after %d epoch. ' % (stop_delta, params.patience))
                 break
         
     print('The best accuracy is',(str(max_acc)+'%'), 'at epoch', best_epoch)
@@ -218,7 +219,7 @@ if __name__=='__main__':
         device = None
 #     model = model.cuda()
     if device is None:
-        model = to_device(model)
+        model = to_device(model) # assign device according to config.py
     else:
         model = model.cuda()
 
