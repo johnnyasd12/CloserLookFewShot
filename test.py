@@ -24,6 +24,7 @@ from methods.maml import MAML
 from io_utils import *
 from my_utils import *
 import pandas as pd
+from tqdm import tqdm
 
 def get_img_settings(params, split):
     if 'Conv' in params.model:
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     
     acc_all = []
 
-    iter_num = 1000
+    iter_num = 600
 
     if get_model_func:
         model = get_model(params)
@@ -199,7 +200,7 @@ if __name__ == '__main__':
         test_file = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +".hdf5") #defaut split = novel, but you can also test base or val classes # so the variable name "test_file" is proper?
         cl_data_file = feat_loader.init_loader(test_file)
 
-        for i in range(iter_num):
+        for i in tqdm(range(iter_num)):
             acc = feature_evaluation(cl_data_file, model, n_query = 15, adaptation = params.adaptation, **few_shot_params)
             # TODO: draw something here ???
             acc_all.append(acc)
