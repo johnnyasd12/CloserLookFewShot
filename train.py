@@ -21,7 +21,7 @@ from methods.maml import MAML
 from io_utils import *
 from my_utils import *
 
-def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch, params):    
+def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch, params, record):
     if optimization == 'Adam':
         optimizer = torch.optim.Adam(model.parameters())
     else:
@@ -38,23 +38,25 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
 
     for epoch in range(start_epoch,stop_epoch):
         model.train()
-        model.train_loop(epoch, base_loader,  optimizer ) #model are called by reference, no need to return 
+        loss = model.train_loop(epoch, base_loader,  optimizer ) #model are called by reference, no need to return 
         model.eval()
 
         if not os.path.isdir(params.checkpoint_dir):
             os.makedirs(params.checkpoint_dir)
 
         acc = model.test_loop( val_loader)
+        record['train_loss'].append(loss)
+        record['val_acc'].append(acc)
         if acc > max_acc : #for baseline and baseline++, we don't use validation in default and we let acc = -1, but we allow options to validate with DB index
             print("best model! save...")
             max_acc = acc
             best_epoch = epoch
             outfile = os.path.join(params.checkpoint_dir, 'best_model.tar')
-            torch.save({'epoch':epoch, 'state':model.state_dict()}, outfile)
+            torch.save({'record':record, 'epoch':epoch, 'state':model.state_dict()}, outfile)
 
         if (epoch % params.save_freq==0) or (epoch==stop_epoch-1):
             outfile = os.path.join(params.checkpoint_dir, '{:d}.tar'.format(epoch))
-            torch.save({'epoch':epoch, 'state':model.state_dict()}, outfile)
+            torch.save({'record':record, 'epoch':epoch, 'state':model.state_dict()}, outfile)
         
         if early_stopping is not None:
             early_stopping(acc, model)
@@ -71,6 +73,10 @@ if __name__=='__main__':
     print('Program started at',start_time)
     np.random.seed(10)
     params = parse_args('train')
+    record = {
+        'train_loss':[], 
+        'val_acc':[], 
+    }
 
     if params.gpu_id:
         set_gpu_id(params.gpu_id)
@@ -242,6 +248,8 @@ if __name__=='__main__':
         if resume_file is not None:
             tmp = torch.load(resume_file)
             start_epoch = tmp['epoch']+1
+            if 'record' in tmp.keys():
+                record = tmp['record']
             model.load_state_dict(tmp['state'])
     elif params.warmup: #We also support warmup from pretrained baseline feature, but we never used in our paper
         # TODO: checkpoint_dir for resume haven't synchronize
@@ -263,7 +271,7 @@ if __name__=='__main__':
         else:
             raise ValueError('No warm_up file')
 
-    model = train(base_loader, val_loader,  model, optimization, start_epoch, stop_epoch, params)
+    model = train(base_loader, val_loader,  model, optimization, start_epoch, stop_epoch, params, record)
     
     torch.cuda.empty_cache()
     print('Program start at', start_time, ', end at', get_time_now())

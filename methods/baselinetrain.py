@@ -60,6 +60,9 @@ class BaselineTrain(nn.Module):
                 #print(optimizer.state_dict()['param_groups'][0]['lr'])
 #                 print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader), avg_loss/float(i+1)  ))
                 tt.set_description('Epoch %d: avg Loss = %.2f'%(epoch, avg_loss/float(i+1)))
+        
+        avg_loss = avg_loss/float(i+1)
+        return avg_loss
                      
     def test_loop(self, val_loader):
         if self.DBval:
