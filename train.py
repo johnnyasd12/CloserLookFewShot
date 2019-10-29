@@ -248,7 +248,7 @@ if __name__=='__main__':
         if resume_file is not None:
             tmp = torch.load(resume_file)
             start_epoch = tmp['epoch']+1
-            if 'record' in tmp.keys():
+            if 'record' in list(tmp.keys()):
                 record = tmp['record']
             model.load_state_dict(tmp['state'])
     elif params.warmup: #We also support warmup from pretrained baseline feature, but we never used in our paper
