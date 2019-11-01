@@ -85,8 +85,8 @@ def parse_args(script):
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
         parser.add_argument('--save_iter', default=-1, type=int,help ='saved feature from the model trained in x epoch, use the best model if x is -1')
         parser.add_argument('--reduce_mode', choices=['pca', 'pca-tsne', 'tsne'])
-        parser.add_argument('--d_classes', default=10, type=int, help='number of classes should be draw')
-        parser.add_argument('--d_samples', default=50, type=int, help='number of samples per class should be draw')
+        parser.add_argument('--d_classes', default=5, type=int, help='number of classes should be draw')
+        parser.add_argument('--d_samples', default=20, type=int, help='number of samples per class should be draw')
     
     else:
         raise ValueError('Unknown script')

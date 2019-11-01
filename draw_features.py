@@ -9,14 +9,14 @@ from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import random
 import numpy as np
-random.seed(42)
-np.random.seed(42)
+# random.seed(42)
+# np.random.seed(42)
 from io_utils import *
 from my_utils import *
 from tqdm import tqdm
 from scipy import stats
 
-import seaborn as sns
+# import seaborn as sns
 # sns.set_palette('muted')
 # sns.set_context("notebook", font_scale=1.5,
 #                 rc={"lines.linewidth": 2.5})
@@ -51,29 +51,22 @@ if __name__ == '__main__':
     feat_list = []
     label_list = []
     num_classes = len(cl_data_file.keys()) # useless
-    cls_transform = {} # to draw color
-    draw_n_classes = 5
-    draw_samples_per_class = 20
+    cls_transform = {} # transform class_id to 0~draw_n_classes-1 to draw color
+    draw_n_classes = params.d_classes
+    draw_samples_per_class = params.d_samples
     draw_class_indices = np.random.permutation(list(cl_data_file.keys()))[:draw_n_classes]
     for i, cls_idx in enumerate(draw_class_indices):
         cls_transform[cls_idx] = i
         cls_feats = cl_data_file[cls_idx]
         cls_n_samples = len(cls_feats)
         
-        sampled_idx = np.random.permutation(cls_n_samples)[:draw_samples_per_class]
+        sampled_indices = np.random.permutation(cls_n_samples)[:draw_samples_per_class]
         concat_feats = np.stack(cls_feats, axis=0)
-        sampled_feats = concat_feats[sampled_idx]
+        sampled_feats = concat_feats[sampled_indices]
         sampled_labels = np.array([cls_idx]*draw_samples_per_class)
         
         feat_list.append(sampled_feats)
         label_list.append(sampled_labels)
-        
-#     for key, value in cl_data_file.items():
-#         n_samples = len(value)
-#         concat_feat = np.stack(value, axis=0)
-#         concat_label = np.array([key]*n_samples)
-#         feat_list.append(concat_feat)
-#         label_list.append(concat_label)
     
     features = np.concatenate(feat_list, axis=0)
     labels = np.concatenate(label_list, axis=0)
@@ -89,19 +82,23 @@ if __name__ == '__main__':
     if 'pca' in params.reduce_mode:
         pca_dim = 50 if params.reduce_mode == 'pca-tsne' else 2
         pca = PCA(n_components=pca_dim)
+        print(pca)
         print('Running PCA...')
         pca_feat = pca.fit_transform(features)
         print('PCA finished.')
     
     if 'tsne' in params.reduce_mode:
+        perplexity = draw_samples_per_class
+        perplexity = np.clip(perplexity, 5, 50) # it's sugguested that perplexity between 5~50
         tsne = TSNE(
             n_components = 2, 
             verbose = 1, 
-            perplexity = 30, 
+            perplexity = perplexity, 
             early_exaggeration = 12., 
             learning_rate = 200, 
             init = 'random', 
         )
+        print(tsne)
         print('Running t-SNE...')
         if params.reduce_mode == 'pca-tsne':
             final_feat = tsne.fit_transform(pca_feat)
