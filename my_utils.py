@@ -11,7 +11,9 @@ import os
 
 
 class Timer2:
-    def __init__(self, name, enabled, verbose=1): # TODO: verbose (then delete enabled)
+    def __init__(self, name, enabled, verbose=1): 
+        # TODO: verbose (then delete enabled)
+        # TODO: accumulate the time interval of all iterations
         '''
         :param verbose: 0 to print NOTHING, 1 to print common, 2 to print detail
         '''
