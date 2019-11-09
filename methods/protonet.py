@@ -91,11 +91,12 @@ class ProtoNetAE(ProtoNet): # TODO: self.recons_func = recons_func()
         return loss
 
 class ProtoNetAE2(ProtoNetAE):
-    def __init__(self, model_func,  n_way, n_support, recons_func = None, lambda_d = 1, extract_layer = 2):
+    def __init__(self, model_func,  n_way, n_support, recons_func = None, lambda_d = 1, extract_layer = 2, is_color = True):
         super(ProtoNetAE2, self).__init__( model_func,  n_way, n_support, 
                                           recons_func = recons_func, lambda_d = lambda_d)
         self.encoder = self.feature.trunk[:extract_layer] # TODO: changed when different architecture
         self.extractor = self.feature.trunk[extract_layer:]
+        self.is_color = is_color
         
     def decoder_forward(self, x, is_feature = False):
 #         x = Variable(to_device(x)) # TODO: delete this line???
@@ -105,6 +106,8 @@ class ProtoNetAE2(ProtoNetAE):
         if is_feature: # TODO: if is_feature
             pass # aaaahhhhhh
         else:
+            if not self.is_color:
+                x = x[:,0:1,:,:]
             embedding = self.encoder.forward(x)
         
         decoded_img = self.recons_func(embedding)

@@ -31,6 +31,7 @@ decoder_dict = dict(
     ConvS = backbone.DeConvNetS(), 
     FC = backbone.DeFCNet(), 
     HiddenConv = backbone.DeConvNet2(), 
+    HiddenConvS = backbone.DeConvNetS2(), 
     Res18 = backbone.DeResNet18(), 
     Res10 = backbone.DeResNet10(), 
     HiddenRes10 = backbone.DeResNet10_2(), 
@@ -165,8 +166,10 @@ def get_model(params):
         if recons_decoder is None:
             model = ProtoNet( model_dict[params.model], **train_few_shot_params )
         elif 'Hidden' in params.recons_decoder:
-            if params.recons_decoder == 'HiddenConv':
+            if params.recons_decoder == 'HiddenConv': # 'HiddenConv', 'HiddenConvS'
                 model = ProtoNetAE2(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2)
+            elif params.recons_decoder == 'HiddenConvS': # 'HiddenConv', 'HiddenConvS'
+                model = ProtoNetAE2(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2, is_color=False)
             elif params.recons_decoder == 'HiddenRes10':
                 model = ProtoNetAE2(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 6)
         else:

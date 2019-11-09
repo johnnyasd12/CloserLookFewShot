@@ -354,6 +354,7 @@ class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
     def __init__(self, depth, flatten = True):
         super(ConvNetS,self).__init__()
         trunk = []
+        # TODO: trunk.append only select 1 channel
         for i in range(depth):
             '''input = 1*28*28 (see self.forward)
             TODO: compute the dimension, modify the decoder
@@ -374,7 +375,9 @@ class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
         self.final_feat_dim = 64
 
     def forward(self,x):
+        # TODO: delete this one
         out = x[:,0:1,:,:] #only use the first dimension (OOOOOMMMMMGGGG finally i see this NOW
+#         print('ConvNetS: out.shape', out.shape)
         out = self.trunk(out)
         return out
 
@@ -392,7 +395,7 @@ class DeConvNetS(nn.Module): # for AE, input: flattened 64*1*1
             nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 14, 14
             nn.ReLU(inplace=True),
             nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 28, 28
-            nn.ConvTranspose2d(64, 1, kernel_size=3, stride=1, padding=1),  # b, 3, 28, 28
+            nn.ConvTranspose2d(64, 1, kernel_size=3, stride=1, padding=1),  # b, 1, 28, 28
             nn.Tanh() # BUGFIX: see how image is input to the model
         )
         
@@ -401,6 +404,25 @@ class DeConvNetS(nn.Module): # for AE, input: flattened 64*1*1
         out = self.decoder(out)
         out = out.repeat(1,3,1,1) # repeat for channel dimension. NOTE: NOT act like numpy.repeat
         out = img_standardize(out) # if don't want to standardize, then should cancel the normalize in get_composed_transform for omniglot
+        return out
+
+class DeConvNetS2(nn.Module):
+    def __init__(self):
+        super(DeConvNetS2, self).__init__()
+        self.decoder = nn.Sequential( # input 64, 7, 7
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 14, 14
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 14, 14
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 28, 28
+            nn.ConvTranspose2d(64, 1, kernel_size=3, stride=1, padding=1),  # b, 1, 28, 28
+            nn.Tanh() # BUGFIX: see how image is input to the model
+        )
+        
+    def forward(self,x):
+        out = x.view(x.size(0),64,7,7)
+        out = self.decoder(out)
+        out = out.repeat(1,3,1,1) # repeat for channel dimension. NOTE: NOT act like numpy.repeat
+        out = img_standardize(out)
         return out
 
 class ConvNetSNopool(nn.Module): #Relation net use a 4 layer conv with pooling in only first two layers, else no pooling. For omniglot, only 1 input channel, output dim is [64,5,5]
