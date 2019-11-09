@@ -8,9 +8,9 @@ import h5py
 
 parser = argparse.ArgumentParser(description= 'yeeeee, im description of make_hdf5 parser!')
 parser.add_argument('--dataset', help='CUB/miniImagenet/omniglot/emnist', required=True)
-parser.add_argument('--mode', help='all/train/val/test/', required=True)
+parser.add_argument('--mode', choices=['all','train','val','test','noLatin'], required=True)
 parser.add_argument('--aug', action='store_true', help='use the augmented data or not')
-parser.add_argument('--channel_order', help='NCHW for PyTorch / NHWC for ???', required=True)
+parser.add_argument('--channel_order', default='NCHW', help='NCHW for PyTorch / NHWC for TF, but LrLiVAE have dealed with NCHW so don\'t need to do NHWC')
 parser.add_argument('--img_size', help='image size', required=True, type=int)
 parser.add_argument('--batch_size', help='The batch size when processing the data', default=50, type=int)
 parser.add_argument('--debug', action='store_true', help='debug mode on')
@@ -22,7 +22,9 @@ args = parser.parse_args()
 
 # prepare to load data
 data_path = os.path.join('filelists',args.dataset)
-file = {'all':'all.json', 'train':'base.json', 'val':'val.json', 'test':'novel.json'}
+file = {
+    'all':'all.json', 'train':'base.json', 'val':'val.json', 'test':'novel.json', 
+    'noLatin':'noLatin.json'}
 file_path = os.path.join(data_path,file[args.mode])
 datamgr = ResizeDataManager(args.img_size, batch_size=50)
 data_loader = datamgr.get_data_loader(data_file=file_path, aug=args.aug)
