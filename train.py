@@ -127,7 +127,7 @@ if __name__=='__main__':
                 params.stop_epoch = 400
             else:
                 params.stop_epoch = 600 #default
-    
+
 
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)

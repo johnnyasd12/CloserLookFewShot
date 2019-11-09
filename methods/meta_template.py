@@ -67,6 +67,7 @@ class MetaTemplate(nn.Module):
         else:
             x = x.cuda()
         
+        # x.size = n_way, (n_supp + n_que), 3, size, size (even for omniglot channel size is 3
         if is_feature:
             z_all = x
         else:
@@ -142,11 +143,12 @@ class MetaTemplate(nn.Module):
         avg_loss=0
         tt = tqdm(train_loader)
         for i, (x,_ ) in enumerate(tt):
+            # x.size = batch, 3, 28, 28 for omniglot (wtf?
             self.n_query = x.size(1) - self.n_support           
             if self.change_way:
                 self.n_way  = x.size(0)
             optimizer.zero_grad()
-            recons_lambda = 1
+            # no need label to compute loss becuase x is ordered
             loss = self.total_loss(x) #self.set_forward_loss( x ) + recons_lambda*self.decoder_loss(x)
             loss.backward()
             optimizer.step()

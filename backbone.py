@@ -355,6 +355,9 @@ class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
         super(ConvNetS,self).__init__()
         trunk = []
         for i in range(depth):
+            '''input = 1*28*28 (see self.forward)
+            TODO: compute the dimension, modify the decoder
+            '''
             indim = 1 if i == 0 else 64
             outdim = 64
             B = ConvBlock(indim, outdim, pool = ( i <4 ) ) #only pooling for fist 4 layers
@@ -367,7 +370,7 @@ class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
         self.final_feat_dim = 64
 
     def forward(self,x):
-        out = x[:,0:1,:,:] #only use the first dimension
+        out = x[:,0:1,:,:] #only use the first dimension (OOOOOMMMMMGGGG finally i see this NOW
         out = self.trunk(out)
         return out
 
