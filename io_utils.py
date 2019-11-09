@@ -28,6 +28,7 @@ model_dict = dict(
 # reconstruction decoder
 decoder_dict = dict(
     Conv = backbone.DeConvNet(),
+    ConvS = backbone.DeConvNetS(), 
     FC = backbone.DeFCNet(), 
     HiddenConv = backbone.DeConvNet2(), 
     Res18 = backbone.DeResNet18(), 
@@ -50,7 +51,7 @@ def parse_args(script):
     # assign image resize
     parser.add_argument('--image_size', default=None, type=int, help='the rescaled image size')
     # auxiliary reconstruction task
-    parser.add_argument('--recons_decoder'   , default=None, choices=['FC','Conv','HiddenConv','Res18','Res10','HiddenRes10'], help='reconstruction decoder')
+    parser.add_argument('--recons_decoder'   , default=None, choices=['FC','Conv','HiddenConv','Res18','Res10','HiddenRes10','ConvS','HiddenConvS'], help='reconstruction decoder')
     # coefficient of reconstruction loss
     parser.add_argument('--recons_lambda'   , default=0, type=float, help='lambda of reconstruction loss') # TODO: default=None? 0? will bug?
     parser.add_argument('--aug_type', default=None, choices=['rotate', 'bright', 'contrast', 'mix'], help='task augmentation mode') # TODO: rename to aug_mode
@@ -133,6 +134,19 @@ def get_model(params):
     train_few_shot_params    = get_few_shot_params(params, 'train')
     test_few_shot_params     = get_few_shot_params(params, 'test')
     
+    if params.dataset in ['omniglot', 'cross_char']:
+        assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
+        params.model = 'Conv4S'
+        if params.recons_decoder is not None:
+            if 'ConvS' not in params.recons_decoder:
+                raise ValueError('omniglot / cross_char should use ConvS/HiddenConvS decoder.')
+    
+    if params.method in ['baseline', 'baseline++'] :
+        if params.dataset == 'omniglot':
+            assert params.num_classes >= 4112, 'class number need to be larger than max label id in base class'
+        if params.dataset == 'cross_char':
+            assert params.num_classes >= 1597, 'class number need to be larger than max label id in base class'
+    
     if params.recons_decoder == None:
         print('params.recons_decoder == None')
         recons_decoder = None
@@ -140,15 +154,6 @@ def get_model(params):
         recons_decoder = decoder_dict[params.recons_decoder]
         print('recons_decoder:\n',recons_decoder)
 
-    if params.dataset in ['omniglot', 'cross_char']:
-        assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
-        params.model = 'Conv4S'
-    
-    if params.method in ['baseline', 'baseline++'] :
-        if params.dataset == 'omniglot':
-            assert params.num_classes >= 4112, 'class number need to be larger than max label id in base class'
-        if params.dataset == 'cross_char':
-            assert params.num_classes >= 1597, 'class number need to be larger than max label id in base class'
     
     # not sure
     if params.method == 'baseline':
