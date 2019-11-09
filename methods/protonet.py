@@ -81,6 +81,8 @@ class ProtoNetAE(ProtoNet): # TODO: self.recons_func = recons_func()
                 x = Variable(x.cuda())
             
             decoded_img = self.decoder_forward(x) # TODO: done: switch this two rows?
+#             print('ProtoNetAE: \nx.shape:', x.shape, '\nx.min:', x.min(), '\nx.max:', x.max())
+#             print('decoded_img.min:', decoded_img.min(), '\ndecoded_img.max:', decoded_img.max())
             x = x.view(x.size(0)*x.size(1),x.size(2),x.size(3),x.size(4))
 #             print('decoded_img shape =',decoded_img.shape)
             loss = nn.MSELoss()(decoded_img,x) # TODO
