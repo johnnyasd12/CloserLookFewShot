@@ -220,14 +220,16 @@ if __name__=='__main__':
         raise ValueError('Unknown method')
 
     if params.gpu_id:
-        device = torch.device('cuda:'+str(params.gpu_id))
-    else:
-        device = None
-#     model = model.cuda()
-    if device is None:
-        model = to_device(model) # assign device according to config.py
-    else:
+#         device = torch.device('cuda:'+str(params.gpu_id))
         model = model.cuda()
+    else:
+#         device = None
+        model = to_device(model)
+#     model = model.cuda()
+#     if device is None: # then call model.to(device) in to_device()
+#         model = to_device(model) # assign device according to config.py
+#     else:
+#         model = model.cuda()
 
 
     

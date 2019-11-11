@@ -35,7 +35,8 @@ class ProtoNet(MetaTemplate):
         y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
 #         y_query = Variable(y_query.cuda())
         if self.device is None:
-            y_query = Variable(to_device(y_query))
+#             y_query = Variable(to_device(y_query))
+            y_query = Variable(y_query.cuda())
         else:
             y_query = Variable(y_query.cuda())
 
@@ -76,7 +77,8 @@ class ProtoNetAE(ProtoNet): # TODO: self.recons_func = recons_func()
         '''
         if self.recons_func:
             if self.device is None:
-                x = Variable(to_device(x)) # TODO: done: switch this two rows?
+#                 x = Variable(to_device(x)) # TODO: done: switch this two rows?
+                x = Variable(x.cuda())
             else:
                 x = Variable(x.cuda())
             
