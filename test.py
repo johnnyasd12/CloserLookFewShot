@@ -151,9 +151,14 @@ if __name__ == '__main__':
         if modelfile is not None:
             if params.gpu_id is None:
                 tmp = torch.load(modelfile)
-            else:
-                tmp = torch.load(modelfile, map_location='cuda:0')#+str(params.gpu_id))
+            else: # TODO: figure out WTF is going on here
+                map_location = 'cuda:0'
+#                 gpu_str = 'cuda:' + '0'#str(params.gpu_id)
+#                 map_location = {'cuda:1':gpu_str, 'cuda:0':gpu_str} # see here: https://hackmd.io/koKAo6kURn2YBqjoXXDhaw#RuntimeError-CUDA-error-invalid-device-ordinal
+                tmp = torch.load(modelfile, map_location=map_location)
+#                 tmp = torch.load(modelfile)
             model.load_state_dict(tmp['state'])
+#             print('====== tmp ========\n', tmp.keys(), '\n====== model.state_dict() ==========\n', model.state_dict().keys())
             load_epoch = int(tmp['epoch'])
 
     # train/val/novel
