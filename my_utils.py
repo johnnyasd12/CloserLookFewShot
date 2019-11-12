@@ -6,9 +6,41 @@ import datetime
 
 import time
 import os
+import tensorflow as tf
 
 # global_datasets = [] # for multi-processsing
 
+def describe(obj, obj_str): # support ndarray, tf.Tensor, dict, iterable
+    # exec('global '+obj_str)
+    # exec('obj = '+obj_str)
+    obj_type = type(obj)
+    print('='*5
+        , obj_str
+        , obj_type
+        , '='*5
+        , end = ' '
+        )
+    if obj_type == np.ndarray:
+        print('\nshape:',obj.shape)
+        print('(min, max) = ('+str(obj.min())+', '+str(obj.max())+')')
+
+    elif tf.contrib.framework.is_tensor(obj):
+        obj_shape = obj.get_shape().as_list() # get_shape().num_elements() can get sum
+        print(obj_shape)
+    elif isinstance(obj, dict):
+        print()
+        for key, content in obj.items():
+            print(key, ':', content)
+    else:
+        try:
+            iterator = iter(obj)
+        except TypeError:
+            # not iterable
+            print(obj)
+        else:
+            # iterable
+            print(len(obj))
+    print('='*10)
 
 class Timer2:
     def __init__(self, name, enabled, verbose=1): 
