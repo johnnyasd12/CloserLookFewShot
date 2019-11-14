@@ -26,6 +26,8 @@ from my_utils import *
 import pandas as pd
 from tqdm import tqdm
 
+from model_utils import get_few_shot_params, get_model
+
 def get_img_settings(params, split):
     if 'Conv' in params.model:
         if params.dataset in ['omniglot', 'cross_char']:
