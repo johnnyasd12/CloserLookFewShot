@@ -20,6 +20,7 @@ from methods.maml import MAML
 # from io_utils import model_dict, parse_args, get_resume_file, decoder_dict, get_checkpoint_dir
 from io_utils import *
 from my_utils import *
+from model_utils import get_few_shot_params, get_model, restore_vaegan
 
 def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch, params, record):
     if optimization == 'Adam':
@@ -68,20 +69,8 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     
     return model
 
-if __name__=='__main__':
-    start_time = get_time_now()
-    print('Program started at',start_time)
-    np.random.seed(10)
-    params = parse_args('train')
-    record = {
-        'train_loss':[], 
-        'val_acc':[], 
-    }
-
-    if params.gpu_id:
-        set_gpu_id(params.gpu_id)
-    get_model_func = True
-    
+def get_train_val_filename(params):
+    # this part CANNOT share with save_features.py & test.py
     if params.dataset == 'cross':
         base_file = configs.data_dir['miniImagenet'] + 'all.json' 
         val_file   = configs.data_dir['CUB'] + 'val.json' 
@@ -90,20 +79,10 @@ if __name__=='__main__':
         val_file   = configs.data_dir['emnist'] + 'val.json' 
     else:
         base_file = configs.data_dir[params.dataset] + 'base.json' 
-        val_file   = configs.data_dir[params.dataset] + 'val.json' 
-         
-    if 'Conv' in params.model:
-        if params.dataset in ['omniglot', 'cross_char']:
-            image_size = 28 if params.image_size is None else params.image_size
-        else:
-            image_size = 84 if params.image_size is None else params.image_size
-    else:
-        image_size = 224 # if params.image_size is None else params.image_size
+        val_file   = configs.data_dir[params.dataset] + 'val.json'
+    return base_file, val_file
 
-    model = get_model(params)
-
-    optimization = 'Adam'
-
+def set_default_stop_epoch(params):
     if params.stop_epoch == -1: 
         if params.method in ['baseline', 'baseline++'] :
             if params.dataset in ['omniglot', 'cross_char']:
@@ -122,13 +101,13 @@ if __name__=='__main__':
             else:
                 params.stop_epoch = 600 #default
 
+def get_train_val_loader(params):
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)
         base_loader     = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
         val_datamgr     = SimpleDataManager(image_size, batch_size = 64)
         val_loader      = val_datamgr.get_data_loader( val_file, aug = False)
         
-
     elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
 
@@ -136,8 +115,20 @@ if __name__=='__main__':
 #         test_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot) 
         train_few_shot_params    = get_few_shot_params(params, 'train')
         test_few_shot_params     = get_few_shot_params(params, 'test')
-        if params.aug_target is None:
+        if params.vaegan_exp is not None:
+            # TODO
+            vaegan = restore_vaegan(params.dataset, params.vaegan_exp, params.vaegan_step)
+            base_datamgr            = VAESetDataManager(
+                                        image_size, n_query=n_query, 
+                                        vaegan = vaegan, lambda_zlogvar=params.zvar_lamdba, 
+                                        **train_few_shot_params)
+            # train_val or val???
+            val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
+            
+            
+        elif params.aug_target is None:
             assert params.aug_type is None
+            
             base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)
             val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
         else:
@@ -155,21 +146,44 @@ if __name__=='__main__':
         
     else:
         raise ValueError('Unknown method')
+    return base_loader, val_loader
+
+if __name__=='__main__':
+    start_time = get_time_now()
+    print('Program started at',start_time)
+    np.random.seed(10)
+    params = parse_args('train')
+    record = {
+        'train_loss':[], 
+        'val_acc':[], 
+    }
 
     if params.gpu_id:
-#         device = torch.device('cuda:'+str(params.gpu_id))
+        set_gpu_id(params.gpu_id)
+    
+    base_file, val_file = get_train_val_filename(params)
+    
+    if 'Conv' in params.model:
+        if params.dataset in ['omniglot', 'cross_char']:
+            image_size = 28 if params.image_size is None else params.image_size
+        else:
+            image_size = 84 if params.image_size is None else params.image_size
+    else:
+        image_size = 224 # if params.image_size is None else params.image_size
+
+    model = get_model(params)
+
+    optimization = 'Adam'
+
+    set_default_stop_epoch(params)
+
+    base_loader, val_loader = get_train_val_loader(params)
+
+    if params.gpu_id:
         model = model.cuda()
     else:
-#         device = None
         model = to_device(model)
-#     model = model.cuda()
-#     if device is None: # then call model.to(device) in to_device()
-#         model = to_device(model) # assign device according to config.py
-#     else:
-#         model = model.cuda()
 
-
-    
     params.checkpoint_dir = get_checkpoint_dir(params)
     
     

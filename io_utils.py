@@ -50,7 +50,11 @@ def parse_args(script):
     parser.add_argument('--recons_lambda'   , default=0, type=float, help='lambda of reconstruction loss') # TODO: default=None? 0? will bug?
     parser.add_argument('--aug_type', default=None, choices=['rotate', 'bright', 'contrast', 'mix'], help='task augmentation mode') # TODO: rename to aug_mode
     parser.add_argument('--aug_target', default=None, choices=['batch', 'sample'], help='data augmentation by task or by sample')
-        
+    # GMM_VAE_GAN augmentation
+    parser.add_argument('--vaegan_exp', default=None, type=str, help='the GMM_VAE_GAN experiment name')
+    parser.add_argument('--vaegan_step', default=None, type=int, help='the GMM_VAE_GAN restore step')
+    parser.add_argument('--zvar_lambda', default=None, type=float, help='the GMM_VAE_GAN zlogvar_lambda')
+
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
         parser.add_argument('--save_freq'   , default=50, type=int, help='Save frequency')

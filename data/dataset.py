@@ -11,6 +11,43 @@ identity = lambda x:x
 import h5py
 from my_utils import *
 
+class VAESetDataset:
+    def __init__(self, data_file, batch_size, pre_transform, post_transform, aug_transform): # only ONE Class for one iteration, but batch_sampler call this several times at once
+        with open(data_file, 'r') as f: # data_file is json
+            self.meta = json.load(f)
+
+        self.cl_list = np.unique(self.meta['image_labels']).tolist()
+        self.debug_flag = 0 # another debug flag
+
+        self.sub_meta = {} # ALL images, content = class_1: [data_path_1, ..., data_path_n], class_k: [data_path_1, ..., ]
+        for cl in self.cl_list:
+            self.sub_meta[cl] = []
+
+        for x,y in zip(self.meta['image_names'],self.meta['image_labels']):
+            self.sub_meta[y].append(x)
+
+#         global global_datasets # for multi processes
+#         global_datasets = []
+        self.sub_dataloaders = [] # there're k dataloaders, k is # classes
+        self.sub_datasets = [] # k datasets, k is # classes
+        sub_data_loader_params = dict(batch_size = batch_size, # how many data to grab at current category???
+                                  shuffle = True,
+                                  num_workers = 0, #use main thread only or may receive multiple batches
+                                  pin_memory = False)        
+        for cl in self.cl_list:
+            # can utilize AugSubDataset, but don't use set_aug_transform() & aug_target
+            sub_dataset = AugSubDataset(self.sub_meta[cl], cl, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)
+            self.sub_datasets.append(sub_dataset)
+            self.sub_dataloaders.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
+
+    def __getitem__(self,i):
+        return next(iter(self.sub_dataloaders[i]))
+
+    def __len__(self):
+        return len(self.cl_list)
+        
+        
+
 class AugSetDataset:
     def __init__(self, data_file, batch_size, pre_transform, post_transform, aug_target): # only ONE Class for one iteration, but batch_sampler call this several times at once
         with open(data_file, 'r') as f: # data_file is json
@@ -71,14 +108,6 @@ class AugSubDataset: # one iteration is one image of one class
         img = img.convert('RGB')
         img = self.pre_transform(img)
         img = self.aug_transform(img)
-#         if self.debug_flag <= 2 and self.aug_target=='batch':
-#             folder = 'debug-'+self.aug_target
-#             if not os.path.exists(folder):
-#                 os.makedirs(folder)
-#             filename = str(self.debug_flag) + '-' + str(self.cl) + '-' + str(i) + '.jpg'
-#             print('saving', filename)
-#             file_path = os.path.join(folder, filename)
-#             img.save(file_path)
         img = self.post_transform(img)
         target = self.target_transform(self.cl)
         return img, target

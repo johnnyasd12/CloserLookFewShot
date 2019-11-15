@@ -11,6 +11,16 @@ from abc import abstractmethod
 import torchvision.transforms.functional as TF
 import random
 
+# for LrLiVAE
+import configs
+import sys
+llvae_dir = configs.llvae_dir
+print('Lr-LiVAE dir:', llvae_dir)
+sys.path.append(llvae_dir)
+from LrLiVAE import GMM_AE_GAN
+from nets import *
+from datas import *
+
 class TransformLoader:
     def __init__(self, image_size, 
                  normalize_param    = dict(mean= [0.485, 0.456, 0.406] , std=[0.229, 0.224, 0.225]),
@@ -64,7 +74,9 @@ class TransformLoader:
         transform = transforms.Compose(transform_funcs)
         return transform
     
-    def get_hdf5_transform(self, aug = False): # simple_transform + this = composed_transform
+    def get_hdf5_transform(self, aug = False): 
+        # simple_transform + this = composed_transform
+        # crop_transform + this = composed_transform also i think?
         if aug:
             transform_list = ['ImageJitter', 'RandomHorizontalFlip', 'ToTensor', 'Normalize']
         else:
@@ -73,6 +85,12 @@ class TransformLoader:
         transform_funcs = [ self.parse_transform(x) for x in transform_list]
         transform = transforms.Compose(transform_funcs)
         return transform
+    
+    def get_vae_transform(self, vaegan, lambda_zlogvar):
+        def wrapper(img):
+            print('get_vae_transform/img type:', type(img))
+            rec_img = img
+            return rec_img
     
     def get_aug_transform(self, aug_type, aug_target):
         '''
@@ -100,22 +118,22 @@ class TransformLoader:
             return factor
         
 
-        params = {}
-        params['rotate'] = {
+        aug_params = {}
+        aug_params['rotate'] = {
 #             'train_range':(0, 20), # should +/-
 #             'test_range':(15, 25), # should +/-
             'train_range':(-15, -10), # should +/-
             'test_range':(10, 15), # should +/-
             'angle':None
         }
-        params['bright'] = {
+        aug_params['bright'] = {
 #             'train_range':(0, 0.3), # should 1 +/- range
 #             'test_range':(0.25, 0.5), # should 1 +/- range
             'train_range':(-0.6, -0.2), # should 1 +/- range
             'test_range':(0.3, 0.5), # should 1 +/- range
             'factor':None
         }
-        params['contrast'] = {
+        aug_params['contrast'] = {
 #             'train_range':(0, 0.3), # should 1 +/- range
 #             'test_range':(0.25, 0.5), # should 1 +/- range
             'train_range':(0, 0.3), # should 1 +/- range
@@ -125,53 +143,53 @@ class TransformLoader:
 
         # Deciding transform parameters
         if aug_target == 'batch': # random select for every batch
-            params['rotate']['angle'] = get_random_rotate_angle(params['rotate']['train_range'])
-            params['bright']['factor'] = get_random_factor(params['bright']['train_range'])
-            params['contrast']['factor'] = get_random_factor(params['contrast']['train_range'])
+            aug_params['rotate']['angle'] = get_random_rotate_angle(aug_params['rotate']['train_range'])
+            aug_params['bright']['factor'] = get_random_factor(aug_params['bright']['train_range'])
+            aug_params['contrast']['factor'] = get_random_factor(aug_params['contrast']['train_range'])
 
         elif aug_target == 'test-batch': # random select for every batch
-            params['rotate']['angle'] = get_random_rotate_angle(params['rotate']['test_range'])
-            params['bright']['factor'] = get_random_factor(params['bright']['test_range'])
-            params['contrast']['factor'] = get_random_factor(params['contrast']['test_range'])
+            aug_params['rotate']['angle'] = get_random_rotate_angle(aug_params['rotate']['test_range'])
+            aug_params['bright']['factor'] = get_random_factor(aug_params['bright']['test_range'])
+            aug_params['contrast']['factor'] = get_random_factor(aug_params['contrast']['test_range'])
         
         def wrapper(img):
 
-            nonlocal params
+            nonlocal aug_params
 
             if aug_target == 'batch' or aug_target == 'test-batch':
                 pass # nothing to do
 
             # Deciding transform parameters
             elif aug_target == 'sample':
-                params['rotate']['angle'] = get_random_rotate_angle(params['rotate']['train_range'])
-                params['bright']['factor'] = get_random_factor(params['bright']['train_range'])
-                params['contrast']['factor'] = get_random_factor(params['contrast']['train_range'])
+                aug_params['rotate']['angle'] = get_random_rotate_angle(aug_params['rotate']['train_range'])
+                aug_params['bright']['factor'] = get_random_factor(aug_params['bright']['train_range'])
+                aug_params['contrast']['factor'] = get_random_factor(aug_params['contrast']['train_range'])
 
             elif aug_target == 'test-sample':
-                params['rotate']['angle'] = get_random_rotate_angle(params['rotate']['test_range'])
-                params['bright']['factor'] = get_random_factor(params['bright']['test_range'])
-                params['contrast']['factor'] = get_random_factor(params['contrast']['test_range'])
+                aug_params['rotate']['angle'] = get_random_rotate_angle(aug_params['rotate']['test_range'])
+                aug_params['bright']['factor'] = get_random_factor(aug_params['bright']['test_range'])
+                aug_params['contrast']['factor'] = get_random_factor(aug_params['contrast']['test_range'])
 
             else:
                 raise ValueError('Invalid aug_target: %s' %(aug_target))
 
             # Process the image
             if aug_type == 'rotate':
-                img = TF.rotate(img, params['rotate']['angle'])
-#                 print('rotate angle:', params['rotate']['angle'])
+                img = TF.rotate(img, aug_params['rotate']['angle'])
+#                 print('rotate angle:', aug_params['rotate']['angle'])
 
             elif aug_type == 'bright':
-                img = TF.adjust_brightness(img, params['bright']['factor'])
-#                 print('bright factor:', params['bright']['factor'])
+                img = TF.adjust_brightness(img, aug_params['bright']['factor'])
+#                 print('bright factor:', aug_params['bright']['factor'])
 
             elif aug_type == 'contrast':
-                img = TF.adjust_contrast(img, params['contrast']['factor'])
-#                 print('contrast factor:', params['contrast']['factor'])
+                img = TF.adjust_contrast(img, aug_params['contrast']['factor'])
+#                 print('contrast factor:', aug_params['contrast']['factor'])
 
             elif aug_type == 'mix':
-                img = TF.adjust_contrast(img, params['contrast']['factor'])
-                img = TF.adjust_brightness(img, params['bright']['factor'])
-                img = TF.rotate(img, params['rotate']['angle'])
+                img = TF.adjust_contrast(img, aug_params['contrast']['factor'])
+                img = TF.adjust_brightness(img, aug_params['bright']['factor'])
+                img = TF.rotate(img, aug_params['rotate']['angle'])
 
             else:
                 raise ValueError('Invalid aug_type: %s' %(aug_type))
@@ -263,6 +281,29 @@ class AugSimpleDataManager(DataManager):
 #             return torch.utils.data._utils.collate.default_convert(batch)
         return wrapper
 
+class VAESetDataManager(SetDataManager):
+    def __init__(self, image_size, n_way, n_support, n_query, vaegan, lambda_zlogvar, n_episode =100, recons_func = None):
+        super(VAESetDataManager, self).__init__(image_size, n_way, n_support, n_query, n_episode, recons_func)
+#         self.image_size = image_size
+#         self.n_way = n_way
+#         self.batch_size = n_support + n_query
+#         self.n_episode = n_episode
+
+#         self.trans_loader = TransformLoader(image_size)
+        # above already implemented in SetDataManager
+        self.vaegan = vaegan
+        self.lambda_zlogvar = lambda_zlogvar
+        
+    def get_data_loader(self, data_file, aug):
+        pre_transform = self.trans_loader.get_crop_transform(aug)
+        post_transform = self.trans_loader.get_hdf5_transform(aug)
+        aug_transform = self.trans_loader.get_vae_transform(self.vaegan, self.lambda_zlogvar)
+        
+        dataset = VAESetDataset(data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)
+        
+        return data_loader
+
+
 class AugSetDataManager(DataManager):
     def __init__(self, image_size, n_way, n_support, n_query, aug_type, aug_target, n_episode =100, recons_func = None):
         ''' to get a data_loader
@@ -306,48 +347,22 @@ class AugSetDataManager(DataManager):
 #             return torch.utils.data._utils.collate.default_convert(batch)
         return wrapper
 
-#     def collate_fn_task(self, batch): # TODO: deprecate this
-#         '''
-#         type(batch) = list, len(batch) = n_way
-#         type(batch[0] = list, len(batch[0]) = 2)
-#         type(batch[0][0] = Torch.Tensor, shape = [batch_size, ...]) (img)
-#         type(batch[0][1] = Torch.Tensor, shape = [batch_size]) (target)
-#         '''
-#         a = batch[0][0]
-#         b = batch[0][1]
-#         print(a.shape, b.shape)
-#         # initialize transform
-        
-#         # randomly set transform parameter
-        
-#         # compose several transforms
-        
-#         # apply transform on batch data
-#         for (cls_batch_x, cls_batch_y) in batch:
-            
-#             # to PIL image
-            
-#             # transform
-            
-#             # to torch tensor
-#             pass
-
 class SetDataManager(DataManager):
     ''' to get a data_loader
     '''
-    def __init__(self, image_size, n_way, n_support, n_query, n_eposide =100, recons_func = None): # n_episode spell wrong.....
+    def __init__(self, image_size, n_way, n_support, n_query, n_episode =100, recons_func = None): # n_episode spell wrong.....
         super(SetDataManager, self).__init__()
         self.image_size = image_size
         self.n_way = n_way
         self.batch_size = n_support + n_query
-        self.n_eposide = n_eposide
+        self.n_episode = n_episode
 
         self.trans_loader = TransformLoader(image_size)
 
     def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
         transform = self.trans_loader.get_composed_transform(aug)
         dataset = SetDataset( data_file , self.batch_size, transform )
-        sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_eposide ) # sample classes randomly
+        sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
         data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)       
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
         return data_loader

@@ -181,7 +181,7 @@ if __name__ == '__main__':
 #         else:
 #             image_size = 224
 
-        datamgr         = SetDataManager(image_size, n_eposide = iter_num, n_query = 15 , **few_shot_params)
+        datamgr         = SetDataManager(image_size, n_episode = iter_num, n_query = 15 , **few_shot_params)
         
 #         if params.dataset == 'cross':
 #             if split == 'base':
@@ -264,7 +264,7 @@ if __name__ == '__main__':
     '''
     print('='*10 + 'start ploting' + '='*10)
     image_size, loadfile = get_img_settings(params, split)
-    datamgr         = SetDataManager(image_size, n_eposide = iter_num, n_query = 15 , **few_shot_params)
+    datamgr         = SetDataManager(image_size, n_episode = iter_num, n_query = 15 , **few_shot_params)
     novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
     model.eval()
     acc_mean = model.test_loop( novel_loader)

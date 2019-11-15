@@ -91,3 +91,41 @@ def get_model(params):
             model.train_lr = 0.1
     
     return model
+
+def restore_vaegan(dataset, vae_exp_name, vae_restore_step):
+    experiment_name = vae_exp_name #'omn_noLatin_1114_0956'
+    restore_step = vae_restore_step
+    log_dir = os.path.join(llvae_dir, 'logs', experiment_name)
+    model_dir = os.path.join(llvae_dir, 'models',experiment_name)
+    print('model_dir:',model_dir)
+    print('log_dir:',log_dir)
+    is_training = True
+    print('initializing GMM_VAE_GAN...')
+    if dataset == 'omniglot' or dataset == 'cross_char':
+        split = 'noLatin' if dataset=='cross_char' else 'train'
+        data = Omniglot(datapath=datapath, size=args.img_size, batch_size=batch_size, 
+                   is_tanh=True, flag='conv', split=split)
+
+        generator = GeneratorMnist(size = data.size)
+#         identity = IdentityMnist(data.y_dim, data.z_dim, size = data.size) # z_dim should be data.zc_dim ??
+        identity = IdentityMnist(data.y_dim, data.zc_dim, size = data.size) # z_dim should be data.zc_dim ??
+        attribute = AttributeMnist(data.z_dim, size = data.size)
+        discriminator = DiscriminatorMnistSN(size=data.size)
+#         discriminator = DiscriminatorMnistSNComb(size=data.size) # which to use?
+        latent_discriminator = LatentDiscriminator(y_dim = data.y_dim)
+    
+    else:
+        raise ValueError('GMM_AE_GAN doesn\'t support dataset \'%s\' currently.' % (dataset))
+    
+    # load model
+    vaegan = GMM_AE_GAN(
+        generator, identity, attribute, discriminator, latent_discriminator, 
+        data, is_training, log_dir=log_dir,
+        model_dir=model_dir
+    )
+    print('done.')
+    print('restoring GMM_VAE model...')
+    vaegan.restore(restore_step)
+    print('done.')
+    return vaegan
+    
