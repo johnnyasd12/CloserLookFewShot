@@ -7,7 +7,15 @@ from methods.relationnet import RelationNet
 from methods.maml import MAML
 
 from io_utils import model_dict
+import os
+import configs
 
+import sys
+llvae_dir = configs.llvae_dir
+sys.path.append(llvae_dir)
+from datas import Omniglot
+from nets import *
+from LrLiVAE import GMM_AE_GAN
 
 def get_few_shot_params(params, mode=None):
     '''
@@ -95,6 +103,7 @@ def get_model(params):
 def restore_vaegan(dataset, vae_exp_name, vae_restore_step):
     experiment_name = vae_exp_name #'omn_noLatin_1114_0956'
     restore_step = vae_restore_step
+    llvae_dir = configs.llvae_dir
     log_dir = os.path.join(llvae_dir, 'logs', experiment_name)
     model_dir = os.path.join(llvae_dir, 'models',experiment_name)
     print('model_dir:',model_dir)
@@ -103,8 +112,11 @@ def restore_vaegan(dataset, vae_exp_name, vae_restore_step):
     print('initializing GMM_VAE_GAN...')
     if dataset == 'omniglot' or dataset == 'cross_char':
         split = 'noLatin' if dataset=='cross_char' else 'train'
-        data = Omniglot(datapath=datapath, size=args.img_size, batch_size=batch_size, 
-                   is_tanh=True, flag='conv', split=split)
+        datapath = './filelists/omniglot/hdf5'
+        size = 28
+        data = Omniglot(datapath=datapath, 
+                        size=size, batch_size=1, 
+                       is_tanh=True, flag='conv', split=split)
 
         generator = GeneratorMnist(size = data.size)
 #         identity = IdentityMnist(data.y_dim, data.z_dim, size = data.size) # z_dim should be data.zc_dim ??

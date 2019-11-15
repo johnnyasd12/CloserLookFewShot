@@ -10,7 +10,7 @@ import glob
 
 import configs
 import backbone
-from data.datamgr import SimpleDataManager, SetDataManager, AugSetDataManager
+
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
 from methods.protonet import ProtoNet, ProtoNetAE, ProtoNetAE2
@@ -102,6 +102,8 @@ def set_default_stop_epoch(params):
                 params.stop_epoch = 600 #default
 
 def get_train_val_loader(params):
+    # to prevent circular import
+    from data.datamgr import SimpleDataManager, SetDataManager, AugSetDataManager, VAESetDataManager
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)
         base_loader     = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
@@ -120,7 +122,7 @@ def get_train_val_loader(params):
             vaegan = restore_vaegan(params.dataset, params.vaegan_exp, params.vaegan_step)
             base_datamgr            = VAESetDataManager(
                                         image_size, n_query=n_query, 
-                                        vaegan = vaegan, lambda_zlogvar=params.zvar_lamdba, 
+                                        vaegan = vaegan, lambda_zlogvar=params.zvar_lambda, 
                                         **train_few_shot_params)
             # train_val or val???
             val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)

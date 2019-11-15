@@ -5,7 +5,7 @@ from PIL import Image
 import numpy as np
 import torchvision.transforms as transforms
 import data.additional_transforms as add_transforms
-from data.dataset import SimpleDataset, SetDataset, EpisodicBatchSampler, HDF5Dataset, AugSetDataset, AugSimpleDataset
+from data.dataset import SimpleDataset, SetDataset, EpisodicBatchSampler, HDF5Dataset, AugSetDataset, AugSimpleDataset, VAESetDataset
 from abc import abstractmethod
 
 import torchvision.transforms.functional as TF
@@ -91,6 +91,7 @@ class TransformLoader:
             print('get_vae_transform/img type:', type(img))
             rec_img = img
             return rec_img
+        return wrapper
     
     def get_aug_transform(self, aug_type, aug_target):
         '''
@@ -281,29 +282,6 @@ class AugSimpleDataManager(DataManager):
 #             return torch.utils.data._utils.collate.default_convert(batch)
         return wrapper
 
-class VAESetDataManager(SetDataManager):
-    def __init__(self, image_size, n_way, n_support, n_query, vaegan, lambda_zlogvar, n_episode =100, recons_func = None):
-        super(VAESetDataManager, self).__init__(image_size, n_way, n_support, n_query, n_episode, recons_func)
-#         self.image_size = image_size
-#         self.n_way = n_way
-#         self.batch_size = n_support + n_query
-#         self.n_episode = n_episode
-
-#         self.trans_loader = TransformLoader(image_size)
-        # above already implemented in SetDataManager
-        self.vaegan = vaegan
-        self.lambda_zlogvar = lambda_zlogvar
-        
-    def get_data_loader(self, data_file, aug):
-        pre_transform = self.trans_loader.get_crop_transform(aug)
-        post_transform = self.trans_loader.get_hdf5_transform(aug)
-        aug_transform = self.trans_loader.get_vae_transform(self.vaegan, self.lambda_zlogvar)
-        
-        dataset = VAESetDataset(data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)
-        
-        return data_loader
-
-
 class AugSetDataManager(DataManager):
     def __init__(self, image_size, n_way, n_support, n_query, aug_type, aug_target, n_episode =100, recons_func = None):
         ''' to get a data_loader
@@ -367,4 +345,28 @@ class SetDataManager(DataManager):
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
         return data_loader
 
+class VAESetDataManager(SetDataManager):
+    def __init__(self, image_size, n_way, n_support, n_query, vaegan, lambda_zlogvar, n_episode =100, recons_func = None):
+        super(VAESetDataManager, self).__init__(image_size, n_way, n_support, n_query, n_episode, recons_func)
+#         self.image_size = image_size
+#         self.n_way = n_way
+#         self.batch_size = n_support + n_query
+#         self.n_episode = n_episode
+
+#         self.trans_loader = TransformLoader(image_size)
+        # above already implemented in SetDataManager
+        self.vaegan = vaegan
+        self.lambda_zlogvar = lambda_zlogvar
+        
+    def get_data_loader(self, data_file, aug):
+        pre_transform = self.trans_loader.get_crop_transform(aug)
+        post_transform = self.trans_loader.get_hdf5_transform(aug)
+        aug_transform = self.trans_loader.get_vae_transform(self.vaegan, self.lambda_zlogvar)
+        
+        dataset = VAESetDataset(data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)
+        sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
+        data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)       
+        data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
+        
+        return data_loader
 
