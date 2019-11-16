@@ -170,7 +170,7 @@ class AugSimpleDataset:
 #         print('self.debug_flag =', self.debug_flag)
 
 class SetDataset:
-    def __init__(self, data_file, batch_size, transform): # only ONE Class for one iteration, but batch_sampler call this several times at once
+    def __init__(self, data_file, batch_size, transform): # one item = ONE specific Class, but batch_sampler call this several times at once
         with open(data_file, 'r') as f: # data_file is json
             self.meta = json.load(f)
 
