@@ -74,23 +74,57 @@ class TransformLoader:
         transform = transforms.Compose(transform_funcs)
         return transform
     
-    def get_hdf5_transform(self, aug = False): 
-        # simple_transform + this = composed_transform
-        # crop_transform + this = composed_transform also i think?
-        if aug:
-            transform_list = ['ImageJitter', 'RandomHorizontalFlip', 'ToTensor', 'Normalize']
+    def get_hdf5_transform(self, aug = False, inputs='pil'): 
+        # simple_transform(-toTensor) + this = composed_transform
+        # crop_transform + this = composed_transform
+        if inputs == 'pil':
+            transform_list = []
+        elif inputs == 'tensor':
+            transform_list = ['ToPILImage']
         else:
-            transform_list = ['ToTensor', 'Normalize']
+            raise 'wrong inputs mode.'
+        
+        if aug:
+            transform_list += ['ImageJitter', 'RandomHorizontalFlip', 'ToTensor', 'Normalize']
+        else:
+            transform_list += ['ToTensor', 'Normalize']
 
         transform_funcs = [ self.parse_transform(x) for x in transform_list]
         transform = transforms.Compose(transform_funcs)
         return transform
     
     def get_vae_transform(self, vaegan, lambda_zlogvar):
+        import tensorflow as tf
+        def b4_vae(img):
+            # img: numpy array 0~1 or -1~1
+            if vaegan.data.is_tanh: # if should input -1~1 to gmmvaegan
+                img = img*2 - 1
+            img = np.transpose(img, axes=(1,2,0)) # 3,28,28 -> 28,28,3
+            img = img[np.newaxis,:,:,0:1] # -> 1,28,28,1
+            return img
+        
+        def after_vae(img):
+            img = np.repeat(img, repeats=3, axis=3)[0] # 1,28,28,1 -> 28,28,3
+            img = np.transpose(img, axes=(2,0,1)) # 28,28,3 -> 3,28,28
+            if vaegan.data.is_tanh: # if gmmvaegan output is -1~1 then rescale to 0~1
+                img = img/2 + 0.5
+            return img
+            
         def wrapper(img):
-            print('get_vae_transform/img type:', type(img))
-            rec_img = img
-            return rec_img
+            img = img.cpu().numpy()
+#             print('get_vae_transform/img type,shape:', type(img), img.shape)
+#             print('get_vae_transform/img:', img.min(), '~', img.max())
+            img = b4_vae(img)
+#             print('get_vae_transform/ after b4vae img type,shape:', type(img), img.shape)
+#             print('get_vae_transform/ after b4vae img:', img.min(), '~', img.max())
+            img = vaegan.rec_samples(img, lambda_zlogvar=lambda_zlogvar)
+#             print('get_vae_transform/ after recon img type,shape:', type(img), img.shape)
+#             print('get_vae_transform/ after recon img:', img.min(), '~', img.max())
+            img = after_vae(img)
+#             print('get_vae_transform/ after post_vae img type,shape:', type(img), img.shape)
+#             print('get_vae_transform/ after post_vae img:', img.min(), '~', img.max())
+            img = torch.from_numpy(img).float()
+            return img
         return wrapper
     
     def get_aug_transform(self, aug_type, aug_target):
@@ -359,13 +393,15 @@ class VAESetDataManager(SetDataManager):
         self.lambda_zlogvar = lambda_zlogvar
         
     def get_data_loader(self, data_file, aug):
-        pre_transform = self.trans_loader.get_crop_transform(aug)
-        post_transform = self.trans_loader.get_hdf5_transform(aug)
+        pre_transform = self.trans_loader.get_simple_transform(aug)
         aug_transform = self.trans_loader.get_vae_transform(self.vaegan, self.lambda_zlogvar)
+        post_transform = self.trans_loader.get_hdf5_transform(aug, inputs='tensor')
         
         dataset = VAESetDataset(data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)
         sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
-        data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)       
+        data_loader_params = dict(batch_sampler = sampler,  num_workers = 0, pin_memory = True) # to debug
+        # TODO: cancel debug mode
+#         data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
         
         return data_loader
