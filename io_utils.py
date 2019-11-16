@@ -113,6 +113,9 @@ def get_checkpoint_dir(params):
         checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
     if params.aug_type is not None:
         checkpoint_dir += '_%s-%s' %(params.aug_type, params.aug_target)
+    if params.vaegan_exp:
+        checkpoint_dir += '/%s-%s-%s' %(params.vaegan_exp, params.vaegan_step, params.zvar_lambda)
+    
     return checkpoint_dir
 
 def get_assigned_file(checkpoint_dir,num):
