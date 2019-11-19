@@ -23,6 +23,7 @@ def describe(obj, obj_str): # support ndarray, tf.Tensor, dict, iterable
     if obj_type == np.ndarray:
         print('\nshape:',obj.shape)
         print('(min, max) = ('+str(obj.min())+', '+str(obj.max())+')')
+        print('(mean, median) = ('+str(obj.mean())+', '+str(np.median(obj))+')')
 
     elif tf.contrib.framework.is_tensor(obj):
         obj_shape = obj.get_shape().as_list() # get_shape().num_elements() can get sum

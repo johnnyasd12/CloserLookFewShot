@@ -120,6 +120,23 @@ def get_train_val_loader(params):
         if params.vaegan_exp is not None:
             # TODO
             vaegan = restore_vaegan(params.dataset, params.vaegan_exp, params.vaegan_step)
+            
+            # DDDDDDEEEEEEEEBBBBUUUUGG DEBUG
+            if True:
+                batch_x, batch_y = vaegan.data(None)
+#                 batch_x = batch_x*0 + 0
+                describe(batch_x, 'train.py/batch_x')
+                describe(batch_x[0:1], 'train.py/batch_x[0:1]')
+                describe(batch_x[1:2], 'train.py/batch_x[1:2]')
+                rec_x = vaegan.rec_samples(batch_x, lambda_zlogvar=params.zvar_lambda) # -1~1
+                fig_x = vaegan.data.data2fig(batch_x[:16], nr=4, nc=4, 
+                                             save_path='./debug/rec_samples/imgs.png')
+                fig_rec = vaegan.data.data2fig(rec_x[:16], nr=4, nc=4, 
+                                              save_path='./debug/rec_samples/imgs_rec.png')
+#                 vaegan.check_weights(name='GeneratorMnist/Conv2d_transpose_2/weights:0')
+#                 describe(rec_x, 'rec_x')
+                
+                
             base_datamgr            = VAESetDataManager(
                                         image_size, n_query=n_query, 
                                         vaegan = vaegan, lambda_zlogvar=params.zvar_lambda, 

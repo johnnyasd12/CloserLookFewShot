@@ -72,7 +72,7 @@ def get_model(params):
             elif params.recons_decoder == 'HiddenRes10':
                 model = ProtoNetAE2(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 6)
         else:
-            model = ProtoNetAE(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda) # WTFFFFFFFF lambda_d just 1
+            model = ProtoNetAE(model_dict[params.model], **train_few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda)
     elif params.method == 'matchingnet':
         model           = MatchingNet( model_dict[params.model], **train_few_shot_params )
     elif params.method in ['relationnet', 'relationnet_softmax']:
@@ -109,13 +109,17 @@ def restore_vaegan(dataset, vae_exp_name, vae_restore_step):
     print('model_dir:',model_dir)
     print('log_dir:',log_dir)
     is_training = True
-    print('initializing GMM_VAE_GAN...')
+    
+    
+    # TODO: del
+    is_training = False
+    print('initializing subnets of GMM_AE_GAN...')
     if dataset == 'omniglot' or dataset == 'cross_char':
         split = 'noLatin' if dataset=='cross_char' else 'train'
         datapath = './filelists/omniglot/hdf5'
         size = 28
         data = Omniglot(datapath=datapath, 
-                        size=size, batch_size=1, 
+                        size=size, batch_size=32, 
                        is_tanh=True, flag='conv', split=split)
 
         generator = GeneratorMnist(size = data.size)
@@ -130,12 +134,14 @@ def restore_vaegan(dataset, vae_exp_name, vae_restore_step):
         raise ValueError('GMM_AE_GAN doesn\'t support dataset \'%s\' currently.' % (dataset))
     
     # load model
+    print('initializing GMM_AE_GAN')
     vaegan = GMM_AE_GAN(
         generator, identity, attribute, discriminator, latent_discriminator, 
         data, is_training, log_dir=log_dir,
         model_dir=model_dir
     )
     print('done.')
+    
     print('restoring GMM_VAE model...')
     vaegan.restore(restore_step)
     print('done.')
