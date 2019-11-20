@@ -119,22 +119,31 @@ def get_train_val_loader(params):
         test_few_shot_params     = get_few_shot_params(params, 'test')
         if params.vaegan_exp is not None:
             # TODO
-            vaegan = restore_vaegan(params.dataset, params.vaegan_exp, params.vaegan_step)
+            vaegan = restore_vaegan(params.dataset, params.vaegan_exp, params.vaegan_step, is_training=False)
             
             # DDDDDDEEEEEEEEBBBBUUUUGG DEBUG
             if True:
-                batch_x, batch_y = vaegan.data(None)
+                batch_x, batch_y = vaegan.data(32) # batch_size actually useless in omniglot & miniImagenet
 #                 batch_x = batch_x*0 + 0
                 describe(batch_x, 'train.py/batch_x')
                 describe(batch_x[0:1], 'train.py/batch_x[0:1]')
-                describe(batch_x[1:2], 'train.py/batch_x[1:2]')
-                rec_x = vaegan.rec_samples(batch_x, lambda_zlogvar=params.zvar_lambda) # -1~1
+#                 describe(batch_x[1:2], 'train.py/batch_x[1:2]')
                 fig_x = vaegan.data.data2fig(batch_x[:16], nr=4, nc=4, 
-                                             save_path='./debug/rec_samples/imgs.png')
-                fig_rec = vaegan.data.data2fig(rec_x[:16], nr=4, nc=4, 
-                                              save_path='./debug/rec_samples/imgs_rec.png')
+                                             save_path='./debug/rec_samples/x_batch.png')
+                rec_batch = vaegan.rec_samples(batch_x, lambda_zlogvar=params.zvar_lambda) # -1~1
+                fig_rec = vaegan.data.data2fig(rec_batch[:16], nr=4, nc=4, 
+                                              save_path='./debug/rec_samples/rec_batch.png')
+                rec_single = vaegan.rec_samples(batch_x[:1], lambda_zlogvar=params.zvar_lambda) # -1~1
+                fig_rec = vaegan.data.data2fig(rec_single[:1], nr=1, nc=1, 
+                                              save_path='./debug/rec_samples/rec_single.png')
+#                 rec_batch = vaegan.rec_samples(batch_x[:1], lambda_zlogvar=params.zvar_lambda) # -1~1
+#                 fig_x = vaegan.data.data2fig(batch_x[:1], nr=1, nc=1, 
+#                                              save_path='./debug/rec_samples/imgs1.png')
+#                 fig_rec = vaegan.data.data2fig(rec_batch[:1], nr=1, nc=1, 
+#                                               save_path='./debug/rec_samples/imgs1_rec.png')
+
 #                 vaegan.check_weights(name='GeneratorMnist/Conv2d_transpose_2/weights:0')
-#                 describe(rec_x, 'rec_x')
+#                 describe(rec_batch, 'rec_batch')
                 
                 
             base_datamgr            = VAESetDataManager(
