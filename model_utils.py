@@ -100,7 +100,7 @@ def get_model(params):
     
     return model
 
-def restore_vaegan(dataset, vae_exp_name, vae_restore_step):
+def restore_vaegan(dataset, vae_exp_name, vae_restore_step, is_training=False):
     experiment_name = vae_exp_name #'omn_noLatin_1114_0956'
     restore_step = vae_restore_step
     llvae_dir = configs.llvae_dir
@@ -108,20 +108,24 @@ def restore_vaegan(dataset, vae_exp_name, vae_restore_step):
     model_dir = os.path.join(llvae_dir, 'models',experiment_name)
     print('model_dir:',model_dir)
     print('log_dir:',log_dir)
-    is_training = True
     
-    
-    # TODO: del
-    is_training = False
     print('initializing subnets of GMM_AE_GAN...')
     if dataset == 'omniglot' or dataset == 'cross_char':
         split = 'noLatin' if dataset=='cross_char' else 'train'
         datapath = './filelists/omniglot/hdf5'
-        size = 28
         data = Omniglot(datapath=datapath, 
-                        size=size, batch_size=32, 
+                        size=28, batch_size=32, 
                        is_tanh=True, flag='conv', split=split)
 
+        generator = GeneratorMnist(size = data.size)
+#         identity = IdentityMnist(data.y_dim, data.z_dim, size = data.size) # z_dim should be data.zc_dim ??
+        identity = IdentityMnist(data.y_dim, data.zc_dim, size = data.size) # z_dim should be data.zc_dim ??
+        attribute = AttributeMnist(data.z_dim, size = data.size)
+        discriminator = DiscriminatorMnistSN(size=data.size)
+#         discriminator = DiscriminatorMnistSNComb(size=data.size) # which to use?
+        latent_discriminator = LatentDiscriminator(y_dim = data.y_dim)
+    elif dataset == 'mnist':
+        data = mnist(is_tanh=True)
         generator = GeneratorMnist(size = data.size)
 #         identity = IdentityMnist(data.y_dim, data.z_dim, size = data.size) # z_dim should be data.zc_dim ??
         identity = IdentityMnist(data.y_dim, data.zc_dim, size = data.size) # z_dim should be data.zc_dim ??
