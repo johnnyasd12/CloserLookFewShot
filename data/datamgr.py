@@ -122,8 +122,10 @@ class TransformLoader:
 #             print('get_vae_transform/ after b4vae img:', img.min(), '~', img.max())
             
     
+    
+    
             # TODO
-            if True:
+            if False:
 #                 img = img*0
                 describe(img, 'datamgr/img')
             rec_img = vaegan.rec_samples(img, lambda_zlogvar=lambda_zlogvar) # 1,h,w,1
