@@ -98,7 +98,7 @@ class TransformLoader:
         transform = transforms.Compose(transform_funcs)
         return transform
     
-    def get_vae_transform(self, vaegan, lambda_zlogvar):
+    def get_vae_transform(self, vaegan, lambda_zlogvar, fake_prob):
         def b4_vae(img):
             '''
             :param img: numpy array, shape=(w,h,1), range=(0~1)
@@ -118,44 +118,49 @@ class TransformLoader:
             return img
             
         def wrapper(img):
-            img = img.cpu().numpy()
-#             print('get_vae_transform/img type,shape:', type(img), img.shape)
-#             print('get_vae_transform/img:', img.min(), '~', img.max())
-            img = b4_vae(img) # 1,h,w,1
-#             print('get_vae_transform/ after b4vae img type,shape:', type(img), img.shape)
-#             print('get_vae_transform/ after b4vae img:', img.min(), '~', img.max())
+            rand_num = np.random.random()
+            if rand_num <= fake_prob:
 
-            rec_img = vaegan.rec_samples(img, lambda_zlogvar=lambda_zlogvar) # 1,h,w,1
-#             print('get_vae_transform/ after recon img type,shape:', type(img), img.shape)
-#             print('get_vae_transform/ after recon img:', img.min(), '~', img.max())
-            
-            # TODO: DDDDDEEEEBBBBUUUUUGGGGG
-            if configs.debug:
-                idx = str(np.random.randint(3))
-                dst_dir = './debug/rec_samples'
-                draw_img = np.repeat(img, repeats=3, axis=3) # 1,h,w,3
-                draw_rec_img = np.repeat(rec_img,repeats=3, axis=3) # 1,h,w,3
-                print('\n')
-#                 describe(rec_img, 'datamgr/rec_img')
-#                 print('draw_img.shape:', draw_img.shape)
-#                 print('draw_rec_img.shape:', draw_rec_img.shape)
-#                 print('vaegan.is_training:', vaegan.is_training)
-#                 print('vaegan.data.is_tanh:', vaegan.data.is_tanh)
-                fig = vaegan.data.data2fig(draw_img[:,:,:,:1], nr=1, nc=1, 
-                                           save_path=dst_dir+'/%sfig.png'%(idx)) # this is fine
-                plt.close(fig)
-                fig_rec = vaegan.data.data2fig(draw_rec_img[:,:,:,:1], nr=1, nc=1, 
-                                               save_path=dst_dir+'/%sfig_rec.png'%(idx))
-                plt.close(fig_rec)
-#                 vaegan.data.sample2fig2jpg(draw_img[0], dst_dir, '%ssample.jpg'%(idx))
-#                 vaegan.data.sample2fig2jpg(draw_rec_img[0], dst_dir, '%ssample_rec.jpg'%(idx))
-#                 vaegan.check_weights(name='GeneratorMnist/Conv2d_transpose_2/weights:0')
-#                 if idx == '0':
-#                     raise 'just stop mannnnn'
-            final_img = after_vae(rec_img)
-#             print('get_vae_transform/ after post_vae img type,shape:', type(img), img.shape)
-#             print('get_vae_transform/ after post_vae img:', img.min(), '~', img.max())
-            final_img = torch.from_numpy(final_img).float()
+                img = img.cpu().numpy()
+    #             print('get_vae_transform/img type,shape:', type(img), img.shape)
+    #             print('get_vae_transform/img:', img.min(), '~', img.max())
+                img = b4_vae(img) # 1,h,w,1
+    #             print('get_vae_transform/ after b4vae img type,shape:', type(img), img.shape)
+    #             print('get_vae_transform/ after b4vae img:', img.min(), '~', img.max())
+
+                rec_img = vaegan.rec_samples(img, lambda_zlogvar=lambda_zlogvar) # 1,h,w,1
+    #             print('get_vae_transform/ after recon img type,shape:', type(img), img.shape)
+    #             print('get_vae_transform/ after recon img:', img.min(), '~', img.max())
+
+                # TODO: DDDDDEEEEBBBBUUUUUGGGGG
+                if configs.debug:
+                    idx = str(np.random.randint(3))
+                    dst_dir = './debug/rec_samples'
+                    draw_img = np.repeat(img, repeats=3, axis=3) # 1,h,w,3
+                    draw_rec_img = np.repeat(rec_img,repeats=3, axis=3) # 1,h,w,3
+                    print('\n')
+    #                 describe(rec_img, 'datamgr/rec_img')
+    #                 print('draw_img.shape:', draw_img.shape)
+    #                 print('draw_rec_img.shape:', draw_rec_img.shape)
+    #                 print('vaegan.is_training:', vaegan.is_training)
+    #                 print('vaegan.data.is_tanh:', vaegan.data.is_tanh)
+                    fig = vaegan.data.data2fig(draw_img[:,:,:,:1], nr=1, nc=1, 
+                                               save_path=dst_dir+'/%sfig.png'%(idx)) # this is fine
+                    plt.close(fig)
+                    fig_rec = vaegan.data.data2fig(draw_rec_img[:,:,:,:1], nr=1, nc=1, 
+                                                   save_path=dst_dir+'/%sfig_rec.png'%(idx))
+                    plt.close(fig_rec)
+    #                 vaegan.data.sample2fig2jpg(draw_img[0], dst_dir, '%ssample.jpg'%(idx))
+    #                 vaegan.data.sample2fig2jpg(draw_rec_img[0], dst_dir, '%ssample_rec.jpg'%(idx))
+    #                 vaegan.check_weights(name='GeneratorMnist/Conv2d_transpose_2/weights:0')
+    #                 if idx == '0':
+    #                     raise 'just stop mannnnn'
+                final_img = after_vae(rec_img)
+    #             print('get_vae_transform/ after post_vae img type,shape:', type(img), img.shape)
+    #             print('get_vae_transform/ after post_vae img:', img.min(), '~', img.max())
+                final_img = torch.from_numpy(final_img).float()
+            else:
+                final_img = img
             return final_img
         return wrapper
     
@@ -412,7 +417,7 @@ class SetDataManager(DataManager):
         return data_loader
 
 class VAESetDataManager(SetDataManager):
-    def __init__(self, image_size, n_way, n_support, n_query, vaegan, lambda_zlogvar, n_episode =100, recons_func = None):
+    def __init__(self, image_size, n_way, n_support, n_query, vaegan, lambda_zlogvar, fake_prob, n_episode =100, recons_func = None):
         super(VAESetDataManager, self).__init__(image_size, n_way, n_support, n_query, n_episode, recons_func)
 #         self.image_size = image_size
 #         self.n_way = n_way
@@ -423,10 +428,11 @@ class VAESetDataManager(SetDataManager):
         # above already implemented in SetDataManager
         self.vaegan = vaegan
         self.lambda_zlogvar = lambda_zlogvar
+        self.fake_prob = fake_prob
         
     def get_data_loader(self, data_file, aug):
         pre_transform = self.trans_loader.get_simple_transform(aug)
-        aug_transform = self.trans_loader.get_vae_transform(self.vaegan, self.lambda_zlogvar)
+        aug_transform = self.trans_loader.get_vae_transform(self.vaegan, self.lambda_zlogvar, self.fake_prob)
         post_transform = self.trans_loader.get_hdf5_transform(aug, inputs='tensor')
         
         dataset = VAESetDataset(data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)

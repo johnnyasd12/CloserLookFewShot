@@ -54,6 +54,7 @@ def parse_args(script):
     parser.add_argument('--vaegan_exp', default=None, type=str, help='the GMM_VAE_GAN experiment name')
     parser.add_argument('--vaegan_step', default=None, type=int, help='the GMM_VAE_GAN restore step')
     parser.add_argument('--zvar_lambda', default=None, type=float, help='the GMM_VAE_GAN zlogvar_lambda')
+    parser.add_argument('--fake_prob', default=None, type=float, help='the probability to replace real image with GMM_VAE_GAN generated image. ')
 
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
@@ -114,7 +115,8 @@ def get_checkpoint_dir(params):
     if params.aug_type is not None:
         checkpoint_dir += '_%s-%s' %(params.aug_type, params.aug_target)
     if params.vaegan_exp:
-        checkpoint_dir += '/%s-%s-%s' %(params.vaegan_exp, params.vaegan_step, params.zvar_lambda)
+        checkpoint_dir += '/%s-%s/lamb_var%s-fake_prob%s' %(params.vaegan_exp, params.vaegan_step, 
+                                        params.zvar_lambda, params.fake_prob)
     
     return checkpoint_dir
 
