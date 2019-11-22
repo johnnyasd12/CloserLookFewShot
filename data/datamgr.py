@@ -22,6 +22,10 @@ from datas import *
 
 from my_utils import describe
 
+from matplotlib import pyplot as plt
+
+import configs
+
 class TransformLoader:
     def __init__(self, image_size, 
                  normalize_param    = dict(mean= [0.485, 0.456, 0.406] , std=[0.229, 0.224, 0.225]),
@@ -120,39 +124,34 @@ class TransformLoader:
             img = b4_vae(img) # 1,h,w,1
 #             print('get_vae_transform/ after b4vae img type,shape:', type(img), img.shape)
 #             print('get_vae_transform/ after b4vae img:', img.min(), '~', img.max())
-            
-    
-    
-    
-            # TODO
-            if False:
-#                 img = img*0
-                describe(img, 'datamgr/img')
+
             rec_img = vaegan.rec_samples(img, lambda_zlogvar=lambda_zlogvar) # 1,h,w,1
 #             print('get_vae_transform/ after recon img type,shape:', type(img), img.shape)
 #             print('get_vae_transform/ after recon img:', img.min(), '~', img.max())
             
             # TODO: DDDDDEEEEBBBBUUUUUGGGGG
-            if True:
+            if configs.debug:
                 idx = str(np.random.randint(3))
                 dst_dir = './debug/rec_samples'
                 draw_img = np.repeat(img, repeats=3, axis=3) # 1,h,w,3
                 draw_rec_img = np.repeat(rec_img,repeats=3, axis=3) # 1,h,w,3
                 print('\n')
-                describe(rec_img, 'datamgr/rec_img')
+#                 describe(rec_img, 'datamgr/rec_img')
 #                 print('draw_img.shape:', draw_img.shape)
 #                 print('draw_rec_img.shape:', draw_rec_img.shape)
 #                 print('vaegan.is_training:', vaegan.is_training)
 #                 print('vaegan.data.is_tanh:', vaegan.data.is_tanh)
                 fig = vaegan.data.data2fig(draw_img[:,:,:,:1], nr=1, nc=1, 
                                            save_path=dst_dir+'/%sfig.png'%(idx)) # this is fine
+                plt.close(fig)
                 fig_rec = vaegan.data.data2fig(draw_rec_img[:,:,:,:1], nr=1, nc=1, 
                                                save_path=dst_dir+'/%sfig_rec.png'%(idx))
+                plt.close(fig_rec)
 #                 vaegan.data.sample2fig2jpg(draw_img[0], dst_dir, '%ssample.jpg'%(idx))
 #                 vaegan.data.sample2fig2jpg(draw_rec_img[0], dst_dir, '%ssample_rec.jpg'%(idx))
 #                 vaegan.check_weights(name='GeneratorMnist/Conv2d_transpose_2/weights:0')
-                if idx == '0':
-                    raise 'just stop mannnnn'
+#                 if idx == '0':
+#                     raise 'just stop mannnnn'
             final_img = after_vae(rec_img)
 #             print('get_vae_transform/ after post_vae img type,shape:', type(img), img.shape)
 #             print('get_vae_transform/ after post_vae img:', img.min(), '~', img.max())
@@ -369,8 +368,8 @@ class AugSetDataManager(DataManager):
     def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
 #         transform = self.trans_loader.get_composed_transform(aug) # TODO: maybe change here?
         pre_transform = self.trans_loader.get_crop_transform(aug)
-        post_transform = self.trans_loader.get_hdf5_transform(aug)
         aug_transform = self.trans_loader.get_aug_transform(self.aug_type, aug_target=self.aug_target)
+        post_transform = self.trans_loader.get_hdf5_transform(aug)
         dataset = AugSetDataset( data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_target=self.aug_target)
         dataset.set_aug_transform(aug_transform)
         self.dataset = dataset
@@ -433,10 +432,23 @@ class VAESetDataManager(SetDataManager):
         dataset = VAESetDataset(data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)
         sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
 #         data_loader_params = dict(batch_sampler = sampler,  num_workers = 0, pin_memory = True) # to debug
-        data_loader_params = dict(batch_sampler = sampler,  num_workers = 0, pin_memory = False) # to debug
+        data_loader_params = dict(batch_sampler = sampler,  num_workers = 0, pin_memory = False, 
+                                 collate_fn=self.get_collate(None)) # to debug
         # TODO: cancel debug mode
 #         data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
         
         return data_loader
+    
+    def get_collate(self, batch_transform):
+        def mycollate(batch):
+            collated = torch.utils.data.dataloader.default_collate(batch)
+            if configs.debug:
+                print('batch[0]:', type(batch[0]), len(batch[0]))
+                print('collated:', type(collated), len(collated))
+            if batch_transform is not None:
+                collated = batch_transform(collated)
+            return collated
+        return mycollate
+
 

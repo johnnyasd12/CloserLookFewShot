@@ -119,14 +119,15 @@ def get_train_val_loader(params):
         test_few_shot_params     = get_few_shot_params(params, 'test')
         if params.vaegan_exp is not None:
             # TODO
-            vaegan = restore_vaegan(params.dataset, params.vaegan_exp, params.vaegan_step, is_training=False)
+            is_training = False
+            vaegan = restore_vaegan(params.dataset, params.vaegan_exp, params.vaegan_step, is_training=is_training)
             
             # DDDDDDEEEEEEEEBBBBUUUUGG DEBUG
-            if True:
+            if configs.debug:
                 batch_x, batch_y = vaegan.data(32) # batch_size actually useless in omniglot & miniImagenet
 #                 batch_x = batch_x*0 + 0
-                describe(batch_x, 'train.py/batch_x')
-                describe(batch_x[0:1], 'train.py/batch_x[0:1]')
+#                 describe(batch_x, 'train.py/batch_x')
+#                 describe(batch_x[0:1], 'train.py/batch_x[0:1]')
 #                 describe(batch_x[1:2], 'train.py/batch_x[1:2]')
                 fig_x = vaegan.data.data2fig(batch_x[:16], nr=4, nc=4, 
                                              save_path='./debug/rec_samples/x_batch.png')

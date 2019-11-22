@@ -15,6 +15,8 @@ llvae_dir = configs.llvae_dir
 sys.path.append(llvae_dir)
 from datas import Omniglot
 from nets import *
+import LrLiVAE
+LrLiVAE.DEBUG = configs.debug
 from LrLiVAE import GMM_AE_GAN
 
 def get_few_shot_params(params, mode=None):
