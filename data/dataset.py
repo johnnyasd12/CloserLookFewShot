@@ -12,7 +12,7 @@ import h5py
 from my_utils import *
 
 class VAESetDataset:
-    def __init__(self, data_file, batch_size, pre_transform, post_transform, aug_transform): # only ONE Class for one iteration, but batch_sampler call this several times at once
+    def __init__(self, data_file, batch_size, pre_transform, post_transform, aug_transform): # only ONE Class for one item, but batch_sampler call this several times at once
         with open(data_file, 'r') as f: # data_file is json
             self.meta = json.load(f)
 
@@ -49,7 +49,7 @@ class VAESetDataset:
         
 
 class AugSetDataset:
-    def __init__(self, data_file, batch_size, pre_transform, post_transform, aug_target): # only ONE Class for one iteration, but batch_sampler call this several times at once
+    def __init__(self, data_file, batch_size, pre_transform, post_transform, aug_target): # only ONE Class for one item, but batch_sampler call this several times at once
         with open(data_file, 'r') as f: # data_file is json
             self.meta = json.load(f)
 
@@ -86,7 +86,7 @@ class AugSetDataset:
         for sub_dataset in self.sub_datasets:
             sub_dataset.set_aug_transform(aug_transform)
 
-class AugSubDataset: # one iteration is one image of one class
+class AugSubDataset: # one item is one image of one class
     def __init__(self, sub_meta, cl, pre_transform, post_transform=transforms.ToTensor(), aug_transform=identity, target_transform=identity, aug_target='batch'):
         self.sub_meta = sub_meta # list of image names(dirs)
         self.cl = cl 
