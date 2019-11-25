@@ -245,12 +245,12 @@ class HDF5Dataset:
             
 
 class SimpleDataset:
-    def __init__(self, data_file, transform, target_transform=identity):
+    def __init__(self, data_file, transform, target_transform=identity, return_path=False):
         with open(data_file, 'r') as f:
             self.meta = json.load(f)
         self.transform = transform
         self.target_transform = target_transform
-
+        self.return_path = return_path
 
     def __getitem__(self,i):
         image_path = os.path.join(self.meta['image_names'][i])
@@ -263,7 +263,10 @@ class SimpleDataset:
 #         timer = Timer('target_transform')
         target = self.target_transform(self.meta['image_labels'][i])
 #         timer()
-        return img, target
+        if self.return_path:
+            return image_path, img, target
+        else:
+            return img, target
 
     def __len__(self):
         return len(self.meta['image_names'])
