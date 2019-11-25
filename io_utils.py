@@ -87,7 +87,13 @@ def parse_args(script):
         parser.add_argument('--reduce_mode', choices=['pca', 'pca-tsne', 'tsne'])
         parser.add_argument('--d_classes', default=5, type=int, help='number of classes should be draw')
         parser.add_argument('--d_samples', default=20, type=int, help='number of samples per class should be draw')
-    
+    elif script == 'make_llvae_dataset':
+        parser.add_argument('--dataset', choices=['omniglot', 'CUB', 'miniImagenet', 'emnist'], help='dataset you want to reconstruct by Lr-LiVAE.')
+        parser.add_argument('--mode', choices=['all', 'trian', 'val', 'test', 'noLatin'], help='data split.')
+        parser.add_argument('--batch_size', default=32, type=int, help='batch size when generating reconstructed samples.')
+        parser.add_argument('--is_training', action='restore_true', help='whether the gmm_vae_gan set as training mode.')
+        parser.add_argument('--gen_mode', default='rec', choices=['rec', 'gen'])
+#         parser.add_argument('--vae_exp_name', )
     else:
         raise ValueError('Unknown script')
     

@@ -43,7 +43,7 @@ class TransformLoader:
             return method(self.image_size) 
         elif transform_type=='CenterCrop':
             return method(self.image_size) 
-        elif transform_type=='Scale':
+        elif transform_type=='Scale': # Scale is actually Resize
             return method([int(self.image_size*1.15), int(self.image_size*1.15)])
         elif transform_type=='Normalize':
             return method(**self.normalize_param )
@@ -299,6 +299,22 @@ class HDF5DataManager(DataManager):
         dataset = HDF5Dataset(data_file, transform)
         data_loader_params = dict(batch_size = self.batch_size, shuffle = True, num_workers = 12, pin_memory = True) # TODO: tune pin_memory
 #         data_loader_params = dict(batch_size = self.batch_size, shuffle = True, num_workers = 0, pin_memory = True) # BUGFIX: set num_workers=0 to fix ConnectionResetError: [Errno 104] Connection reset by peer?
+        data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
+
+        return data_loader
+
+class OrderedDataManager(DataManager):
+    def __init__(self, image_size, batch_size, aug):
+        super(OrderedDataManager, self).__init__()
+        self.batch_size = batch_size
+        self.trans_loader = TransformLoader(image_size)
+        self.aug = aug
+        
+    def get_data_loader(self, data_file):
+#         transform = transforms.ToTensor()
+        transform = self.trans_loader.get_simple_transform(aug=self.aug)
+        dataset = SimpleDataset(data_file, transform=transform, return_path=True)
+        data_loader_params = dict(batch_size = self.batch_size, shuffle = False, num_workers = 12, pin_memory = True) # not sure if should be True when input to a TensorFlow model
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
 
         return data_loader
