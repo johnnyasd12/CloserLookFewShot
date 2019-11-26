@@ -314,7 +314,7 @@ class OrderedDataManager(DataManager):
 #         transform = transforms.ToTensor()
         transform = self.trans_loader.get_simple_transform(aug=self.aug)
         dataset = SimpleDataset(data_file, transform=transform, return_path=True)
-        data_loader_params = dict(batch_size = self.batch_size, shuffle = False, num_workers = 12, pin_memory = True) # not sure if should be True when input to a TensorFlow model
+        data_loader_params = dict(batch_size = self.batch_size, shuffle = True, num_workers = 12, pin_memory = True) # not sure if should be True when input to a TensorFlow model
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
 
         return data_loader
