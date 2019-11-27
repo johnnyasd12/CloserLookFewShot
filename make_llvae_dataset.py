@@ -53,6 +53,14 @@ def save_img(path, img, verbose=0):
     if verbose > 0:
         print('finish save image to:', path)
 
+def n_gen_imgs_exists(batch_imgs_path):
+    n_imgs = len(batch_imgs_path)
+    count = 0
+    for file_path in batch_imgs_path:
+        if os.path.isfile(file_path):
+            count += 1
+    return count
+
 if __name__ == '__main__':
 
 #     args = parse_args('make_llvae_dataset')
@@ -104,42 +112,58 @@ if __name__ == '__main__':
 #     out_folder = os.path.join('debug','rec_dataset')
     
     tqdm_data_loader = tqdm(data_loader)
+    n_data = 0
+    sum_gen_files_exists = 0
     for i, data in enumerate(tqdm_data_loader):
         batch_img_path, batch_x, batch_y = data[0], data[1].numpy(), data[2].numpy()
         n_samples = batch_y.shape[0]
+        n_gen_files_exists = n_gen_imgs_exists(batch_img_path)
+        sum_gen_files_exists += n_gen_files_exists
+        n_data += n_samples
+        any_file_not_generated = n_gen_files_exists != n_samples
         
-        batch_x_rec = b4vae(batch_x, gvaegan.data.is_tanh, is_color)
-        batch_x_rec = gvaegan.rec_samples(batch_x_rec, args.zvar_lambda)
-        batch_x_rec = after_vae(batch_x_rec, gvaegan.data.is_tanh, is_color, out_order='NHWC')
-        
-        for j in range(n_samples):
-#                 sample_ori = b4vae(batch_x[j:j+1], is_tanh=gvaegan.data.is_tanh, is_color=is_color)
-            sample_ori_path = batch_img_path[j]
-#                 sample_rec = batch_x_rec[j:j+1]
-            sample_rec = batch_x_rec[j]
-#                 describe(sample_rec, 'sample_rec')
+        if any_file_not_generated:
+            print(True)
+            batch_x_rec = b4vae(batch_x, gvaegan.data.is_tanh, is_color)
+            batch_x_rec = gvaegan.rec_samples(batch_x_rec, args.zvar_lambda)
+            batch_x_rec = after_vae(batch_x_rec, gvaegan.data.is_tanh, is_color, out_order='NHWC')
 
-#                 file_name = str(j)+'.jpg'
-#                 out_sample_path = os.path.join(out_folder, file_name)
-#                 fig = gvaegan.data.data2fig(sample, save_path=out_sample_path)
+            for j in range(n_samples):
+    #                 sample_ori = b4vae(batch_x[j:j+1], is_tanh=gvaegan.data.is_tanh, is_color=is_color)
+                sample_ori_path = batch_img_path[j]
+    #                 sample_rec = batch_x_rec[j:j+1]
+                sample_rec = batch_x_rec[j]
+    #                 describe(sample_rec, 'sample_rec')
 
-#                 rec_file_name = str(j)+'rec'+str(args.zvar_lambda)+'.jpg'
-#                 out_sample_rec_path = os.path.join(out_folder, rec_file_name)
+    #                 file_name = str(j)+'.jpg'
+    #                 out_sample_path = os.path.join(out_folder, file_name)
+    #                 fig = gvaegan.data.data2fig(sample, save_path=out_sample_path)
 
-            out_sample_rec_path = get_gen_path(
-                sample_ori_path, 
-                vaegan_exp=args.vaegan_exp, 
-                vaegan_step=args.vaegan_step, 
-                zvar_lambda=args.zvar_lambda, 
-                is_training=args.is_training
-            )
-            out_sample_rec_dir = os.path.dirname(out_sample_rec_path)
-            if not os.path.exists(out_sample_rec_dir):
-                os.makedirs(out_sample_rec_dir)
-            save_img(out_sample_rec_path, sample_rec)
-#                 print('out_sample_rec_path:', out_sample_rec_path)
-#                 fig_rec = gvaegan.data.data2fig(sample_rec, nr=1, nc=1, save_path=out_sample_rec_path)
+    #                 rec_file_name = str(j)+'rec'+str(args.zvar_lambda)+'.jpg'
+    #                 out_sample_rec_path = os.path.join(out_folder, rec_file_name)
 
+                out_sample_rec_path = get_gen_path(
+                    sample_ori_path, 
+                    vaegan_exp=args.vaegan_exp, 
+                    vaegan_step=args.vaegan_step, 
+                    zvar_lambda=args.zvar_lambda, 
+                    is_training=args.is_training
+                )
+                out_sample_rec_dir = os.path.dirname(out_sample_rec_path)
+                if not os.path.exists(out_sample_rec_dir):
+                    os.makedirs(out_sample_rec_dir)
+                save_img(out_sample_rec_path, sample_rec)
+    #                 print('out_sample_rec_path:', out_sample_rec_path)
+    #                 fig_rec = gvaegan.data.data2fig(sample_rec, nr=1, nc=1, save_path=out_sample_rec_path)
+    
+    print('n_data:', n_data)
+    print('sum_gen_files_exists:', sum_gen_files_exists)
+    if sum_gen_files_exists == n_data:
+        print('Warning: ALL %d files already exist None of them are changed by the program.' % (n_data))
+    elif sum_gen_files_exists > 0:
+        print('Warning: There are %d files already exist and some of them are overloaded by the program.' % (sum_gen_files_exists))
+    else: # none exist file
+        print('The program successfully generated %d images.' % (n_data))
 
 
 
