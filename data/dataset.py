@@ -259,6 +259,7 @@ class VAESubDataset: # one iteration is one image of one class
         vaegan_step = self.vaegan_params['step']
         fake_prob = self.vaegan_params['fake_prob']
         lambda_zlogvar = self.vaegan_params['lambda_var']
+        vaegan_is_train = self.vaegan_params['is_training']
         
         rand_num = np.random.random()
         use_vaegan_img = rand_num <= fake_prob
@@ -270,7 +271,7 @@ class VAESubDataset: # one iteration is one image of one class
                 vaegan_exp=vaegan_exp, 
                 vaegan_step=vaegan_step, 
                 zvar_lambda=lambda_zlogvar, 
-                is_training=True # TODO: tunable???
+                is_training=vaegan_is_train
             )
         img = Image.open(image_path).convert('RGB')
         # TODO: different transform

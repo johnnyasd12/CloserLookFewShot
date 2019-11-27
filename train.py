@@ -151,6 +151,7 @@ def get_train_val_loader(params):
                                         image_size, n_query=n_query, 
                                         vaegan_exp = params.vaegan_exp, 
                                         vaegan_step = params.vaegan_step, 
+                                        vaegan_is_train = params.vaegan_is_train, 
                                         lambda_zlogvar=params.zvar_lambda, 
                                         fake_prob = params.fake_prob, 
                                         **train_few_shot_params)
