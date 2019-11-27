@@ -10,9 +10,51 @@ identity = lambda x:x
 
 import h5py
 from my_utils import *
+from make_llvae_dataset import get_gen_path
 
+# class VAESetDataset:
+#     def __init__(self, data_file, batch_size, pre_transform, post_transform, aug_transform): # only ONE Class for one item, but batch_sampler call this several times at once
+#         with open(data_file, 'r') as f: # data_file is json
+#             self.meta = json.load(f)
+
+#         self.cl_list = np.unique(self.meta['image_labels']).tolist()
+#         self.debug_flag = 0 # another debug flag
+
+#         self.sub_meta = {} # ALL images, content = class_1: [data_path_1, ..., data_path_n], class_k: [data_path_1, ..., ]
+#         for cl in self.cl_list:
+#             self.sub_meta[cl] = []
+
+#         for x,y in zip(self.meta['image_names'],self.meta['image_labels']):
+#             self.sub_meta[y].append(x)
+
+# #         global global_datasets # for multi processes
+# #         global_datasets = []
+#         self.sub_dataloaders = [] # there're k dataloaders, k is # classes
+#         self.sub_datasets = [] # k datasets, k is # classes
+#         sub_data_loader_params = dict(batch_size = batch_size, # how many data to grab at current category???
+#                                   shuffle = True,
+#                                   num_workers = 0, #use main thread only or may receive multiple batches
+#                                   pin_memory = False)        
+#         for cl in self.cl_list:
+#             # can utilize AugSubDataset, but don't use set_aug_transform() & aug_target
+#             sub_dataset = AugSubDataset(self.sub_meta[cl], cl, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)
+#             self.sub_datasets.append(sub_dataset)
+#             self.sub_dataloaders.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
+
+#     def __getitem__(self,i):
+#         return next(iter(self.sub_dataloaders[i]))
+
+#     def __len__(self):
+#         return len(self.cl_list)
+        
 class VAESetDataset:
-    def __init__(self, data_file, batch_size, pre_transform, post_transform, aug_transform): # only ONE Class for one item, but batch_sampler call this several times at once
+    def __init__(self, data_file, batch_size, transform, fake_img_transform, vaegan_params): # only ONE Class for one item, but batch_sampler call this several times at once
+#         self.vaegan_exp = vaegan_exp
+#         self.vaegan_step = vaegan_step
+#         self.lamdba_zlogvar = lambda_zlogvar
+#         self.fake_prob = fake_prob
+        self.vaegan_params = vaegan_params
+        
         with open(data_file, 'r') as f: # data_file is json
             self.meta = json.load(f)
 
@@ -35,8 +77,7 @@ class VAESetDataset:
                                   num_workers = 0, #use main thread only or may receive multiple batches
                                   pin_memory = False)        
         for cl in self.cl_list:
-            # can utilize AugSubDataset, but don't use set_aug_transform() & aug_target
-            sub_dataset = AugSubDataset(self.sub_meta[cl], cl, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)
+            sub_dataset = VAESubDataset(self.sub_meta[cl], cl, transform=transform, fake_img_transform=fake_img_transform, vaegan_params=vaegan_params)
             self.sub_datasets.append(sub_dataset)
             self.sub_dataloaders.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
 
@@ -45,8 +86,6 @@ class VAESetDataset:
 
     def __len__(self):
         return len(self.cl_list)
-        
-        
 
 class AugSetDataset:
     def __init__(self, data_file, batch_size, pre_transform, post_transform, aug_target): # only ONE Class for one item, but batch_sampler call this several times at once
@@ -197,6 +236,44 @@ class SetDataset:
 
     def __len__(self):
         return len(self.cl_list)
+
+class VAESubDataset: # one iteration is one image of one class
+    def __init__(self, sub_meta, cl, vae_params, transform=transforms.ToTensor(), fake_img_transform=None, target_transform=identity):
+        '''
+        Args:
+            vae_params (dict): keys = ['exp_name', 'step', 'lambda_var', 'fake_prob']
+        '''
+        self.sub_meta = sub_meta # list of image names(dirs)
+        self.cl = cl 
+        self.transform = transform
+        self.fake_img_transform = fake_img_transform
+        self.target_transform = target_transform
+        self.vae_params = vae_params
+
+    def __getitem__(self,i):
+        vaegan_exp = vae_params['exp_name']
+        vaegan_step = vae_params['step']
+        fake_prob = vae_params['fake_prob']
+        lambda_zlogvar = vae_params['lambda_var']
+        rand_num = np.random.random()
+        
+        image_path = os.path.join( self.sub_meta[i])
+        if rand_num <= fake_prob:
+            image_path = get_gen_path(
+                ori_file=image_path, 
+                vaegan_exp=vaegan_exp, 
+                vaegan_step=vaegan_step, 
+                zvar_lambda=lambda_zlogvar, 
+                is_training=True # TODO: tunable???
+            )
+        img = Image.open(image_path).convert('RGB')
+        # TODO: different transform
+        if rand_num <= fake_prob:
+            img = self.fake_img_transform(img)
+        else:
+            img = self.transform(img)
+        target = self.target_transform(self.cl)
+        return img, target
 
 class SubDataset: # one iteration is one image of one class
     def __init__(self, sub_meta, cl, transform=transforms.ToTensor(), target_transform=identity):

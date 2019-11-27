@@ -149,9 +149,16 @@ def get_train_val_loader(params):
                 
             base_datamgr            = VAESetDataManager(
                                         image_size, n_query=n_query, 
-                                        vaegan = vaegan, lambda_zlogvar=params.zvar_lambda, 
+                                        vaegan_exp = params.vaegan_exp, 
+                                        vaegan_step = params.vaegan_step, 
+                                        lambda_zlogvar=params.zvar_lambda, 
                                         fake_prob = params.fake_prob, 
                                         **train_few_shot_params)
+#             base_datamgr            = VAESetDataManager(
+#                                         image_size, n_query=n_query, 
+#                                         vaegan = vaegan, lambda_zlogvar=params.zvar_lambda, 
+#                                         fake_prob = params.fake_prob, 
+#                                         **train_few_shot_params)
             # train_val or val???
             val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
             

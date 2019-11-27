@@ -433,25 +433,28 @@ class SetDataManager(DataManager):
         return data_loader
 
 class VAESetDataManager(SetDataManager):
-    def __init__(self, image_size, n_way, n_support, n_query, vaegan, lambda_zlogvar, fake_prob, n_episode =100, recons_func = None):
+    def __init__(self, image_size, n_way, n_support, n_query, vaegan_exp, vaegan_step, lambda_zlogvar, fake_prob, n_episode =100, recons_func = None):
         super(VAESetDataManager, self).__init__(image_size, n_way, n_support, n_query, n_episode, recons_func)
-#         self.image_size = image_size
-#         self.n_way = n_way
-#         self.batch_size = n_support + n_query
-#         self.n_episode = n_episode
-
-#         self.trans_loader = TransformLoader(image_size)
-        # above already implemented in SetDataManager
-        self.vaegan = vaegan
-        self.lambda_zlogvar = lambda_zlogvar
-        self.fake_prob = fake_prob
+        self.vaegan_params = {
+            'exp_name':vaegan_exp, 
+            'step':vaegan_step, 
+            'lambda_var':lambda_zlogvar, 
+            'fake_prob':fake_prob, 
+        }
+#         self.vaegan_exp = vaegan_exp
+#         self.vaegan_step = vaegan_step
+#         self.lambda_zlogvar = lambda_zlogvar
+#         self.fake_prob = fake_prob
         
     def get_data_loader(self, data_file, aug):
-        pre_transform = self.trans_loader.get_simple_transform(aug)
-        aug_transform = self.trans_loader.get_vae_transform(self.vaegan, self.lambda_zlogvar, self.fake_prob)
-        post_transform = self.trans_loader.get_hdf5_transform(aug, inputs='tensor')
-        
-        dataset = VAESetDataset(data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)
+#         pre_transform = self.trans_loader.get_simple_transform(aug)
+#         aug_transform = self.trans_loader.get_vae_transform(self.vaegan, self.lambda_zlogvar, self.fake_prob)
+#         post_transform = self.trans_loader.get_hdf5_transform(aug, inputs='tensor')
+        transform = self.trans_loader.get_composed_transform(aug)
+        fake_img_transform = self.trans_loader.get_hdf5_transform(aug)
+        dataset = VAESetDataset(
+            data_file, batch_size=self.batch_size, transform, fake_img_transform, vaegan_params)
+#         dataset = VAESetDataset(data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)
         sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
 #         data_loader_params = dict(batch_sampler = sampler,  num_workers = 0, pin_memory = True) # to debug
         data_loader_params = dict(batch_sampler = sampler,  num_workers = 0, pin_memory = False, 
@@ -461,16 +464,40 @@ class VAESetDataManager(SetDataManager):
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
         
         return data_loader
+
+
+# class VAESetDataManager(SetDataManager):
+#     def __init__(self, image_size, n_way, n_support, n_query, vaegan, lambda_zlogvar, fake_prob, n_episode =100, recons_func = None):
+#         super(VAESetDataManager, self).__init__(image_size, n_way, n_support, n_query, n_episode, recons_func)
+#         self.vaegan = vaegan
+#         self.lambda_zlogvar = lambda_zlogvar
+#         self.fake_prob = fake_prob
+        
+#     def get_data_loader(self, data_file, aug):
+#         pre_transform = self.trans_loader.get_simple_transform(aug)
+#         aug_transform = self.trans_loader.get_vae_transform(self.vaegan, self.lambda_zlogvar, self.fake_prob)
+#         post_transform = self.trans_loader.get_hdf5_transform(aug, inputs='tensor')
+        
+#         dataset = VAESetDataset(data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)
+#         sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
+# #         data_loader_params = dict(batch_sampler = sampler,  num_workers = 0, pin_memory = True) # to debug
+#         data_loader_params = dict(batch_sampler = sampler,  num_workers = 0, pin_memory = False, 
+#                                  collate_fn=self.get_collate(None)) # to debug
+#         # TODO: cancel debug mode
+# #         data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)
+#         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
+        
+#         return data_loader
     
-    def get_collate(self, batch_transform):
-        def mycollate(batch):
-            collated = torch.utils.data.dataloader.default_collate(batch)
-            if configs.debug:
-                print('batch[0]:', type(batch[0]), len(batch[0]))
-                print('collated:', type(collated), len(collated))
-            if batch_transform is not None:
-                collated = batch_transform(collated)
-            return collated
-        return mycollate
+#     def get_collate(self, batch_transform):
+#         def mycollate(batch):
+#             collated = torch.utils.data.dataloader.default_collate(batch)
+#             if configs.debug:
+#                 print('batch[0]:', type(batch[0]), len(batch[0]))
+#                 print('collated:', type(collated), len(collated))
+#             if batch_transform is not None:
+#                 collated = batch_transform(collated)
+#             return collated
+#         return mycollate
 
 
