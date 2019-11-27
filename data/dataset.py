@@ -279,10 +279,10 @@ class VAESubDataset: # one iteration is one image of one class
         else:
             img = self.transform(img)
         
-        if True:
-            from my_utils import describe
-            print('use_vaegan_img:', use_vaegan_img)
-            describe(np.array(img), 'VAESubDataset/__getitem__()/img')
+#         if False:
+#             from my_utils import describe
+#             print('use_vaegan_img:', use_vaegan_img)
+#             describe(np.array(img), 'VAESubDataset/__getitem__()/img')
         
         
         target = self.target_transform(self.cl)
