@@ -433,13 +433,14 @@ class SetDataManager(DataManager):
         return data_loader
 
 class VAESetDataManager(SetDataManager):
-    def __init__(self, image_size, n_way, n_support, n_query, vaegan_exp, vaegan_step, lambda_zlogvar, fake_prob, n_episode =100, recons_func = None):
+    def __init__(self, image_size, n_way, n_support, n_query, vaegan_exp, vaegan_step, lambda_zlogvar, fake_prob, vaegan_is_train, n_episode =100, recons_func = None):
         super(VAESetDataManager, self).__init__(image_size, n_way, n_support, n_query, n_episode, recons_func)
         self.vaegan_params = {
             'exp_name':vaegan_exp, 
             'step':vaegan_step, 
             'lambda_var':lambda_zlogvar, 
             'fake_prob':fake_prob, 
+            'is_training':vaegan_is_train, 
         }
 #         self.vaegan_exp = vaegan_exp
 #         self.vaegan_step = vaegan_step
