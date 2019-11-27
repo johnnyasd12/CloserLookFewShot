@@ -453,12 +453,11 @@ class VAESetDataManager(SetDataManager):
         transform = self.trans_loader.get_composed_transform(aug)
         fake_img_transform = self.trans_loader.get_hdf5_transform(aug)
         dataset = VAESetDataset(
-            data_file, batch_size=self.batch_size, transform, fake_img_transform, vaegan_params)
+            data_file, self.batch_size, transform, fake_img_transform, self.vaegan_params)
 #         dataset = VAESetDataset(data_file , self.batch_size, pre_transform=pre_transform, post_transform=post_transform, aug_transform=aug_transform)
         sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
-#         data_loader_params = dict(batch_sampler = sampler,  num_workers = 0, pin_memory = True) # to debug
-        data_loader_params = dict(batch_sampler = sampler,  num_workers = 0, pin_memory = False, 
-                                 collate_fn=self.get_collate(None)) # to debug
+        data_loader_params = dict(batch_sampler = sampler,  num_workers = 0, pin_memory = True) # to debug
+#         data_loader_params = dict(batch_sampler = sampler,  num_workers = 0, pin_memory = False) # to debug
         # TODO: cancel debug mode
 #         data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)

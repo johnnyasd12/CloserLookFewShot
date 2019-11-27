@@ -10,7 +10,7 @@ identity = lambda x:x
 
 import h5py
 from my_utils import *
-from make_llvae_dataset import get_gen_path
+
 
 # class VAESetDataset:
 #     def __init__(self, data_file, batch_size, pre_transform, post_transform, aug_transform): # only ONE Class for one item, but batch_sampler call this several times at once
@@ -238,7 +238,7 @@ class SetDataset:
         return len(self.cl_list)
 
 class VAESubDataset: # one iteration is one image of one class
-    def __init__(self, sub_meta, cl, vae_params, transform=transforms.ToTensor(), fake_img_transform=None, target_transform=identity):
+    def __init__(self, sub_meta, cl, transform=transforms.ToTensor(), fake_img_transform=None, vaegan_params=None, target_transform=identity):
         '''
         Args:
             vae_params (dict): keys = ['exp_name', 'step', 'lambda_var', 'fake_prob']
@@ -248,17 +248,23 @@ class VAESubDataset: # one iteration is one image of one class
         self.transform = transform
         self.fake_img_transform = fake_img_transform
         self.target_transform = target_transform
-        self.vae_params = vae_params
+        self.vaegan_params = vaegan_params
+#         # to avoid circular import
+#         from make_llvae_dataset import get_gen_path
 
     def __getitem__(self,i):
-        vaegan_exp = vae_params['exp_name']
-        vaegan_step = vae_params['step']
-        fake_prob = vae_params['fake_prob']
-        lambda_zlogvar = vae_params['lambda_var']
+        # to avoid circular import
+        from make_llvae_dataset import get_gen_path
+        vaegan_exp = self.vaegan_params['exp_name']
+        vaegan_step = self.vaegan_params['step']
+        fake_prob = self.vaegan_params['fake_prob']
+        lambda_zlogvar = self.vaegan_params['lambda_var']
+        
         rand_num = np.random.random()
+        use_vaegan_img = rand_num <= fake_prob
         
         image_path = os.path.join( self.sub_meta[i])
-        if rand_num <= fake_prob:
+        if use_vaegan_img:
             image_path = get_gen_path(
                 ori_file=image_path, 
                 vaegan_exp=vaegan_exp, 
@@ -268,12 +274,22 @@ class VAESubDataset: # one iteration is one image of one class
             )
         img = Image.open(image_path).convert('RGB')
         # TODO: different transform
-        if rand_num <= fake_prob:
+        if use_vaegan_img:
             img = self.fake_img_transform(img)
         else:
             img = self.transform(img)
+        
+        if True:
+            from my_utils import describe
+            print('use_vaegan_img:', use_vaegan_img)
+            describe(np.array(img), 'VAESubDataset/__getitem__()/img')
+        
+        
         target = self.target_transform(self.cl)
         return img, target
+    
+    def __len__(self):
+        return len(self.sub_meta)
 
 class SubDataset: # one iteration is one image of one class
     def __init__(self, sub_meta, cl, transform=transforms.ToTensor(), target_transform=identity):
