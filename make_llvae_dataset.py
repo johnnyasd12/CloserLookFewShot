@@ -117,13 +117,24 @@ if __name__ == '__main__':
     for i, data in enumerate(tqdm_data_loader):
         batch_img_path, batch_x, batch_y = data[0], data[1].numpy(), data[2].numpy()
         n_samples = batch_y.shape[0]
-        n_gen_files_exists = n_gen_imgs_exists(batch_img_path)
+        
+        batch_gen_path = []
+        for img_path in batch_img_path:
+            gen_path = get_gen_path(
+                img_path, 
+                vaegan_exp=args.vaegan_exp, 
+                vaegan_step=args.vaegan_step, 
+                zvar_lambda=args.zvar_lambda, 
+                is_training=args.is_training
+            )
+            batch_gen_path.append(gen_path)
+        
+        n_gen_files_exists = n_gen_imgs_exists(batch_gen_path)
         sum_gen_files_exists += n_gen_files_exists
         n_data += n_samples
         any_file_not_generated = n_gen_files_exists != n_samples
         
         if any_file_not_generated:
-            print(True)
             batch_x_rec = b4vae(batch_x, gvaegan.data.is_tanh, is_color)
             batch_x_rec = gvaegan.rec_samples(batch_x_rec, args.zvar_lambda)
             batch_x_rec = after_vae(batch_x_rec, gvaegan.data.is_tanh, is_color, out_order='NHWC')
@@ -135,20 +146,14 @@ if __name__ == '__main__':
                 sample_rec = batch_x_rec[j]
     #                 describe(sample_rec, 'sample_rec')
 
-    #                 file_name = str(j)+'.jpg'
-    #                 out_sample_path = os.path.join(out_folder, file_name)
-    #                 fig = gvaegan.data.data2fig(sample, save_path=out_sample_path)
-
-    #                 rec_file_name = str(j)+'rec'+str(args.zvar_lambda)+'.jpg'
-    #                 out_sample_rec_path = os.path.join(out_folder, rec_file_name)
-
-                out_sample_rec_path = get_gen_path(
-                    sample_ori_path, 
-                    vaegan_exp=args.vaegan_exp, 
-                    vaegan_step=args.vaegan_step, 
-                    zvar_lambda=args.zvar_lambda, 
-                    is_training=args.is_training
-                )
+#                 out_sample_rec_path = get_gen_path(
+#                     sample_ori_path, 
+#                     vaegan_exp=args.vaegan_exp, 
+#                     vaegan_step=args.vaegan_step, 
+#                     zvar_lambda=args.zvar_lambda, 
+#                     is_training=args.is_training
+#                 )
+                out_sample_rec_path = batch_gen_path[j]
                 out_sample_rec_dir = os.path.dirname(out_sample_rec_path)
                 if not os.path.exists(out_sample_rec_dir):
                     os.makedirs(out_sample_rec_dir)
