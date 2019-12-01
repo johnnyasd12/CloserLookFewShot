@@ -7,7 +7,7 @@ import numpy as np
 import h5py
 
 parser = argparse.ArgumentParser(description= 'yeeeee, im description of make_hdf5 parser!')
-parser.add_argument('--dataset', help='CUB/miniImagenet/omniglot/emnist', required=True)
+parser.add_argument('--dataset', choices=['CUB','miniImagenet','omniglot','emnist'], required=True)
 parser.add_argument('--mode', choices=['all','train','val','test','noLatin'], required=True)
 parser.add_argument('--aug', action='store_true', help='use the augmented data or not')
 parser.add_argument('--channel_order', default='NCHW', help='NCHW for PyTorch / NHWC for TF, but LrLiVAE have dealed with NCHW so don\'t need to do NHWC')
