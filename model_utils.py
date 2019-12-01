@@ -6,7 +6,7 @@ from methods.matchingnet import MatchingNet
 from methods.relationnet import RelationNet
 from methods.maml import MAML
 
-from io_utils import model_dict
+from io_utils import model_dict, decoder_dict
 import os
 import configs
 
