@@ -74,7 +74,7 @@ def parse_args(script):
         parser.add_argument('--save_iter', default=-1, type=int,help ='save feature from the model trained in x epoch, use the best model if x is -1')
         
 #         parser.add_argument('--test_aug_target', default=None, choices=['batch', 'sample'], help='test data augmentation by sample or batch')
-        parser.add_argument('--bn_use_target_stats', action='store_true', help='use target domain statistics to do batch normalization.')
+        parser.add_argument('--target_bn', action='store_true', help='use target domain statistics to do batch normalization.')
         
     elif script == 'test':
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
@@ -82,6 +82,7 @@ def parse_args(script):
         parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
         
 #         parser.add_argument('--test_aug_target', default=None, choices=['batch', 'sample'], help='test data augmentation by sample or batch')
+        parser.add_argument('--target_bn', action='store_true', help='use target domain statistics to do batch normalization.')
         
     elif script == 'draw_features':
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
@@ -208,7 +209,7 @@ def get_save_feature_filepath(params, checkpoint_dir, split):
         split_str = split
     
     # TODO: target_bn_stats
-    target_bn_str = '_target-bn' if params.bn_use_target_stats else ''
+    target_bn_str = '_target-bn' if params.target_bn else ''
     
     outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str + target_bn_str + ".hdf5")
     

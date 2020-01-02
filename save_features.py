@@ -109,7 +109,7 @@ if __name__ == '__main__':
         params.model = 'Conv4S'
 
     split = params.split
-#     target_bn_str = '_target-bn' if params.bn_use_target_stats else '' # TODO: not used yet??
+#     target_bn_str = '_target-bn' if params.target_bn else '' # TODO: not used yet??
     
 #     if params.dataset == 'cross':
 #         if split == 'base':
@@ -134,7 +134,7 @@ if __name__ == '__main__':
 #     if not params.method in ['baseline', 'baseline++'] :
 #         checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
     checkpoint_dir = get_checkpoint_dir(params)
-    print('checkpoint_dir:', checkpoint_dir)
+    print('save_features.py checkpoint_dir:', checkpoint_dir)
     
     if params.save_iter != -1:
         modelfile   = get_assigned_file(checkpoint_dir,params.save_iter)
@@ -198,7 +198,7 @@ if __name__ == '__main__':
             
     backbone_net.load_state_dict(state)
     backbone_net.eval()
-    if params.bn_use_target_stats:
+    if params.target_bn:
         backbone_net.apply(batchnorm_use_target_stats)
 
     dirname = os.path.dirname(outfile)
