@@ -102,6 +102,16 @@ def get_model(params):
     
     return model
 
+
+def batchnorm_use_target_stats(m):
+    ''' only call this after common testing
+    '''
+    if isinstance(m, torch.nn.modules.batchnorm._BatchNorm):
+#         print(m.training)
+        m.train()
+#         print(m.training)
+
+
 def restore_vaegan(dataset, vae_exp_name, vae_restore_step, is_training=False):
     experiment_name = vae_exp_name #'omn_noLatin_1114_0956'
     restore_step = vae_restore_step

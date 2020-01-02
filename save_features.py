@@ -18,6 +18,7 @@ from methods.maml import MAML
 from io_utils import *
 
 from my_utils import *
+from model_utils import batchnorm_use_target_stats
 
 def save_features(model, data_loader, outfile, params):
     f = h5py.File(outfile, 'w')
@@ -53,6 +54,38 @@ def save_features(model, data_loader, outfile, params):
 
     f.close()
 
+
+def get_backbone_net(params):
+    if params.method in ['relationnet', 'relationnet_softmax']:
+        if params.model == 'Conv4': 
+            backbone_net = backbone.Conv4NP()
+        elif params.model == 'Conv6': 
+            backbone_net = backbone.Conv6NP()
+        elif params.model == 'Conv4S': 
+            backbone_net = backbone.Conv4SNP()
+        else:
+            backbone_net = model_dict[params.model]( flatten = False )
+    elif params.method in ['maml' , 'maml_approx']: 
+        raise ValueError('MAML do not support save feature')
+    else:
+        backbone_net = model_dict[params.model]()
+    return backbone_net
+
+# def get_save_feature_filepath(params, checkpoint_dir, split):
+#     if params.save_iter != -1:
+#         split_str = split + "_" +str(params.save_iter)
+#     else:
+#         split_str = split
+#     outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str + ".hdf5")
+    
+# #     if params.save_iter != -1:
+# #         outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + "_" + str(params.save_iter)+ ".hdf5") 
+# #     else:
+# #         outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + ".hdf5")
+    
+#     return outfile
+
+
 if __name__ == '__main__':
     params = parse_args('save_features')
     
@@ -61,31 +94,36 @@ if __name__ == '__main__':
         set_gpu_id(params.gpu_id)
     
     # TODO: integrate image_size & load_file with test.py (differ from train.py)
-    if 'Conv' in params.model:
-        if params.dataset in ['omniglot', 'cross_char']:
-            image_size = 28
-        else:
-            image_size = 84 
-    else:
-        image_size = 224
-
+    # TODO: i think image_size still the same with train.py
+#     if 'Conv' in params.model:
+#         if params.dataset in ['omniglot', 'cross_char']:
+#             image_size = 28
+#         else:
+#             image_size = 84 
+#     else:
+#         image_size = 224
+    image_size = get_img_size(params)
+    
     if params.dataset in ['omniglot', 'cross_char']:
         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
         params.model = 'Conv4S'
 
     split = params.split
-    if params.dataset == 'cross':
-        if split == 'base':
-            loadfile = configs.data_dir['miniImagenet'] + 'all.json' 
-        else:
-            loadfile   = configs.data_dir['CUB'] + split +'.json' 
-    elif params.dataset == 'cross_char':
-        if split == 'base':
-            loadfile = configs.data_dir['omniglot'] + 'noLatin.json' 
-        else:
-            loadfile  = configs.data_dir['emnist'] + split +'.json' 
-    else:
-        loadfile = configs.data_dir[params.dataset] + split + '.json'
+#     target_bn_str = '_target-bn' if params.bn_use_target_stats else '' # TODO: not used yet??
+    
+#     if params.dataset == 'cross':
+#         if split == 'base':
+#             loadfile = configs.data_dir['miniImagenet'] + 'all.json' 
+#         else:
+#             loadfile   = configs.data_dir['CUB'] + split +'.json' 
+#     elif params.dataset == 'cross_char':
+#         if split == 'base':
+#             loadfile = configs.data_dir['omniglot'] + 'noLatin.json' 
+#         else:
+#             loadfile  = configs.data_dir['emnist'] + split +'.json' 
+#     else:
+#         loadfile = configs.data_dir[params.dataset] + split + '.json'
+    loadfile = get_loadfile_path(params, split)
 
 #     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
     
@@ -105,10 +143,11 @@ if __name__ == '__main__':
     else:
         modelfile   = get_best_file(checkpoint_dir)
 
-    if params.save_iter != -1:
-        outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + "_" + str(params.save_iter)+ ".hdf5") 
-    else:
-        outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + ".hdf5") 
+#     if params.save_iter != -1:
+#         outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + "_" + str(params.save_iter)+ ".hdf5") 
+#     else:
+#         outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + ".hdf5")
+    outfile = get_save_feature_filepath(params, checkpoint_dir, split)
 
     if params.aug_type is None:
         datamgr         = SimpleDataManager(image_size, batch_size = 64)
@@ -117,6 +156,8 @@ if __name__ == '__main__':
                                                aug_type=params.aug_type, aug_target='test-sample') # aug_target= 'all' or 'test-sample', NO 'test-batch'
     data_loader      = datamgr.get_data_loader(loadfile, aug = False)
 
+    
+    ######## get backbone network #########
     if params.method in ['relationnet', 'relationnet_softmax']:
         if params.model == 'Conv4': 
             backbone_net = backbone.Conv4NP()
@@ -130,6 +171,7 @@ if __name__ == '__main__':
         raise ValueError('MAML do not support save feature')
     else:
         backbone_net = model_dict[params.model]()
+    backbone_net = get_backbone_net(params)
 
     if params.gpu_id:
         device = torch.device('cuda:'+str(params.gpu_id))
@@ -156,6 +198,8 @@ if __name__ == '__main__':
             
     backbone_net.load_state_dict(state)
     backbone_net.eval()
+    if params.bn_use_target_stats:
+        backbone_net.apply(batchnorm_use_target_stats)
 
     dirname = os.path.dirname(outfile)
     if not os.path.isdir(dirname):

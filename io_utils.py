@@ -74,6 +74,7 @@ def parse_args(script):
         parser.add_argument('--save_iter', default=-1, type=int,help ='save feature from the model trained in x epoch, use the best model if x is -1')
         
 #         parser.add_argument('--test_aug_target', default=None, choices=['batch', 'sample'], help='test data augmentation by sample or batch')
+        parser.add_argument('--bn_use_target_stats', action='store_true', help='use target domain statistics to do batch normalization.')
         
     elif script == 'test':
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
@@ -126,6 +127,7 @@ def get_checkpoint_dir(params):
         checkpoint_dir += '/%s-%s/lamb-var%s_fake-prob%s' %(params.vaegan_exp, params.vaegan_step, 
                                         params.zvar_lambda, params.fake_prob)
         checkpoint_dir += is_train_str
+    # TODO: target_bn_stats??? NONONONO should not here, becuz will affect get model file
     
     return checkpoint_dir
 
@@ -163,6 +165,60 @@ def params2df(params, extra_dict):
         new_dict[key] = [value]
     new_df = pd.DataFrame.from_dict(new_dict)
     return new_df
+
+
+def get_img_size(params):
+    if 'Conv' in params.model:
+        if params.dataset in ['omniglot', 'cross_char']:
+            image_size = 28 if params.image_size is None else params.image_size
+        else:
+            image_size = 84 if params.image_size is None else params.image_size
+    else:
+        image_size = 224 # if params.image_size is None else params.image_size
+    return image_size
+
+def get_loadfile_path(params, split):
+#     if 'Conv' in params.model:
+#         if params.dataset in ['omniglot', 'cross_char']:
+#             image_size = 28
+#         else:
+#             image_size = 84 
+#     else:
+#         image_size = 224
+    
+    if params.dataset == 'cross':
+        if split == 'base':
+            loadfile = configs.data_dir['miniImagenet'] + 'all.json' 
+        else:
+            loadfile   = configs.data_dir['CUB'] + split +'.json'
+    elif params.dataset == 'cross_char':
+        if split == 'base':
+            loadfile = configs.data_dir['omniglot'] + 'noLatin.json' 
+        else:
+            loadfile  = configs.data_dir['emnist'] + split +'.json' 
+    else: 
+        loadfile    = configs.data_dir[params.dataset] + split + '.json'
+    return loadfile
+
+def get_save_feature_filepath(params, checkpoint_dir, split):
+    # TODO: split is actually params.split, waiting for refactoring
+    if params.save_iter != -1:
+        split_str = split + "_" +str(params.save_iter)
+    else:
+        split_str = split
+    
+    # TODO: target_bn_stats
+    target_bn_str = '_target-bn' if params.bn_use_target_stats else ''
+    
+    outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str + target_bn_str + ".hdf5")
+    
+#     if params.save_iter != -1:
+#         outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + "_" + str(params.save_iter)+ ".hdf5") 
+#     else:
+#         outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + ".hdf5")
+    
+    return outfile
+
 
 if __name__ == '__main__':
     filename = 'test_exp.csv'
