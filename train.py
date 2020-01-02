@@ -201,14 +201,15 @@ if __name__=='__main__':
     
     base_file, val_file = get_train_val_filename(params)
     
-    if 'Conv' in params.model:
-        if params.dataset in ['omniglot', 'cross_char']:
-            image_size = 28 if params.image_size is None else params.image_size
-        else:
-            image_size = 84 if params.image_size is None else params.image_size
-    else:
-        image_size = 224 # if params.image_size is None else params.image_size
-
+#     if 'Conv' in params.model:
+#         if params.dataset in ['omniglot', 'cross_char']:
+#             image_size = 28 if params.image_size is None else params.image_size
+#         else:
+#             image_size = 84 if params.image_size is None else params.image_size
+#     else:
+#         image_size = 224 # if params.image_size is None else params.image_size
+    image_size = get_img_size(params)
+    
     model = get_model(params)
 
     optimization = 'Adam'
