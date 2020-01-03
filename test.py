@@ -160,20 +160,26 @@ if __name__ == '__main__':
     acc_std_str = '%4.2f' %(acc_std)
     extra_dict = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str, 'epoch':load_epoch}
     
-    csv_path = './record/results.csv'
-    csv_backup_path = './record/results_backup_'+timestamp+'.csv'
-    print('reading:', csv_path)
-    df = pd.read_csv(csv_path)
-    new_df = params2df(params, extra_dict)
-    out_df = pd.concat([df, new_df], axis=0, join='outer', sort=False)
-    print('saving to:', csv_backup_path)
-    with open(csv_backup_path, 'w') as f:
-        out_df.to_csv(f, header=True, index=False)
-    print('saving to:', csv_path)
-    with open(csv_path, 'w') as f:
-        out_df.to_csv(f, header=True, index=False)
+    
+    if not params.debug:
+        csv_path = './record/results.csv'
+        csv_backup_path = './record/results_backup_'+timestamp+'.csv'
+        print('reading:', csv_path)
+        df = pd.read_csv(csv_path)
+        new_df = params2df(params, extra_dict)
+        out_df = pd.concat([df, new_df], axis=0, join='outer', sort=False)
+        print('saving to:', csv_backup_path)
+        with open(csv_backup_path, 'w') as f:
+            out_df.to_csv(f, header=True, index=False)
+        print('saving to:', csv_path)
+        with open(csv_path, 'w') as f:
+            out_df.to_csv(f, header=True, index=False)
     
     # writing settings into txt
+    if params.save_iter != -1:
+        split_str = split + "_" +str(params.save_iter)
+    else:
+        split_str = split
     with open('./record/results.txt' , 'a') as f:
         # this part should modify for every argument change
         aug_str = '-aug' if params.train_aug else ''

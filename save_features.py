@@ -199,6 +199,7 @@ if __name__ == '__main__':
     backbone_net.load_state_dict(state)
     backbone_net.eval()
     if params.target_bn:
+        print('switching batch_norm layers to train mode...')
         backbone_net.apply(batchnorm_use_target_stats)
 
     dirname = os.path.dirname(outfile)

@@ -19,6 +19,8 @@ import LrLiVAE
 LrLiVAE.DEBUG = configs.debug
 from LrLiVAE import GMM_AE_GAN
 
+import torch
+
 def get_few_shot_params(params, mode=None):
     '''
     :param mode: 'train', 'test'
@@ -106,6 +108,7 @@ def get_model(params):
 def batchnorm_use_target_stats(m):
     ''' only call this after common testing
     '''
+#     print('switching batch_norm layers to train mode...')
     if isinstance(m, torch.nn.modules.batchnorm._BatchNorm):
 #         print(m.training)
         m.train()
@@ -162,4 +165,10 @@ def restore_vaegan(dataset, vae_exp_name, vae_restore_step, is_training=False):
     vaegan.restore(restore_step)
     print('done.')
     return vaegan
-    
+
+
+def show_bn_detail(bn):
+    print(bn)
+    print('runnning mean:',bn.running_mean,'\nrunning var:',bn.running_var)
+#     print('beta:',bn.beta, '\ngamma:',bn.gamma)
+    print('beta:',bn.bias, '\ngamma:',bn.weight)
