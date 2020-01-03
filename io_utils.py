@@ -56,7 +56,9 @@ def parse_args(script):
     parser.add_argument('--zvar_lambda', default=None, type=float, help='the GMM_VAE_GAN zlogvar_lambda')
     parser.add_argument('--fake_prob', default=None, type=float, help='the probability to replace real image with GMM_VAE_GAN generated image. ')
     parser.add_argument('--vaegan_is_train', action='store_true', help='whether the vaegan is_training==True.')
+    
 
+    parser.add_argument('--debug', action='store_true', help='whether is debugging.')
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
         parser.add_argument('--save_freq'   , default=50, type=int, help='Save frequency')
