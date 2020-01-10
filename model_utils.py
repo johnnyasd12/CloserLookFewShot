@@ -53,7 +53,7 @@ def get_model(params, mode):
             if 'ConvS' not in params.recons_decoder:
                 raise ValueError('omniglot / cross_char should use ConvS/HiddenConvS decoder.')
     
-    if params.method in ['baseline', 'baseline++'] :
+    if params.method in ['baseline', 'baseline++'] and mode=='train':
         if params.dataset == 'omniglot':
             assert params.num_classes >= 4112, 'class number need to be larger than max label id in base class'
         if params.dataset == 'cross_char':
