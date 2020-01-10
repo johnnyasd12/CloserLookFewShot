@@ -210,7 +210,7 @@ if __name__=='__main__':
 #         image_size = 224 # if params.image_size is None else params.image_size
     image_size = get_img_size(params)
     
-    model = get_model(params)
+    model = get_model(params, 'train')
 
     optimization = 'Adam'
 

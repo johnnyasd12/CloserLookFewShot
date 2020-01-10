@@ -34,14 +34,13 @@ if __name__ == '__main__':
 
     if params.gpu_id:
         set_gpu_id(params.gpu_id)
-    get_model_func = True
     
     acc_all = []
 
     iter_num = 600
 
 
-    model = get_model(params)
+    model = get_model(params, 'test')
     
 #     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot) # BUGFIX: decoder ?
     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
