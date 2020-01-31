@@ -86,6 +86,8 @@ if __name__ == '__main__':
             model.load_state_dict(tmp['state'])
 #             print('====== tmp ========\n', tmp.keys(), '\n====== model.state_dict() ==========\n', model.state_dict().keys())
             load_epoch = int(tmp['epoch'])
+    else: # if method is 'baseline' or 'baseline++'
+        load_epoch = -1 # TODO: get load_epoch, first save 'epoch' in train.py
 
     # train/val/novel
     split = params.split
