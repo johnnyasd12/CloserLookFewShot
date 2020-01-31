@@ -333,6 +333,7 @@ class ConvNet(nn.Module):
         out = self.trunk(x)
         return out
 
+
 class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in only first two layers, else no pooling
     def __init__(self, depth):
         super(ConvNetNopool,self).__init__()
@@ -349,6 +350,7 @@ class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in
     def forward(self,x):
         out = self.trunk(x)
         return out
+
 
 class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
     def __init__(self, depth, flatten = True):
@@ -380,6 +382,7 @@ class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
 #         print('ConvNetS: out.shape', out.shape)
         out = self.trunk(out)
         return out
+
 
 class DeConvNetS(nn.Module): # for AE, input: flattened 64*1*1
     def __init__(self):
