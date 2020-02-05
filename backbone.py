@@ -130,7 +130,7 @@ class BatchNorm2d_fw(nn.BatchNorm2d): #used in MAML to forward input with fast w
 # Simple Conv Block
 class ConvBlock(nn.Module):
     maml = False #Default
-    def __init__(self, indim, outdim, pool = True, padding = 1):
+    def __init__(self, indim, outdim, pool = True, padding = 1, dropout=False):
         super(ConvBlock, self).__init__()
         self.indim  = indim
         self.outdim = outdim
@@ -141,8 +141,14 @@ class ConvBlock(nn.Module):
             self.C      = nn.Conv2d(indim, outdim, 3, padding= padding)
             self.BN     = nn.BatchNorm2d(outdim)
         self.relu   = nn.ReLU(inplace=True)
-
-        self.parametrized_layers = [self.C, self.BN, self.relu]
+        
+        if not dropout:
+            self.parametrized_layers = [self.C, self.BN, self.relu]
+        else: # dropout
+            # TODO: custom dropout
+            self.dropout = None
+            self.parametrized_layers = [self.C, self.BN, self.relu, self.dropout]
+        
         if pool:
             self.pool   = nn.MaxPool2d(2)
             self.parametrized_layers.append(self.pool)
