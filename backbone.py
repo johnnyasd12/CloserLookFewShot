@@ -127,37 +127,61 @@ class BatchNorm2d_fw(nn.BatchNorm2d): #used in MAML to forward input with fast w
             out = F.batch_norm(x, running_mean, running_var, self.weight, self.bias, training = True, momentum = 1)
         return out
 
-class CustomDropout(nn.Module):
+
+class MyDropout(nn.Module):
     def __init__(self, n_features, p, inplace: bool = False):
         '''
         Args:
             n_features (int): number of channels or features
-            p (float): dropout probability (not keep_prob)
+            p (float): dropout probability (1-p = keep_prob)
             inplace (bool): haven't implement yet
         '''
-        super(CustomDropout, self).__init__()
+        super(MyDropout, self).__init__()
         if p < 0 or p > 1:
             raise ValueError("dropout probability has to be between 0 and 1, " "but got {}".format(p))
         self.n_features = n_features
-        self.p = p
-        self.keep_prob = 1.-p
-        self.eval_mask = None # only used when sampling subnet, shape: (1, n_features)
+        self.p = p # 1-p = keep_prob
     
-    def get_random_mask(self, n_samples):
-        # get mask Tensor without backprop, return shape: (n_samples, n_features)
+    def get_random_mask(self, n_samples, fix_num_drop=False):
+        # get mask Tensor without grad, return shape: (n_samples, n_features)
         # p is dropout prob (not keep_prob)
+        # TODO: fix_n_drop
         n_features = self.n_features
-        mask = torch.Tensor(n_samples,n_features).uniform_(0,1)>self.p
+        if fix_num_drop:
+            mask = None
+        else:
+            mask = torch.Tensor(n_samples,n_features).uniform_(0,1)>self.p
         mask = Variable(mask.type(torch.cuda.FloatTensor), requires_grad=False)
         return mask
-        
+    
     def get_reshaped_random_mask(self, x): # different between dropout and dropout2d
         # So that we have `(n_samples, n_features)` numbers of Bernoulli(1-p) samples
         n_samples = x.shape[0]
         mask = self.get_random_mask(n_samples)
-        # no need to reshape for normal dropout
-        # TODO: dropout2d should reshape mask into [n_samples, n_features, h, w]
+        # no need to reshape for normal dropout, only dropout2d need extra reshape
         return mask
+    
+    def forward(self, x):
+        n_features = self.n_features # also equals x.shape[1] as well as dropout2d case
+        if not self.training: # eval() mode
+            return x
+        else: # if train() mode
+            mask = self.get_reshaped_random_mask(x) # shape: (n_samples, n_features), dropout2d shape: (N,C,H,W)
+            # Multiply output by multiplier as described in the paper [1]
+            return torch.mul(mask,x) * 1/(1-self.p) # inverse dropout
+
+
+
+class CustomDropout(MyDropout):
+    def __init__(self, n_features, p, inplace: bool = False):
+        '''
+        Args:
+            n_features (int): number of channels or features
+            p (float): dropout probability (1-p = keep_prob)
+            inplace (bool): haven't implement yet
+        '''
+        super(CustomDropout, self).__init__(n_features=n_features, p=p, inplace=inplace)
+        self.eval_mask = None # only used when sampling subnet, shape: (1, n_features)
     
     def get_reshaped_eval_mask(self, x): # different between dropout and dropout2d
         n_samples = x.shape[0]
@@ -171,27 +195,90 @@ class CustomDropout(nn.Module):
         if not self.training: # eval() mode
             if self.eval_mask is not None:
                 mask = self.get_reshaped_eval_mask(x) # shape: (n_samples, n_features), dropout2d shape: (N,C,H,W)
-                return torch.mul(mask,x) * 1/self.keep_prob # inverse dropout for eval() mode
+                return torch.mul(mask,x) * 1/(1-self.p) # inverse dropout for eval() mode
             else: # if self.eval_mask is None
                 return x
         else: # if train() mode
             mask = self.get_reshaped_random_mask(x) # shape: (n_samples, n_features), dropout2d shape: (N,C,H,W)
             # Multiply output by multiplier as described in the paper [1]
-            return torch.mul(mask,x) * 1/self.keep_prob # inverse dropout
+            return torch.mul(mask,x) * 1/(1-self.p) # inverse dropout
         
     def set_random_eval_mask(self): # this is the same for ALL examples
         random_mask = self.get_random_mask(n_samples=1)
         self.eval_mask = random_mask
+    
+    def reset_eval():
+        self.eval_mask = None
+        self.eval()
 
-class CustomDropout2D(CustomDropout):
+
+# class CustomDropout(nn.Module):
+#     def __init__(self, n_features, p, inplace: bool = False):
+#         '''
+#         Args:
+#             n_features (int): number of channels or features
+#             p (float): dropout probability (1-p = keep_prob)
+#             inplace (bool): haven't implement yet
+#         '''
+#         super(CustomDropout, self).__init__()
+#         if p < 0 or p > 1:
+#             raise ValueError("dropout probability has to be between 0 and 1, " "but got {}".format(p))
+#         self.n_features = n_features
+#         self.p = p
+#         self.eval_mask = None # only used when sampling subnet, shape: (1, n_features)
+    
+#     def get_random_mask(self, n_samples, fix_num_drop=False):
+#         # get mask Tensor without backprop, return shape: (n_samples, n_features)
+#         # TODO: fix_n_drop
+#         n_features = self.n_features
+#         if fix_num_drop:
+#             mask = None
+#         else:
+#             mask = torch.Tensor(n_samples,n_features).uniform_(0,1)>self.p
+#         mask = Variable(mask.type(torch.cuda.FloatTensor), requires_grad=False)
+#         return mask
+        
+#     def get_reshaped_random_mask(self, x): # different between dropout and dropout2d
+#         # So that we have `(n_samples, n_features)` numbers of Bernoulli(1-p) samples
+#         n_samples = x.shape[0]
+#         mask = self.get_random_mask(n_samples)
+#         # no need to reshape for normal dropout
+#         # dropout2d should reshape mask into [n_samples, n_features, h, w]
+#         return mask
+    
+#     def get_reshaped_eval_mask(self, x): # different between dropout and dropout2d
+#         n_samples = x.shape[0]
+#         mask = self.eval_mask # shape: (1, n_features)
+#         mask = mask.repeat(n_samples,1) # shape: (n_samples, n_features)
+#         return mask
+        
+#     def forward(self, x):
+# #         n_samples = x.shape[0]
+#         n_features = self.n_features # also equals x.shape[1] as well as dropout2d case
+#         if not self.training: # eval() mode
+#             if self.eval_mask is not None:
+#                 mask = self.get_reshaped_eval_mask(x) # shape: (n_samples, n_features), dropout2d shape: (N,C,H,W)
+#                 return torch.mul(mask,x) * 1/(1-self.p) # inverse dropout for eval() mode
+#             else: # if self.eval_mask is None
+#                 return x
+#         else: # if train() mode
+#             mask = self.get_reshaped_random_mask(x) # shape: (n_samples, n_features), dropout2d shape: (N,C,H,W)
+#             # Multiply output by multiplier as described in the paper [1]
+#             return torch.mul(mask,x) * 1/(1-self.p) # inverse dropout
+        
+#     def set_random_eval_mask(self): # this is the same for ALL examples
+#         random_mask = self.get_random_mask(n_samples=1)
+#         self.eval_mask = random_mask
+
+class MyDropout2D(MyDropout):
     def __init__(self, n_features, p, inplace: bool = False):
         '''
         Args:
             n_features (int): number of channels or features
-            p (float): dropout probability (not keep_prob)
+            p (float): dropout probability (1-p = keep_prob)
             inplace (bool): haven't implement yet
         '''
-        super(CustomDropout2D, self).__init__(n_features=n_features, p=p, inplace=inplace)
+        super(MyDropout2D, self).__init__(n_features=n_features, p=p, inplace=inplace)
         
     def get_reshaped_random_mask(self, x): # different between dropout and dropout2d
         # So that we have `(n_samples, n_features)` numbers of Bernoulli(1-p) samples
@@ -203,7 +290,18 @@ class CustomDropout2D(CustomDropout):
         mask = mask.view(n_samples,c,1,1) # (N, C, 1, 1)
         mask = mask.repeat(1,1,h,w) # (N, C, H, W)
         return mask
-    
+        
+class CustomDropout2D(MyDropout2D, CustomDropout):
+    def __init__(self, n_features, p, inplace: bool = False):
+        '''
+        Args:
+            n_features (int): number of channels or features
+            p (float): dropout probability (1-p = keep_prob)
+            inplace (bool): haven't implement yet
+        '''
+        super(CustomDropout2D, self).__init__(n_features=n_features, p=p, inplace=inplace)
+        CustomDropout.__init__(self, n_features=n_features, p=p, inplace=inplace)
+        
     def get_reshaped_eval_mask(self, x): # different between dropout and dropout2d
         n_samples = x.shape[0]
         c = x.shape[1] # also is n_features
@@ -214,6 +312,40 @@ class CustomDropout2D(CustomDropout):
         mask = mask.view(n_samples,c,1,1) # (N, C, 1, 1)
         mask = mask.repeat(1,1,h,w) # (N, C, H, W)
         return mask
+
+
+# class CustomDropout2D(CustomDropout):
+#     def __init__(self, n_features, p, inplace: bool = False):
+#         '''
+#         Args:
+#             n_features (int): number of channels or features
+#             p (float): dropout probability (1-p = keep_prob)
+#             inplace (bool): haven't implement yet
+#         '''
+#         super(CustomDropout2D, self).__init__(n_features=n_features, p=p, inplace=inplace)
+        
+#     def get_reshaped_random_mask(self, x): # different between dropout and dropout2d
+#         # So that we have `(n_samples, n_features)` numbers of Bernoulli(1-p) samples
+#         n_samples = x.shape[0]
+#         c = x.shape[1] # also is n_features
+#         h = x.shape[2]
+#         w = x.shape[3]
+#         mask = self.get_random_mask(n_samples) # (N, C)
+#         mask = mask.view(n_samples,c,1,1) # (N, C, 1, 1)
+#         mask = mask.repeat(1,1,h,w) # (N, C, H, W)
+#         return mask
+    
+#     def get_reshaped_eval_mask(self, x): # different between dropout and dropout2d
+#         n_samples = x.shape[0]
+#         c = x.shape[1] # also is n_features
+#         h = x.shape[2]
+#         w = x.shape[3]
+#         mask = self.eval_mask # shape: (1, C)
+#         mask = mask.repeat(n_samples,1) # shape: (N, C)
+#         mask = mask.view(n_samples,c,1,1) # (N, C, 1, 1)
+#         mask = mask.repeat(1,1,h,w) # (N, C, H, W)
+#         return mask
+
 
 # Simple Conv Block
 class ConvBlock(nn.Module):
