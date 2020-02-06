@@ -170,14 +170,12 @@ class CustomDropout(nn.Module):
         n_features = self.n_features # also equals x.shape[1] as well as dropout2d case
         if not self.training: # eval() mode
             if self.eval_mask is not None:
-                mask = self.get_reshaped_eval_mask(x)
-#                 mask = self.get_reshaped_eval_mask(n_samples)
+                mask = self.get_reshaped_eval_mask(x) # shape: (n_samples, n_features), dropout2d shape: (N,C,H,W)
                 return torch.mul(mask,x) * 1/self.keep_prob # inverse dropout for eval() mode
             else: # if self.eval_mask is None
                 return x
         else: # if train() mode
-            mask = self.get_reshaped_random_mask(x)
-#             mask = self.get_reshaped_random_mask(n_samples)
+            mask = self.get_reshaped_random_mask(x) # shape: (n_samples, n_features), dropout2d shape: (N,C,H,W)
             # Multiply output by multiplier as described in the paper [1]
             return torch.mul(mask,x) * 1/self.keep_prob # inverse dropout
         
