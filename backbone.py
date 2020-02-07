@@ -350,7 +350,7 @@ class CustomDropout2D(MyDropout2D, CustomDropout):
 # Simple Conv Block
 class ConvBlock(nn.Module):
     maml = False #Default
-    def __init__(self, indim, outdim, pool = True, padding = 1, dropout=False):
+    def __init__(self, indim, outdim, pool = True, padding = 1, dropout_p=0.):
         super(ConvBlock, self).__init__()
         self.indim  = indim
         self.outdim = outdim
@@ -362,11 +362,11 @@ class ConvBlock(nn.Module):
             self.BN     = nn.BatchNorm2d(outdim)
         self.relu   = nn.ReLU(inplace=True)
         
-        if not dropout:
+        if dropout_p == 0:
             self.parametrized_layers = [self.C, self.BN, self.relu]
         else: # dropout
             # TODO: custom dropout
-            self.dropout = None
+            self.dropout = CustomDropout2D(n_features=out_dim, p=dropout_p)
             self.parametrized_layers = [self.C, self.BN, self.relu, self.dropout]
         
         if pool:
@@ -534,7 +534,7 @@ class BottleneckBlock(nn.Module): # utilized by ResNet50, ResNet101
 
 
 class ConvNet(nn.Module):
-    def __init__(self, depth, flatten = True): # CUB/miniImgnet Conv input = 84*84*3
+    def __init__(self, depth, flatten = True, dropout_p=0.): # CUB/miniImgnet Conv input = 84*84*3
         super(ConvNet,self).__init__()
         trunk = []
         for i in range(depth): 
@@ -546,7 +546,11 @@ class ConvNet(nn.Module):
             '''
             indim = 3 if i == 0 else 64 # if the 1st block then input is image, otherwise 64 from pre-block
             outdim = 64
-            B = ConvBlock(indim, outdim, pool = ( i <4 ) ) #only pooling for first 4 layers
+            
+            dropout_cond = i==depth-1 # last layer
+            block_dropout_p = dropout_p if dropout_cond else 0.
+            
+            B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) #only pooling for first 4 layers
             trunk.append(B)
 
         if flatten:
