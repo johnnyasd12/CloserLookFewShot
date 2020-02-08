@@ -150,7 +150,7 @@ class MetaTemplate(nn.Module):
             if self.change_way:
                 self.n_way  = x.size(0)
             optimizer.zero_grad()
-            # no need label to compute loss becuase x is ordered
+            # no need label to compute loss because x is ordered
             loss = self.total_loss(x) #self.set_forward_loss( x ) + recons_lambda*self.decoder_loss(x)
             loss.backward()
             optimizer.step()
