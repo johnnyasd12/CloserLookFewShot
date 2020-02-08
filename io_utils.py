@@ -57,6 +57,8 @@ def parse_args(script):
     parser.add_argument('--fake_prob', default=None, type=float, help='the probability to replace real image with GMM_VAE_GAN generated image. ')
     parser.add_argument('--vaegan_is_train', action='store_true', help='whether the vaegan is_training==True.')
     
+    # domain CustomDropout
+    parser.add_argument('--dropout_p', default=None, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
 
     parser.add_argument('--debug', action='store_true', help='whether is debugging.')
     if script == 'train':
