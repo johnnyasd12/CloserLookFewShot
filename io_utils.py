@@ -16,7 +16,10 @@ model_dict = dict(
             ResNet18 = backbone.ResNet18,
             ResNet34 = backbone.ResNet34,
             ResNet50 = backbone.ResNet50,
-            ResNet101 = backbone.ResNet101) 
+            ResNet101 = backbone.ResNet101, 
+#             Conv4Drop = backbone.Conv4Drop, 
+#             Conv4SDrop = backbone.Conv4SDrop
+) 
 
 # reconstruction decoder
 decoder_dict = dict(
@@ -58,7 +61,7 @@ def parse_args(script):
     parser.add_argument('--vaegan_is_train', action='store_true', help='whether the vaegan is_training==True.')
     
     # domain CustomDropout
-    parser.add_argument('--dropout_p', default=None, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
+    parser.add_argument('--dropout_p', default=0, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
 
     parser.add_argument('--debug', action='store_true', help='whether is debugging.')
     if script == 'train':
@@ -123,16 +126,23 @@ def get_checkpoint_dir(params):
         checkpoint_dir += '_%sDecoder%s' %(params.recons_decoder,params.recons_lambda)
     if params.train_aug:
         checkpoint_dir += '_aug'
+    # meta-learning methods
     if not params.method  in ['baseline', 'baseline++']: 
         checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
+    # special augmentation experiments
     if params.aug_type is not None:
         checkpoint_dir += '_%s-%s' %(params.aug_type, params.aug_target)
+    # vaegan experiments
     if params.vaegan_exp:
         is_train_str = '_is-train' if params.vaegan_is_train else ''
         checkpoint_dir += '/%s-%s/lamb-var%s_fake-prob%s' %(params.vaegan_exp, params.vaegan_step, 
                                         params.zvar_lambda, params.fake_prob)
         checkpoint_dir += is_train_str
-    # TODO: target_bn_stats??? NONONONO should not here, becuz will affect get model file
+    # target_bn_stats??? NONONONO should not here, becuz will affect get model file
+    
+    # custom dropout experiments
+    if params.dropout_p != 0:
+        checkpoint_dir += '_dropout%s' % (params.dropout_p)
     
     return checkpoint_dir
 

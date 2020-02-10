@@ -16,7 +16,8 @@ class MetaTemplate(nn.Module):
         super(MetaTemplate, self).__init__()
         self.n_way      = n_way
         self.n_support  = n_support
-        self.n_query    = -1 #(change depends on input) 
+        self.n_query    = -1 #(change depends on input)
+#         self.feature    = model_func(dropout_p=dropout_p) # set feature backbone
         self.feature    = model_func() # set feature backbone
         self.feat_dim   = self.feature.final_feat_dim
         self.change_way = change_way  #some methods allow different_way classification during training and test

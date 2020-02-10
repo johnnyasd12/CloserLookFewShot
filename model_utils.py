@@ -45,10 +45,16 @@ def get_model(params, mode):
 #     few_shot_params['test']     = get_few_shot_params(params, 'test')
     few_shot_params_d = get_few_shot_params(params, None)
     few_shot_params = few_shot_params_d[mode]
+#     model_params_d = {
+#         'train':dict(dropout_p=params.dropout_p),
+#         'test':dict(dropout_p=params.dropout_p),
+#     }
+#     model_params = model_params_d[mode]
     
     if params.dataset in ['omniglot', 'cross_char']:
-        assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
-        params.model = 'Conv4S'
+#         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
+        assert 'Conv4' in params.model and not params.train_aug ,'omniglot only support Conv4 without augmentation'
+        params.model = params.model.replace('Conv4', 'Conv4S') # because Conv4Drop should also be Conv4SDrop
         if params.recons_decoder is not None:
             if 'ConvS' not in params.recons_decoder:
                 raise ValueError('omniglot / cross_char should use ConvS/HiddenConvS decoder.')
@@ -81,7 +87,12 @@ def get_model(params, mode):
 
     if params.method == 'protonet':
         if recons_decoder is None:
-            model = ProtoNet( model_dict[params.model], **few_shot_params )
+            if params.dropout_p==0:
+                feature_model_func = model_dict[params.model] 
+            else:
+                print('params.dropout_p =',params.dropout_p)
+                feature_model_func = lambda: model_dict[params.model](dropout_p=params.dropout_p)
+            model = ProtoNet( feature_model_func, **few_shot_params )
         elif 'Hidden' in params.recons_decoder:
             if params.recons_decoder == 'HiddenConv': # 'HiddenConv', 'HiddenConvS'
                 model = ProtoNetAE2(model_dict[params.model], **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2)

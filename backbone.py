@@ -299,6 +299,8 @@ class CustomDropout2D(MyDropout2D, CustomDropout):
             p (float): dropout probability (1-p = keep_prob)
             inplace (bool): haven't implement yet
         '''
+        
+        # these 2 lines might have some problems that call __init__() of MyDropout twice, to avoid the problem, maybe we could just call CustomDropout.__init__()???
         super(CustomDropout2D, self).__init__(n_features=n_features, p=p, inplace=inplace)
         CustomDropout.__init__(self, n_features=n_features, p=p, inplace=inplace)
         
@@ -366,7 +368,7 @@ class ConvBlock(nn.Module):
             self.parametrized_layers = [self.C, self.BN, self.relu]
         else: # dropout
             # TODO: custom dropout
-            self.dropout = CustomDropout2D(n_features=out_dim, p=dropout_p)
+            self.dropout = CustomDropout2D(n_features=outdim, p=dropout_p)
             self.parametrized_layers = [self.C, self.BN, self.relu, self.dropout]
         
         if pool:
@@ -583,7 +585,7 @@ class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in
 
 
 class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
-    def __init__(self, depth, flatten = True):
+    def __init__(self, depth, flatten = True, dropout_p=0.):
         super(ConvNetS,self).__init__()
         trunk = []
         # TODO: trunk.append only select 1 channel
@@ -597,7 +599,12 @@ class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
             '''
             indim = 1 if i == 0 else 64
             outdim = 64
-            B = ConvBlock(indim, outdim, pool = ( i <4 ) ) #only pooling for first 4 layers
+            
+            dropout_cond = i==depth-1 # last layer
+            block_dropout_p = dropout_p if dropout_cond else 0.
+            
+            B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) #only pooling for first 4 layers
+#             B = ConvBlock(indim, outdim, pool = ( i <4 ) ) #only pooling for first 4 layers
             trunk.append(B)
 
         if flatten:
@@ -869,11 +876,17 @@ class DeConvNet2(nn.Module):
         out = img_standardize(out)
         return out
 
-def Conv4():
-    return ConvNet(4)
+# def Conv4():
+#     return ConvNet(4)
 
-def Conv6():
-    return ConvNet(6)
+# def Conv4Drop(dropout_p=0.):
+#     return ConvNet(4,dropout_p=dropout_p)
+
+def Conv4(dropout_p=0.):
+    return ConvNet(4,dropout_p=dropout_p)
+
+def Conv6(dropout_p=0.):
+    return ConvNet(6,dropout_p=dropout_p)
 
 def Conv4NP():
     return ConvNetNopool(4)
@@ -881,8 +894,14 @@ def Conv4NP():
 def Conv6NP():
     return ConvNetNopool(6)
 
-def Conv4S():
-    return ConvNetS(4)
+# def Conv4S():
+#     return ConvNetS(4)
+
+# def Conv4SDrop(dropout_p=0.):
+#     return ConvNetS(4,dropout_p=dropout_p)
+
+def Conv4S(dropout_p=0.):
+    return ConvNetS(4,dropout_p=dropout_p)
 
 def Conv4SNP():
     return ConvNetSNopool(4)
