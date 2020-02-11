@@ -176,20 +176,28 @@ if __name__ == '__main__':
     backbone_func = get_backbone_func(params)
     backbone_net = backbone_func()
 
-    if params.gpu_id:
-        device = torch.device('cuda:'+str(params.gpu_id))
-    else:
-        device = None
-#     backbone_net = backbone_net.cuda()
-    if device is None:
-        backbone_net = to_device(backbone_net)
-    else:
-        backbone_net = backbone_net.cuda()
+#     if params.gpu_id:
+#         device = torch.device('cuda:'+str(params.gpu_id))
+#     else:
+#         device = None
+# #     backbone_net = backbone_net.cuda()
+#     if device is None:
+#         backbone_net = to_device(backbone_net)
+#     else:
+#         backbone_net = backbone_net.cuda()
     
-    if params.gpu_id is None:
-        tmp = torch.load(modelfile)
-    else:
+#     if params.gpu_id is None:
+#         tmp = torch.load(modelfile)
+#     else:
+#         tmp = torch.load(modelfile, map_location='cuda:0')#+str(params.gpu_id))
+    
+    if params.gpu_id:
+        backbone_net = backbone_net.cuda()
         tmp = torch.load(modelfile, map_location='cuda:0')#+str(params.gpu_id))
+    else:
+        backbone_net = to_device(backbone_net)
+        tmp = torch.load(modelfile)
+    
     state = tmp['state']
     state_keys = list(state.keys())
     for i, key in enumerate(state_keys):
