@@ -18,7 +18,7 @@ from methods.maml import MAML
 from io_utils import *
 
 from my_utils import *
-from model_utils import batchnorm_use_target_stats
+from model_utils import get_backbone_func, batchnorm_use_target_stats
 
 def save_features(model, data_loader, outfile, params):
     f = h5py.File(outfile, 'w')
@@ -55,21 +55,22 @@ def save_features(model, data_loader, outfile, params):
     f.close()
 
 
-def get_backbone_net(params):
-    if params.method in ['relationnet', 'relationnet_softmax']:
-        if params.model == 'Conv4': 
-            backbone_net = backbone.Conv4NP()
-        elif params.model == 'Conv6': 
-            backbone_net = backbone.Conv6NP()
-        elif params.model == 'Conv4S': 
-            backbone_net = backbone.Conv4SNP()
-        else:
-            backbone_net = model_dict[params.model]( flatten = False )
-    elif params.method in ['maml' , 'maml_approx']: 
-        raise ValueError('MAML do not support save feature')
-    else:
-        backbone_net = model_dict[params.model]()
-    return backbone_net
+# def get_backbone_net(params):
+#     if params.method in ['relationnet', 'relationnet_softmax']:
+#         if params.model == 'Conv4': 
+#             backbone_net = backbone.Conv4NP()
+#         elif params.model == 'Conv6': 
+#             backbone_net = backbone.Conv6NP()
+#         elif params.model == 'Conv4S': 
+#             backbone_net = backbone.Conv4SNP()
+#         else:
+#             backbone_net = model_dict[params.model]( flatten = False )
+#     elif params.method in ['maml' , 'maml_approx']: 
+#         raise ValueError('MAML do not support save feature')
+#     else:
+#         backbone_net = model_dict[params.model]()
+    
+#     return backbone_net
 
 # def get_save_feature_filepath(params, checkpoint_dir, split):
 #     if params.save_iter != -1:
@@ -158,20 +159,22 @@ if __name__ == '__main__':
 
     
     ######## get backbone network #########
-    if params.method in ['relationnet', 'relationnet_softmax']:
-        if params.model == 'Conv4': 
-            backbone_net = backbone.Conv4NP()
-        elif params.model == 'Conv6': 
-            backbone_net = backbone.Conv6NP()
-        elif params.model == 'Conv4S': 
-            backbone_net = backbone.Conv4SNP()
-        else:
-            backbone_net = model_dict[params.model]( flatten = False )
-    elif params.method in ['maml' , 'maml_approx']: 
-        raise ValueError('MAML do not support save feature')
-    else:
-        backbone_net = model_dict[params.model]()
-    backbone_net = get_backbone_net(params)
+#     if params.method in ['relationnet', 'relationnet_softmax']:
+#         if params.model == 'Conv4': 
+#             backbone_net = backbone.Conv4NP()
+#         elif params.model == 'Conv6': 
+#             backbone_net = backbone.Conv6NP()
+#         elif params.model == 'Conv4S': 
+#             backbone_net = backbone.Conv4SNP()
+#         else:
+#             backbone_net = model_dict[params.model]( flatten = False )
+#     elif params.method in ['maml' , 'maml_approx']: 
+#         raise ValueError('MAML do not support save feature')
+#     else:
+#         backbone_net = model_dict[params.model]()
+#     backbone_net = get_backbone_net(params)
+    backbone_func = get_backbone_func(params)
+    backbone_net = backbone_func()
 
     if params.gpu_id:
         device = torch.device('cuda:'+str(params.gpu_id))

@@ -34,6 +34,27 @@ def get_few_shot_params(params, mode=None):
     else:
         return few_shot_params[mode]
 
+def get_backbone_func(params):
+    
+    if params.method in ['relationnet', 'relationnet_softmax']:
+        if params.model == 'Conv4': 
+            feature_model = backbone.Conv4NP
+        elif params.model == 'Conv6': 
+            feature_model = backbone.Conv6NP
+        elif params.model == 'Conv4S': 
+            feature_model = backbone.Conv4SNP
+        else:
+            feature_model = lambda: model_dict[params.model]( flatten = False )
+
+    else: # not RelationNet
+        backbone_func = model_dict[params.model]
+        if params.dropout_p==0:
+            backbone_func = model_dict[params.model] 
+        else:
+            backbone_func = lambda: model_dict[params.model](dropout_p=params.dropout_p)
+
+    return backbone_func
+
 def get_model(params, mode):
     '''
     Args:
@@ -72,56 +93,57 @@ def get_model(params, mode):
         recons_decoder = decoder_dict[params.recons_decoder]
         print('recons_decoder:\n',recons_decoder)
 
+    backbone_func = get_backbone_func(params)
     
     # not sure
     if mode == 'train':
         if params.method == 'baseline':
-            model           = BaselineTrain( model_dict[params.model], params.num_classes)
+            model           = BaselineTrain( backbone_func, params.num_classes)
         elif params.method == 'baseline++':
-            model           = BaselineTrain( model_dict[params.model], params.num_classes, loss_type = 'dist')
+            model           = BaselineTrain( backbone_func, params.num_classes, loss_type = 'dist')
     elif mode == 'test':
         if params.method == 'baseline':
-            model           = BaselineFinetune( model_dict[params.model], **few_shot_params )
+            model           = BaselineFinetune( backbone_func, **few_shot_params )
         elif params.method == 'baseline++':
-            model           = BaselineFinetune( model_dict[params.model], loss_type = 'dist', **few_shot_params )
+            model           = BaselineFinetune( backbone_func, loss_type = 'dist', **few_shot_params )
 
     if params.method == 'protonet':
         if recons_decoder is None:
-            if params.dropout_p==0:
-                feature_model_func = model_dict[params.model] 
-            else:
-                print('params.dropout_p =',params.dropout_p)
-                feature_model_func = lambda: model_dict[params.model](dropout_p=params.dropout_p)
-            model = ProtoNet( feature_model_func, **few_shot_params )
+#             if params.dropout_p==0:
+#                 feature_model_func = model_dict[params.model] 
+#             else:
+#                 print('params.dropout_p =',params.dropout_p)
+#                 feature_model_func = lambda: model_dict[params.model](dropout_p=params.dropout_p)
+            model = ProtoNet( backbone_func, **few_shot_params )
         elif 'Hidden' in params.recons_decoder:
             if params.recons_decoder == 'HiddenConv': # 'HiddenConv', 'HiddenConvS'
-                model = ProtoNetAE2(model_dict[params.model], **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2)
+                model = ProtoNetAE2(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2)
             elif params.recons_decoder == 'HiddenConvS': # 'HiddenConv', 'HiddenConvS'
-                model = ProtoNetAE2(model_dict[params.model], **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2, is_color=False)
+                model = ProtoNetAE2(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2, is_color=False)
             elif params.recons_decoder == 'HiddenRes10':
-                model = ProtoNetAE2(model_dict[params.model], **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 6)
+                model = ProtoNetAE2(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 6)
         else:
-            model = ProtoNetAE(model_dict[params.model], **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda)
+            model = ProtoNetAE(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda)
     elif params.method == 'matchingnet':
-        model           = MatchingNet( model_dict[params.model], **few_shot_params )
+        model           = MatchingNet( backbone_func, **few_shot_params )
     elif params.method in ['relationnet', 'relationnet_softmax']:
-        if params.model == 'Conv4': 
-            feature_model = backbone.Conv4NP
-        elif params.model == 'Conv6': 
-            feature_model = backbone.Conv6NP
-        elif params.model == 'Conv4S': 
-            feature_model = backbone.Conv4SNP
-        else:
-            feature_model = lambda: model_dict[params.model]( flatten = False )
+#         if params.model == 'Conv4': 
+#             feature_model = backbone.Conv4NP
+#         elif params.model == 'Conv6': 
+#             feature_model = backbone.Conv6NP
+#         elif params.model == 'Conv4S': 
+#             feature_model = backbone.Conv4SNP
+#         else:
+#             feature_model = lambda: model_dict[params.model]( flatten = False )
         loss_type = 'mse' if params.method == 'relationnet' else 'softmax'
 
-        model           = RelationNet( feature_model, loss_type = loss_type , **few_shot_params )
+        model           = RelationNet( backbone_func, loss_type = loss_type , **few_shot_params )
     elif params.method in ['maml' , 'maml_approx']:
         backbone.ConvBlock.maml = True
         backbone.SimpleBlock.maml = True
         backbone.BottleneckBlock.maml = True
         backbone.ResNet.maml = True
-        model           = MAML(  model_dict[params.model], approx = (params.method == 'maml_approx') , **few_shot_params )
+        model           = MAML(  backbone_func, approx = (params.method == 'maml_approx') , **few_shot_params )
         if params.dataset in ['omniglot', 'cross_char']: #maml use different parameter in omniglot
             model.n_task     = 32
             model.task_update_num = 1
