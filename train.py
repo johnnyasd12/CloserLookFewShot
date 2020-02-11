@@ -32,7 +32,7 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     best_epoch = 0
     
     if params.patience is not None:
-        stop_delta = 0.3
+        stop_delta = 0.
         early_stopping = EarlyStopping(patience=params.patience, verbose=False, delta=stop_delta, mode='max')
     else:
         early_stopping = None
