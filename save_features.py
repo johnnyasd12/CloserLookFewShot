@@ -26,10 +26,10 @@ def save_features(model, data_loader, outfile, params):
     all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
     all_feats=None
     count=0
-    if params.gpu_id:
-        device = torch.device('cuda:'+str(params.gpu_id))
-    else:
-        device = None
+#     if params.gpu_id:
+#         device = torch.device('cuda:'+str(params.gpu_id))
+#     else:
+#         device = None
     
     for i, (x,y) in enumerate(data_loader):
         if i%10 == 0:
