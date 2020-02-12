@@ -36,10 +36,14 @@ def save_features(model, data_loader, outfile, params):
             print('{:d}/{:d}'.format(i, len(data_loader)))
         
 #         x = x.cuda()
-        if device is None:
-            x = to_device(x)
-        else:
+#         if device is None:
+#             x = to_device(x)
+#         else:
+#             x = x.cuda()
+        if params.gpu_id:
             x = x.cuda()
+        else:
+            x = to_device(x)
         
         x_var = Variable(x)
         feats = model(x_var)
