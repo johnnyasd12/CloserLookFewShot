@@ -49,36 +49,38 @@ class RelationNet(MetaTemplate):
         relation_module_clone.load_state_dict(self.relation_module.state_dict())
 
 
-        z_support, z_query  = self.parse_feature(x,is_feature)
+        z_support, z_query  = self.parse_feature(x,is_feature) # shape = (n_way, n_data, *feature_dims)
         z_support   = z_support.contiguous()
         set_optimizer = torch.optim.SGD(self.relation_module.parameters(), lr = 0.01, momentum=0.9, dampening=0.9, weight_decay=0.001)
 
         self.n_support = 3
         self.n_query = 2
 
-        z_support_cpu = z_support.data.cpu().numpy()
+        z_support_cpu = z_support.data.cpu().numpy() # shape = (n_way, n_shot, *feature_dims)
         for epoch in range(100):
             perm_id = np.random.permutation(full_n_support).tolist()            
             sub_x = np.array([z_support_cpu[i,perm_id,:,:,:] for i in range(z_support.size(0))])
-#             sub_x = torch.Tensor(sub_x).cuda()
-            sub_x = to_device(torch.Tensor(sub_x))
+            sub_x = torch.Tensor(sub_x).cuda() # support set, but why permutation?
+#             sub_x = to_device(torch.Tensor(sub_x))
             if self.change_way:
                 self.n_way  = sub_x.size(0)
             set_optimizer.zero_grad()
-            y = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
-            scores = self.set_forward(sub_x, is_feature = True)
+            y_numpy = np.repeat(range( self.n_way ), self.n_query ) # sub_query set label
+            y = torch.from_numpy(y_numpy) # shape = (n_way*n_query, ), value = [0 0 1 1 2 2 ...]
+            scores = self.set_forward(sub_x, is_feature = True) # split support set into sub_supp & sub_query, then compute sub_query set scores
             if self.loss_type == 'mse':
                 y_oh = utils.one_hot(y, self.n_way)
-#                 y_oh = Variable(y_oh.cuda())
-                y_oh = Variable(to_device(y_oh))
+                y_oh = Variable(y_oh.cuda())
+#                 y_oh = Variable(to_device(y_oh))
 
                 loss =  self.loss_fn(scores, y_oh )
             else:
-#                 y = Variable(y.cuda())
-                y = Variable(to_device(y))
+                y = Variable(y.cuda())
+#                 y = Variable(to_device(y))
                 loss = self.loss_fn(scores, y )
             loss.backward()
             set_optimizer.step()
+            yeeeeee
 
         self.n_support = full_n_support
         self.n_query = full_n_query
@@ -96,20 +98,26 @@ class RelationNet(MetaTemplate):
 
         self.relation_module.load_state_dict(relation_module_clone.state_dict())
         return relations
+    
     def set_forward_loss(self, x):
         y = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
 
         scores = self.set_forward(x)
         if self.loss_type == 'mse':
             y_oh = utils.one_hot(y, self.n_way)
-#             y_oh = Variable(y_oh.cuda())
-            y_oh = Variable(to_device(y_oh))
+            y_oh = Variable(y_oh.cuda())
+#             y_oh = Variable(to_device(y_oh))
 
             return self.loss_fn(scores, y_oh )
         else:
-#             y = Variable(y.cuda())
-            y = Variable(to_device(y))
+            y = Variable(y.cuda())
+#             y = Variable(to_device(y))
             return self.loss_fn(scores, y )
+
+
+    def total_loss(self, x):
+        return self.set_forward_loss(x)
+
 
 class RelationConvBlock(nn.Module):
     def __init__(self, indim, outdim, padding = 0):
