@@ -38,13 +38,13 @@ def get_backbone_func(params):
     
     if params.method in ['relationnet', 'relationnet_softmax']:
         if params.model == 'Conv4': 
-            feature_model = backbone.Conv4NP
+            backbone_func = backbone.Conv4NP
         elif params.model == 'Conv6': 
-            feature_model = backbone.Conv6NP
+            backbone_func = backbone.Conv6NP
         elif params.model == 'Conv4S': 
-            feature_model = backbone.Conv4SNP
+            backbone_func = backbone.Conv4SNP
         else:
-            feature_model = lambda: model_dict[params.model]( flatten = False )
+            backbone_func = lambda: model_dict[params.model]( flatten = False )
 
     else: # not RelationNet
         backbone_func = model_dict[params.model]

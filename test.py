@@ -45,15 +45,20 @@ if __name__ == '__main__':
 #     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot) # BUGFIX: decoder ?
     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
 
+#     if params.gpu_id:
+#         device = torch.device('cuda:'+str(params.gpu_id))
+#     else:
+#         device = None
+# #     model = model.cuda()
+#     if device is None:
+#         model = to_device(model)
+#     else:
+#         model = model.cuda()
+    
     if params.gpu_id:
-        device = torch.device('cuda:'+str(params.gpu_id))
-    else:
-        device = None
-#     model = model.cuda()
-    if device is None:
-        model = to_device(model)
-    else:
         model = model.cuda()
+    else:
+        model = to_device(model)
 
     # set save directory
 #     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
