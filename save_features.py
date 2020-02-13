@@ -26,20 +26,11 @@ def save_features(model, data_loader, outfile, params):
     all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
     all_feats=None
     count=0
-#     if params.gpu_id:
-#         device = torch.device('cuda:'+str(params.gpu_id))
-#     else:
-#         device = None
     
     for i, (x,y) in enumerate(data_loader):
         if i%10 == 0:
             print('{:d}/{:d}'.format(i, len(data_loader)))
         
-#         x = x.cuda()
-#         if device is None:
-#             x = to_device(x)
-#         else:
-#             x = x.cuda()
         if params.gpu_id:
             x = x.cuda()
         else:
@@ -57,38 +48,6 @@ def save_features(model, data_loader, outfile, params):
     count_var[0] = count
 
     f.close()
-
-
-# def get_backbone_net(params):
-#     if params.method in ['relationnet', 'relationnet_softmax']:
-#         if params.model == 'Conv4': 
-#             backbone_net = backbone.Conv4NP()
-#         elif params.model == 'Conv6': 
-#             backbone_net = backbone.Conv6NP()
-#         elif params.model == 'Conv4S': 
-#             backbone_net = backbone.Conv4SNP()
-#         else:
-#             backbone_net = model_dict[params.model]( flatten = False )
-#     elif params.method in ['maml' , 'maml_approx']: 
-#         raise ValueError('MAML do not support save feature')
-#     else:
-#         backbone_net = model_dict[params.model]()
-    
-#     return backbone_net
-
-# def get_save_feature_filepath(params, checkpoint_dir, split):
-#     if params.save_iter != -1:
-#         split_str = split + "_" +str(params.save_iter)
-#     else:
-#         split_str = split
-#     outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str + ".hdf5")
-    
-# #     if params.save_iter != -1:
-# #         outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + "_" + str(params.save_iter)+ ".hdf5") 
-# #     else:
-# #         outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + ".hdf5")
-    
-#     return outfile
 
 
 if __name__ == '__main__':
