@@ -55,6 +55,9 @@ class MetaTemplate(nn.Module):
     
     def parse_feature(self,x,is_feature): # utilized by set_forward
         ''' parsing xs or zs to support and query feature embedding
+        Return:
+            z_support: shape=(n_way, n_support,...)
+            z_query: shape=(n_way, batch_size - n_support, ...)
         '''
         
 #         x = Variable(x.cuda())
@@ -63,11 +66,11 @@ class MetaTemplate(nn.Module):
 #         print('0.min = %s, 0.max = %s' % (x[:,:,0,:,:].min(),x[:,:,0,:,:].max()))
 #         print('1.min = %s, 1.max = %s' % (x[:,:,1,:,:].min(),x[:,:,1,:,:].max()))
 #         print('2.min = %s, 2.max = %s' % (x[:,:,2,:,:].min(),x[:,:,2,:,:].max()))
-        if self.device is None:
-#             x = Variable(to_device(x))
-            x = x.cuda()
-        else:
-            x = x.cuda()
+#         if self.device is None:
+# #             x = Variable(to_device(x))
+#             x = x.cuda()
+#         else:
+        x = x.cuda()
         
         # x.size = n_way, (n_supp + n_que), 3, size, size (even for omniglot channel size is 3
         if is_feature:
@@ -90,11 +93,11 @@ class MetaTemplate(nn.Module):
         
         
 #         x = Variable(x.cuda())
-        if self.device is None:
-#             x = Variable(to_device(x))
-            x = x.cuda()
-        else:
-            x = x.cuda()
+#         if self.device is None:
+# #             x = Variable(to_device(x))
+#             x = x.cuda()
+#         else:
+        x = x.cuda()
         
         x_reshape = x.contiguous().view(self.n_way, self.n_support+self.n_query, -1)
         x_support = x_reshape[:, :self.n_support]
@@ -201,29 +204,29 @@ class MetaTemplate(nn.Module):
         y_support = torch.from_numpy(np.repeat(range( self.n_way ), self.n_support ))
         
 #         y_support = Variable(y_support.cuda())
-        if self.device is None:
-#             y_support = Variable(to_device(y_support))
-            y_support = Variable(y_support.cuda())
-        else:
-            y_support = Variable(y_support.cuda())
+#         if self.device is None:
+# #             y_support = Variable(to_device(y_support))
+#             y_support = Variable(y_support.cuda())
+#         else:
+        y_support = Variable(y_support.cuda())
 
         linear_clf = nn.Linear(self.feat_dim, self.n_way)
 #         linear_clf = linear_clf.cuda()
-        if self.device is None:
-#             linear_clf = to_device(linear_clf)
-            linear_clf = linear_clf.cuda()
-        else:
-            linear_clf = linear_clf.cuda()
+#         if self.device is None:
+# #             linear_clf = to_device(linear_clf)
+#             linear_clf = linear_clf.cuda()
+#         else:
+        linear_clf = linear_clf.cuda()
 
         set_optimizer = torch.optim.SGD(linear_clf.parameters(), lr = 0.01, momentum=0.9, dampening=0.9, weight_decay=0.001)
 
         loss_function = nn.CrossEntropyLoss()
 #         loss_function = loss_function.cuda()
-        if self.device is None:
-#             loss_function = to_device(loss_function)
-            loss_function = loss_function.cuda()
-        else:
-            loss_function = loss_function.cuda()
+#         if self.device is None:
+# #             loss_function = to_device(loss_function)
+#             loss_function = loss_function.cuda()
+#         else:
+        loss_function = loss_function.cuda()
         
         
         batch_size = 4
@@ -233,11 +236,11 @@ class MetaTemplate(nn.Module):
             for i in range(0, support_size , batch_size):
                 set_optimizer.zero_grad()
 #                 selected_id = torch.from_numpy( rand_id[i: min(i+batch_size, support_size) ]).cuda()
-                if self.device is None:
-#                     selected_id = to_device(torch.from_numpy( rand_id[i: min(i+batch_size, support_size) ]))
-                    selected_id = torch.from_numpy(rand_id[i:min(i+batch_size,support_size)]).cuda()
-                else:
-                    selected_id = torch.from_numpy(rand_id[i:min(i+batch_size,support_size)]).cuda()
+#                 if self.device is None:
+# #                     selected_id = to_device(torch.from_numpy( rand_id[i: min(i+batch_size, support_size) ]))
+#                     selected_id = torch.from_numpy(rand_id[i:min(i+batch_size,support_size)]).cuda()
+#                 else:
+                selected_id = torch.from_numpy(rand_id[i:min(i+batch_size,support_size)]).cuda()
                 
                 z_batch = z_support[selected_id]
                 y_batch = y_support[selected_id] 
