@@ -62,6 +62,7 @@ def parse_args(script):
     
     # domain CustomDropout
     parser.add_argument('--dropout_p', default=0, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
+    parser.add_argument('--n_candidate_subnet', default=None, type=int, help='the number of dropout subnet candidates.')
 
     parser.add_argument('--debug', action='store_true', help='whether is debugging.')
     if script == 'train':
@@ -110,6 +111,8 @@ def parse_args(script):
     params = parser.parse_args()
     
     # sanity check
+    if (params.dropout_p!=0)^(params.n_candidate_subnet!=None): # both should be True or False
+        raise ValueError('dropout_p and n_candidate_subnet not match.')
     if (params.aug_type==None)^(params.aug_target==None):
         raise ValueError('aug_type & aug_target not match.')
     if (params.recons_decoder==None)^(params.recons_lambda==0):
