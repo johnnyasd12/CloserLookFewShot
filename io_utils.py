@@ -62,7 +62,7 @@ def parse_args(script):
     
     # domain CustomDropout
     parser.add_argument('--dropout_p', default=0, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
-    parser.add_argument('--n_candidate_subnet', default=None, type=int, help='the number of dropout subnet candidates.')
+    
 
     parser.add_argument('--debug', action='store_true', help='whether is debugging.')
     if script == 'train':
@@ -83,6 +83,8 @@ def parse_args(script):
         
 #         parser.add_argument('--test_aug_target', default=None, choices=['batch', 'sample'], help='test data augmentation by sample or batch')
         parser.add_argument('--target_bn', action='store_true', help='use target domain statistics to do batch normalization.')
+        # CustomDropout
+        parser.add_argument('--n_test_candidates', default=None, type=int, help='the number of dropout subnet candidates.')
         
     elif script == 'test':
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
@@ -91,6 +93,8 @@ def parse_args(script):
         
 #         parser.add_argument('--test_aug_target', default=None, choices=['batch', 'sample'], help='test data augmentation by sample or batch')
         parser.add_argument('--target_bn', action='store_true', help='use target domain statistics to do batch normalization.')
+        # CustomDropout
+        parser.add_argument('--n_test_candidates', default=None, type=int, help='the number of dropout subnet candidates.')
         
     elif script == 'draw_features':
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
@@ -111,8 +115,9 @@ def parse_args(script):
     params = parser.parse_args()
     
     # sanity check
-    if (params.dropout_p!=0)^(params.n_candidate_subnet!=None): # both should be True or False
-        raise ValueError('dropout_p and n_candidate_subnet not match.')
+    if script=='save_features' or script=='test':
+        if (params.dropout_p!=0)^(params.n_test_candidates!=None): # both should be True or False
+            raise ValueError('dropout_p and n_test_candidates not match.')
     if (params.aug_type==None)^(params.aug_target==None):
         raise ValueError('aug_type & aug_target not match.')
     if (params.recons_decoder==None)^(params.recons_lambda==0):
