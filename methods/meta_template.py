@@ -26,7 +26,7 @@ class MetaTemplate(nn.Module):
 
     @abstractmethod
     def set_forward(self,x,is_feature):
-        ''' get the last output (score) from image or embedding
+        ''' split x into support & query, then get the last output (score) from image or embedding
         '''
         pass
 

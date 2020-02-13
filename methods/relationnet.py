@@ -80,7 +80,7 @@ class RelationNet(MetaTemplate):
                 loss = self.loss_fn(scores, y )
             loss.backward()
             set_optimizer.step()
-            yeeeeee
+            
 
         self.n_support = full_n_support
         self.n_query = full_n_query
