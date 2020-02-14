@@ -524,7 +524,8 @@ class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
         # CustomDropout
         self.dropout_p = dropout_p
         self.active_dropout_ls = []
-        for name, module in self.named_children():
+#         for name, module in self.named_children():
+        for module in self.modules():
             if isinstance(module, CustomDropout):
                 if module.p != 0: # becuz not all of CustomDropout module are active
                     self.active_dropout_ls.append(module)

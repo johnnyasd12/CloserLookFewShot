@@ -21,7 +21,7 @@ from my_utils import *
 from model_utils import get_backbone_func, batchnorm_use_target_stats
 from tqdm import tqdm
 
-def save_features(model, data_loader, outfile, params):
+def save_features(feature_net, data_loader, outfile, params):
     
     n_candidates = 1 if params.n_test_candidates == None else params.n_test_candidates
     outfile_candidate = 'candidate' in outfile
@@ -34,7 +34,7 @@ def save_features(model, data_loader, outfile, params):
         if 'candidate' in outfile: # then dropout
             outfile = outfile.replace('candidate', 'candidate'+str(n))
             # TODO: dropout
-            model.feature.sample_random_subnet()
+            feature_net.sample_random_subnet()
         
         f = h5py.File(outfile, 'w')
         max_count = len(data_loader)*data_loader.batch_size
@@ -50,7 +50,7 @@ def save_features(model, data_loader, outfile, params):
                 x = to_device(x)
 
             x_var = Variable(x)
-            feats = model(x_var)
+            feats = feature_net(x_var)
             if all_feats is None:
                 all_feats = f.create_dataset('all_feats', [max_count] + list( feats.size()[1:]) , dtype='f')
             all_feats[count:count+feats.size(0)] = feats.data.cpu().numpy()
