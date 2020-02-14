@@ -44,31 +44,12 @@ if __name__ == '__main__':
     
 #     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot) # BUGFIX: decoder ?
     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
-
-#     if params.gpu_id:
-#         device = torch.device('cuda:'+str(params.gpu_id))
-#     else:
-#         device = None
-# #     model = model.cuda()
-#     if device is None:
-#         model = to_device(model)
-#     else:
-#         model = model.cuda()
     
     if params.gpu_id:
         model = model.cuda()
     else:
         model = to_device(model)
 
-    # set save directory
-#     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
-    
-#     if params.recons_decoder:
-#         checkpoint_dir += '_%sDecoder%s' %(params.recons_decoder, params.recons_lambda)
-#     if params.train_aug:
-#         checkpoint_dir += '_aug'
-#     if not params.method in ['baseline', 'baseline++'] :
-#         checkpoint_dir += '_%dway_%dshot' %( params.train_n_way, params.n_shot)
     checkpoint_dir = get_checkpoint_dir(params)
     
     #modelfile   = get_resume_file(checkpoint_dir)
@@ -76,7 +57,7 @@ if __name__ == '__main__':
     print('loading from:',checkpoint_dir)
     if not params.method in ['baseline', 'baseline++'] : 
         if params.save_iter != -1:
-            modelfile   = get_assigned_file(checkpoint_dir,params.save_iter)
+            modelfile   = get_assigned_file(checkpoint_dir, params.save_iter)
         else:
             modelfile   = get_best_file(checkpoint_dir)
         if modelfile is not None:
@@ -89,9 +70,8 @@ if __name__ == '__main__':
                 tmp = torch.load(modelfile, map_location=map_location)
 #                 tmp = torch.load(modelfile)
             model.load_state_dict(tmp['state'])
-#             print('====== tmp ========\n', tmp.keys(), '\n====== model.state_dict() ==========\n', model.state_dict().keys())
             load_epoch = int(tmp['epoch'])
-    else: # if method is 'baseline' or 'baseline++'
+    else: # if 'baseline' or 'baseline++'
         load_epoch = -1 # TODO: get load_epoch, first save 'epoch' in train.py
 
     # train/val/novel
@@ -105,31 +85,9 @@ if __name__ == '__main__':
     if params.method in ['maml', 'maml_approx']: #maml do not support testing with feature
         image_size = get_img_size(params)
         load_file = get_loadfile_path(params, split)
-#         image_size, load_file = get_loadfile_path(params, split)
-
-#         if 'Conv' in params.model:
-#             if params.dataset in ['omniglot', 'cross_char']:
-#                 image_size = 28
-#             else:
-#                 image_size = 84 
-#         else:
-#             image_size = 224
 
         datamgr         = SetDataManager(image_size, n_episode = iter_num, n_query = 15 , **few_shot_params)
         
-#         if params.dataset == 'cross':
-#             if split == 'base':
-#                 loadfile = configs.data_dir['miniImagenet'] + 'all.json' 
-#             else:
-#                 loadfile   = configs.data_dir['CUB'] + split +'.json'
-#         elif params.dataset == 'cross_char':
-#             if split == 'base':
-#                 loadfile = configs.data_dir['omniglot'] + 'noLatin.json' 
-#             else:
-#                 loadfile  = configs.data_dir['emnist'] + split +'.json' 
-#         else: 
-#             loadfile    = configs.data_dir[params.dataset] + split + '.json'
-
         novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
         if params.adaptation:
             model.task_update_num = 100 #We perform adaptation on MAML simply by updating more times.

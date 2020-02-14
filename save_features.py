@@ -32,11 +32,12 @@ def save_features(feature_net, data_loader, outfile, params):
     for n in range(n_candidates):
 
         if 'candidate' in outfile: # then dropout
-            outfile = outfile.replace('candidate', 'candidate'+str(n))
-            # TODO: dropout
+            outfile_n = outfile.replace('candidate', 'candidate'+str(n+1))
             feature_net.sample_random_subnet()
+        else:
+            outfile_n = outfile
         
-        f = h5py.File(outfile, 'w')
+        f = h5py.File(outfile_n, 'w')
         max_count = len(data_loader)*data_loader.batch_size
         all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
         all_feats=None
@@ -127,5 +128,5 @@ if __name__ == '__main__':
     dirname = os.path.dirname(outfile)
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
-    print('saving features to:', outfile)
+#     print('saving features to:', outfile)
     save_features(backbone_net, data_loader, outfile, params)
