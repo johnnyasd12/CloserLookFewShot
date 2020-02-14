@@ -233,12 +233,14 @@ def get_save_feature_filepath(params, checkpoint_dir, split):
     # TODO: target_bn_stats
     target_bn_str = '_target-bn' if params.target_bn else ''
     
-    outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str + target_bn_str + ".hdf5")
+    # CustomDropout
+    # checkpoint_dir already has dropout_p information
+    # should save_feature several times on different candidates
+    dropout_candidates_str = '_candidate' if params.dropout_p!=0 else '' 
+    # should add candidate number in save_features.py
     
-#     if params.save_iter != -1:
-#         outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + "_" + str(params.save_iter)+ ".hdf5") 
-#     else:
-#         outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split + ".hdf5")
+    extra_str = target_bn_str + dropout_candidates_str
+    outfile = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str + extra_str + ".hdf5")
     
     return outfile
 
