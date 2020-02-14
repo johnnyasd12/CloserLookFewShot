@@ -22,20 +22,27 @@ from model_utils import get_backbone_func, batchnorm_use_target_stats
 from tqdm import tqdm
 
 def save_features(model, data_loader, outfile, params):
-    f = h5py.File(outfile, 'w')
-    max_count = len(data_loader)*data_loader.batch_size
-    all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
-    all_feats=None
-    count=0
     
     n_candidates = 1 if params.n_test_candidates == None else params.n_test_candidates
-    if ('candidate' in outfile)^(params.n_test_candidates != None):
+    outfile_candidate = 'candidate' in outfile
+    print('candidate in outfile', outfile_candidate)
+    if (outfile_candidate)^(params.n_test_candidates != None):
         raise ValueError('outfile & params.n_test_candidates mismatch.')
         
     for n in range(n_candidates):
+
+        if 'candidate' in outfile: # then dropout
+            outfile = outfile.replace('candidate', 'candidate'+str(n))
+            # TODO: dropout
+            model.feature.sample_random_subnet()
+        
+        f = h5py.File(outfile, 'w')
+        max_count = len(data_loader)*data_loader.batch_size
+        all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
+        all_feats=None
+        count=0
+
         for i, (x,y) in enumerate(tqdm(data_loader)):
-#             if i%10 == 0:
-#                 print('{:d}/{:d}'.format(i, len(data_loader)))
 
             if params.gpu_id:
                 x = x.cuda()
@@ -50,10 +57,10 @@ def save_features(model, data_loader, outfile, params):
             all_labels[count:count+feats.size(0)] = y.cpu().numpy()
             count = count + feats.size(0)
 
-    count_var = f.create_dataset('count', (1,), dtype='i')
-    count_var[0] = count
+        count_var = f.create_dataset('count', (1,), dtype='i')
+        count_var[0] = count
 
-    f.close()
+        f.close()
 
 
 if __name__ == '__main__':

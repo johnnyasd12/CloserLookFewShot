@@ -116,8 +116,9 @@ def parse_args(script):
     
     # sanity check
     if script=='save_features' or script=='test':
-        if (params.dropout_p!=0)^(params.n_test_candidates!=None): # both should be True or False
-            raise ValueError('dropout_p and n_test_candidates not match.')
+        if params.n_test_candidates!=None: # both should be True or False
+            if params.dropout_p == 0:
+                raise ValueError('dropout_p and n_test_candidates not match.')
     if (params.aug_type==None)^(params.aug_target==None):
         raise ValueError('aug_type & aug_target not match.')
     if (params.recons_decoder==None)^(params.recons_lambda==0):
@@ -162,23 +163,23 @@ def get_assigned_file(checkpoint_dir,num):
 def get_resume_file(checkpoint_dir):
     filelist = glob.glob(os.path.join(checkpoint_dir, '*.tar'))
     if len(filelist) == 0:
-        print('NO .tar file, get_resume_file failed. ')
+        print('NO .tar file, get_resume_file() failed. ')
         return None
 
     filelist =  [ x  for x in filelist if os.path.basename(x) != 'best_model.tar' ]
     epochs = np.array([int(os.path.splitext(os.path.basename(x))[0]) for x in filelist])
     max_epoch = np.max(epochs)
     resume_file = os.path.join(checkpoint_dir, '{:d}.tar'.format(max_epoch))
-    print('get resume file with max epoch:', resume_file)
+    print('get resume model file with max epoch:', resume_file)
     return resume_file
 
 def get_best_file(checkpoint_dir):    
     best_file = os.path.join(checkpoint_dir, 'best_model.tar')
     if os.path.isfile(best_file):
-        print('best file:', best_file)
+        print('best model file:', best_file)
         return best_file
     else:
-        print('NOT found best file:',best_file,' , go get resume file')
+        print('NOT found best model file:',best_file,' , go get resume model file')
         return get_resume_file(checkpoint_dir)
 
 def params2df(params, extra_dict):
@@ -236,7 +237,7 @@ def get_save_feature_filepath(params, checkpoint_dir, split):
     # CustomDropout
     # checkpoint_dir already has dropout_p information
     # should save_feature several times on different candidates
-    dropout_candidates_str = '_candidate' if params.dropout_p!=0 else '' 
+    dropout_candidates_str = '' if params.n_test_candidates == None else '_candidate' 
     # should add candidate number in save_features.py
     
     extra_str = target_bn_str + dropout_candidates_str
