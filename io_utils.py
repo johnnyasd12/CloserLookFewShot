@@ -95,6 +95,7 @@ def parse_args(script):
         parser.add_argument('--target_bn', action='store_true', help='use target domain statistics to do batch normalization.')
         # CustomDropout
         parser.add_argument('--n_test_candidates', default=None, type=int, help='the number of dropout subnet candidates.')
+        parser.add_argument('--frac_ensemble', default=None, type=float, help='the final fraction of dropout subnets ensemble. (set 1 for only 1 subnet, no ensemble)')
         
     elif script == 'draw_features':
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
