@@ -165,23 +165,25 @@ class EarlyStopping:
 def plot_PIL(img):
     pass
 
-def feature_evaluation(cl_feature_dict, model, params, n_way = 5, n_support = 5, n_query = 15, recons_func = None):
+def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support = 5, n_query = 15, recons_func = None):
     ''' (for test.py) sample 1 episode to do evaluation
-    :param cl_feature_dict: dictionary (or list of dictionary if n_test_candidates not None), keys=label_idx, values = all extracted features
+    :param cl_feature_dict_ls: dictionary (or list of dictionary if n_test_candidates not None), keys=label_idx, values = all extracted features
     :param recons_func: temporary no use
     :return: accuracy (%)
     '''
     adaptation = params.adaptation
     
     if params.n_test_candidates is None: # common setting
-        class_list = cl_feature_dict.keys()
+        class_list = cl_feature_dict_ls[0].keys()
         select_class = random.sample(class_list,n_way)
         z_all  = []
+        cl_feature_dict = cl_feature_dict_ls[0]
         for cl in select_class:
             img_feat = cl_feature_dict[cl]
             perm_ids = np.random.permutation(len(img_feat)).tolist() # get shuffled idx inside one-class data
             z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_support+n_query) ] ) # stack each batch
         z_all = torch.from_numpy(np.array(z_all)) # z_support & z_query
+        
         model.n_query = n_query
         if adaptation:
             scores  = model.set_forward_adaptation(z_all, is_feature = True)
@@ -191,7 +193,30 @@ def feature_evaluation(cl_feature_dict, model, params, n_way = 5, n_support = 5,
         y = np.repeat(range( n_way ), n_query )
         acc = np.mean(pred == y)*100 
     else: # n_test_candidates
-        pass
+        assert params.n_test_candidates == len(cl_feature_dict_ls), "features & params mismatch."
+        
+        class_list = cl_feature_dict_ls[0].keys()
+        select_class = random.sample(class_list,n_way)
+        for n in params.n_test_candidates:
+            print('Candidate',n+1,'start.')
+            z_all  = []
+            cl_feature_dict = cl_feature_dict_ls[n]
+            for cl in select_class:
+                img_feat = cl_feature_dict[cl]
+                # get shuffled idx inside one-class data
+                perm_ids = np.random.permutation(len(img_feat)).tolist()
+                # stack each batch
+                z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_support+n_query) ] )
+            z_all = torch.from_numpy(np.array(z_all)) # z_support & z_query
+            
+            # TODO: split z_all into z_support & z_query
+            
+            n_sub_query = n_support//2
+            n_sub_support = n_support - n_sub_query
+            
+            z_support, z_query  = self.parse_feature(x,is_feature) # shape = (n_way, n_data, *feature_dims)
+            z_support   = z_support.contiguous() # shape = (n_way, n_shot, *feature_dims)
+            z_support_cpu = z_support.data.cpu().numpy()
     
     return acc
 

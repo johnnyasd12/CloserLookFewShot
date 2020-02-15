@@ -60,7 +60,7 @@ class RelationNet(MetaTemplate):
         for epoch in range(100):
             perm_id = np.random.permutation(full_n_support).tolist()            
             sub_x = np.array([z_support_cpu[i,perm_id,:,:,:] for i in range(z_support.size(0))])
-            sub_x = torch.Tensor(sub_x).cuda() # support set, but why permutation?
+            sub_x = torch.Tensor(sub_x).cuda() # support set, permutation is for the in-class samples
 #             sub_x = to_device(torch.Tensor(sub_x))
             if self.change_way:
                 self.n_way  = sub_x.size(0)

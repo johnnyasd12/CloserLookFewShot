@@ -102,7 +102,7 @@ if __name__ == '__main__':
         # TODO: from here to loop n_candidate???
         if 'candidate' in feature_file:
             feature_files = []
-            cl_feature_dicts = []
+            cl_feature_dict_ls = []
             for n in range(params.n_test_candidates):
                 feature_file_n = feature_file.replace('candidate','candidate'+str(n+1))
                 feature_files.append(feature_file_n)
@@ -116,12 +116,12 @@ if __name__ == '__main__':
                 # TODO: draw something here ???
                 acc_all.append(acc)
                 
-        else:
+        else: # common setting (no candidate)
             cl_feature_dict = feat_loader.init_loader(feature_file)
-
+            cl_feature_dict_ls = [cl_feature_dict]
             for i in tqdm(range(iter_num)):
                 # TODO: fix data list? can only fix class list?
-                acc = feature_evaluation(cl_feature_dict, model, params=params, n_query=15, **few_shot_params)
+                acc = feature_evaluation(cl_feature_dict_ls, model, params=params, n_query=15, **few_shot_params)
                 # TODO: draw something here ???
                 acc_all.append(acc)
 
