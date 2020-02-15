@@ -99,15 +99,26 @@ if __name__ == '__main__':
 #         feature_file = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +".hdf5") #defaut split = novel, but you can also test base or val classes # so the variable name "feature_file" is proper?
         feature_file = get_save_feature_filepath(params, checkpoint_dir, split)
         
-        cl_data_file = feat_loader.init_loader(feature_file)
+        # TODO: from here to loop n_candidate???
+        if 'candidate' in feature_file:
+            feature_files = []
+            cl_feature_dicts = []
+            for n in range(params.n_test_candidates):
+                feature_file_n = feature_file.replace('candidate','candidate'+str(n+1))
+                feature_files.append(feature_file_n)
+                cl_feature_dict_n = feat_loader.init_loader(feature_file_n)
+                cl_feature_dicts.append(cl_feature_dict_n)
+                
+        else:
+            cl_feature_dict = feat_loader.init_loader(feature_file)
 
-        for i in tqdm(range(iter_num)):
-            # TODO: fix data list? can only fix class list?
-            
-            
-            acc = feature_evaluation(cl_data_file, model, n_query = 15, adaptation = params.adaptation, **few_shot_params)
-            # TODO: draw something here ???
-            acc_all.append(acc)
+            for i in tqdm(range(iter_num)):
+                # TODO: fix data list? can only fix class list?
+                
+
+                acc = feature_evaluation(cl_feature_dict, model, params=params, n_query = 15, **few_shot_params)
+                # TODO: draw something here ???
+                acc_all.append(acc)
 
         acc_all  = np.asarray(acc_all)
         acc_mean = np.mean(acc_all)
