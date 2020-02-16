@@ -32,7 +32,7 @@ class MetaTemplate(nn.Module):
 
     @abstractmethod
     def set_forward_loss(self, x): # utilized by train_loop
-        ''' compute task loss
+        ''' compute task loss (by query set) given support & query set
         '''
         pass
     

@@ -17,7 +17,7 @@ class ProtoNet(MetaTemplate):
 
 
     def set_forward(self,x,is_feature = False):
-        ''' get the last output (score) from image or embedding
+        ''' get the last output (scores of query set) from image or embedding
         '''
         z_support, z_query  = self.parse_feature(x,is_feature)
 
@@ -30,7 +30,7 @@ class ProtoNet(MetaTemplate):
         return scores
 
     def set_forward_loss(self, x): # utilized by train_loop
-        ''' compute task loss
+        ''' compute task loss (by query set) given support and query set
         '''
         y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
 #         y_query = Variable(y_query.cuda())

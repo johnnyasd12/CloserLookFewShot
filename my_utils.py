@@ -166,7 +166,7 @@ def plot_PIL(img):
     pass
 
 def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support = 5, n_query = 15, recons_func = None):
-    ''' (for test.py) sample 1 episode to do evaluation
+    ''' (for test.py) sample ONE episode to do evaluation
     :param cl_feature_dict_ls: dictionary (or list of dictionary if n_test_candidates not None), keys=label_idx, values = all extracted features
     :param recons_func: temporary no use
     :return: accuracy (%)
@@ -192,13 +192,14 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         pred = scores.data.cpu().numpy().argmax(axis = 1)
         y = np.repeat(range( n_way ), n_query )
         acc = np.mean(pred == y)*100 
-    else: # n_test_candidates
+    else: # n_test_candidates setting
         assert params.n_test_candidates == len(cl_feature_dict_ls), "features & params mismatch."
         
         class_list = cl_feature_dict_ls[0].keys()
         select_class = random.sample(class_list,n_way)
-        for n in params.n_test_candidates:
-            print('Candidate',n+1,'start.')
+        sub_acc_ls = [] # store sub_query set accuracy of all the candidates
+        
+        for n in range(params.n_test_candidates):
             z_all  = []
             cl_feature_dict = cl_feature_dict_ls[n]
             for cl in select_class:
@@ -211,12 +212,34 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
             
             # TODO: split z_all into z_support & z_query
             
-            n_sub_query = n_support//2
-            n_sub_support = n_support - n_sub_query
+            n_sub_query = n_support//2 # 5//2 = 2
+            n_sub_support = n_support - n_sub_query # 5-2 = 3
             
-            z_support, z_query  = self.parse_feature(x,is_feature) # shape = (n_way, n_data, *feature_dims)
+            z_support, z_query  = model.parse_feature(z_all,is_feature=True)# shape:(n_way, n_data, *feature_dims)
             z_support   = z_support.contiguous() # shape = (n_way, n_shot, *feature_dims)
             z_support_cpu = z_support.data.cpu().numpy()
+            perm_id = np.random.permutation(n_support).tolist()
+            z_supp_perm = np.array([z_support_cpu[i,perm_id,:,:,:] for i in range(z_support.size(0))])
+            z_supp_perm = torch.Tensor(z_supp_perm).cuda() # support set, permutation is for the in-class samples
+            if model.change_way:
+                model.n_way  = z_supp_perm.size(0)
+            y_sub_query = np.repeat(range( model.n_way ), n_sub_query ) # sub_query set label
+#             y_sub_query = torch.from_numpy(y_sub_query)
+            
+            model.n_query = n_sub_query
+            if adaptation:
+                scores  = model.set_forward_adaptation(z_supp_perm, is_feature = True)
+            else:
+                scores  = model.set_forward(z_supp_perm, is_feature = True)
+            pred = scores.data.cpu().numpy().argmax(axis = 1)
+            sub_acc = np.mean(pred == y_sub_query)*100
+            sub_acc_ls.append(sub_acc)
+            
+            # reset back
+            model.n_query = n_query
+            
+            
+            acc = None
     
     return acc
 
