@@ -165,9 +165,11 @@ class EarlyStopping:
 def plot_PIL(img):
     pass
 
+
+
 def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support = 5, n_query = 15, recons_func = None):
     ''' (for test.py) sample ONE episode to do evaluation
-    :param cl_feature_dict_ls: dictionary (or list of dictionary if n_test_candidates not None), keys=label_idx, values = all extracted features
+    :param cl_feature_dict_ls: list of dictionary (len=1 if n_test_candidates is None), keys=label_idx, values = all extracted features
     :param recons_func: temporary no use
     :return: accuracy (%)
     '''
@@ -197,49 +199,71 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         
         class_list = cl_feature_dict_ls[0].keys()
         select_class = random.sample(class_list,n_way)
-        sub_acc_ls = [] # store sub_query set accuracy of all the candidates
+        perm_ids_dict = {} # store the permutation indices of each class
+        sub_acc_ls = [] # store sub_query set accuracy of each candidate
         
-        for n in range(params.n_test_candidates):
+        # get shuffled data idx in each class (of all features?)
+        for cl in select_class:
+#             tmp_cl_feature_dict = cl_feature_dict_ls[0]
+#             img_feat = tmp_cl_feature_dict[cl]
+            # I think len(img_feat) is always n_support+n_query so i don't write len(img_feat)
+            perm_ids = np.random.permutation(n_support+n_query).tolist()
+            perm_ids_dict[cl] = perm_ids
+        
+        for n in range(params.n_test_candidates): # for each candidate
             z_all  = []
             cl_feature_dict = cl_feature_dict_ls[n]
-            for cl in select_class:
+            for cl in select_class: # for each class
                 img_feat = cl_feature_dict[cl]
-                # get shuffled idx inside one-class data
-                perm_ids = np.random.permutation(len(img_feat)).tolist()
+                perm_ids = perm_ids_dict[cl]
                 # stack each batch
                 z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_support+n_query) ] )
-            z_all = torch.from_numpy(np.array(z_all)) # z_support & z_query
+            z_all = np.array(z_all)
+            z_all = torch.from_numpy(z_all) # z_support & z_query
             
             # TODO: split z_all into z_support & z_query
             
-            n_sub_query = n_support//2 # 5//2 = 2
-            n_sub_support = n_support - n_sub_query # 5-2 = 3
             
+            
+            # reset back
+            model.n_support = n_support
+            model.n_query = n_query
             z_support, z_query  = model.parse_feature(z_all,is_feature=True)# shape:(n_way, n_data, *feature_dims)
             z_support   = z_support.contiguous() # shape = (n_way, n_shot, *feature_dims)
             z_support_cpu = z_support.data.cpu().numpy()
-            perm_id = np.random.permutation(n_support).tolist()
-            z_supp_perm = np.array([z_support_cpu[i,perm_id,:,:,:] for i in range(z_support.size(0))])
-            z_supp_perm = torch.Tensor(z_supp_perm).cuda() # support set, permutation is for the in-class samples
+            
+            # TODO: tunable n_sub_support
+            n_sub_support = n_support//2 # 5//2 = 2
+            n_sub_query = n_support - n_sub_support # 5-2 = 3
+            model.n_support = n_sub_support
+            model.n_query = n_sub_query
+            
+#             perm_id = np.random.permutation(n_support).tolist()
+#             z_supp_perm = np.array([z_support_cpu[i,perm_id,:] for i in range(z_support.size(0))])
+#             print('z_supp_perm.shape:',z_supp_perm.shape) # (n_way, n_shot, *feature_dims)
+#             z_supp_perm = torch.Tensor(z_supp_perm).cuda() # support set, permutation is for the in-class samples
             if model.change_way:
-                model.n_way  = z_supp_perm.size(0)
+#                 model.n_way  = z_supp_perm.size(0)
+                model.n_way  = z_support.size(0)
             y_sub_query = np.repeat(range( model.n_way ), n_sub_query ) # sub_query set label
 #             y_sub_query = torch.from_numpy(y_sub_query)
             
-            model.n_query = n_sub_query
             if adaptation:
-                scores  = model.set_forward_adaptation(z_supp_perm, is_feature = True)
+#                 scores  = model.set_forward_adaptation(z_supp_perm, is_feature = True)
+                scores  = model.set_forward_adaptation(z_support, is_feature = True)
             else:
-                scores  = model.set_forward(z_supp_perm, is_feature = True)
+#                 scores  = model.set_forward(z_supp_perm, is_feature = True)
+                scores  = model.set_forward(z_support, is_feature = True)
             pred = scores.data.cpu().numpy().argmax(axis = 1)
             sub_acc = np.mean(pred == y_sub_query)*100
             sub_acc_ls.append(sub_acc)
             
-            # reset back
-            model.n_query = n_query
-            
-            
-            acc = None
+        # reset back
+        model.n_support = n_support
+        model.n_query = n_query
+        # repeat procedure of common setting to get query prediction
+
+        acc = None
     
     return acc
 
