@@ -166,6 +166,8 @@ def plot_PIL(img):
     pass
 
 
+def most_frequent(List): 
+    return max(set(List), key = List.count)
 
 def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support = 5, n_query = 15, recons_func = None):
     ''' (for test.py) sample ONE episode to do evaluation
@@ -190,17 +192,30 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         z_all = np.array(z_all)
         return z_all
     
+    def get_pred(model, z_all):
+        '''
+        Args:
+            z_all (torch.Tensor): z_support & z_query
+        '''
+        if adaptation:
+            scores  = model.set_forward_adaptation(z_all, is_feature = True)
+        else:
+            scores  = model.set_forward(z_all, is_feature = True)
+        pred = scores.data.cpu().numpy().argmax(axis = 1)
+        return pred
+    
     def get_acc(model, z_all, n_way, n_support, n_query):
 #         z_all = torch.from_numpy(z_all) # z_support & z_query
         model.n_support = n_support
         model.n_query = n_query
         
-        if adaptation:
-            scores  = model.set_forward_adaptation(z_all, is_feature = True)
-        else:
-            scores  = model.set_forward(z_all, is_feature = True)
+#         if adaptation:
+#             scores  = model.set_forward_adaptation(z_all, is_feature = True)
+#         else:
+#             scores  = model.set_forward(z_all, is_feature = True)
         
-        pred = scores.data.cpu().numpy().argmax(axis = 1)
+#         pred = scores.data.cpu().numpy().argmax(axis = 1)
+        pred = get_pred(model, z_all)
         y = np.repeat(range( n_way ), n_query )
         acc = np.mean(pred == y)*100
         return acc
@@ -305,13 +320,28 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         model.n_support = n_support
         model.n_query = n_query
         
-        # TODO: argsort
+        # get ensemble ids
         sub_acc_ls = np.array(sub_acc_ls)
-        sorted_candidate_id = np.argsort(-sub_acc_ls) # in descent order
-        elected_candidate_id = sorted_candidate_id[:n_ensemble]
+        sorted_candidate_ids = np.argsort(-sub_acc_ls) # in descent order
+        elected_candidate_ids = sorted_candidate_ids[:n_ensemble]
+        all_preds = []
         # repeat procedure of common setting to get query prediction
-
-        acc = None
+        for elected_id in elected_candidate_ids:
+            # TODO: I think only cl_feature_dict should update??
+            cl_feature_dict = cl_feature_dict_ls[elected_id]
+            z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
+            z_all = torch.from_numpy(z_all) # z_support & z_query
+            pred = get_pred(model, z_all)
+            all_preds.append(pred)
+        
+        all_preds = np.array(all_preds).T # shape:(n_query*n_way, n_ensemble)
+        ensemble_preds = [np.argmax(np.bincount(preds)) for preds in all_preds]
+        ensemble_preds = np.array(ensemble_preds)
+#         print('all_preds.shape:',all_preds.shape)
+#         print('ensemble_preds.shape:',ensemble_preds.shape)
+        
+        y = np.repeat(range( n_way ), n_query )
+        acc = np.mean(ensemble_preds == y)*100
     
     return acc
 
