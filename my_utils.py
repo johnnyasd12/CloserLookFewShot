@@ -177,7 +177,7 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
     
     if params.n_test_candidates is None: # common setting
         class_list = cl_feature_dict_ls[0].keys()
-        select_class = random.sample(class_list,n_way)
+        select_class = random.sample(class_list,n_way) # needed to be func input
         z_all  = []
         cl_feature_dict = cl_feature_dict_ls[0]
         for cl in select_class:
@@ -220,11 +220,7 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
                 z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_support+n_query) ] )
             z_all = np.array(z_all)
             z_all = torch.from_numpy(z_all) # z_support & z_query
-            
-            # TODO: split z_all into z_support & z_query
-            
-            
-            
+                        
             # reset back
             model.n_support = n_support
             model.n_query = n_query
@@ -258,9 +254,15 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
             sub_acc = np.mean(pred == y_sub_query)*100
             sub_acc_ls.append(sub_acc)
             
+        n_ensemble = 1 if params.frac_ensemble == None else int(params.frac_ensemble*params.n_test_candidates)
         # reset back
         model.n_support = n_support
         model.n_query = n_query
+        
+        # TODO: argsort
+        sub_acc_ls = np.array(sub_acc_ls)
+        sorted_candidate_id = np.argsort(-sub_acc_ls) # in descent order
+        elected_candidate_id = sorted_candidate_id[:n_ensemble]
         # repeat procedure of common setting to get query prediction
 
         acc = None
