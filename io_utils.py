@@ -64,7 +64,7 @@ def parse_args(script):
     parser.add_argument('--dropout_p', default=0, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
     
 
-    parser.add_argument('--debug', action='store_true', help='whether is debugging.')
+    parser.add_argument('--debug', action='store_true', help='whether is debugging. If True, then don\'t record.')
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
         parser.add_argument('--save_freq'   , default=50, type=int, help='Save frequency')
