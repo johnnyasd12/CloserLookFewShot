@@ -468,10 +468,32 @@ class ConvNet(nn.Module):
 
         self.trunk = nn.Sequential(*trunk)
         self.final_feat_dim = 1600 # output = 64*5*5
+        
+        # CustomDropout
+        self.dropout_p = dropout_p
+        self.active_dropout_ls = []
+#         for name, module in self.named_children():
+        for module in self.modules():
+            if isinstance(module, CustomDropout):
+                if module.p != 0: # becuz not all of CustomDropout module are active
+                    self.active_dropout_ls.append(module)
 
     def forward(self,x):
         out = self.trunk(x)
         return out
+    
+    def sample_random_subnet(self):
+        # traverse all over the nn.Modules to get CustomDropout
+        has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
+        assert has_custom_dropout, "there should be CustomDropout module to sample random subnet"
+        assert not self.training, "should be in eval() mode when calling function"
+        for module in self.active_dropout_ls:
+            module.set_random_eval_mask()
+        
+    
+    def reset_dropout(self):
+        for module in self.active_dropout_ls:
+            module.eval_mask = None
 
 
 class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in only first two layers, else no pooling
