@@ -32,6 +32,7 @@ def save_features(feature_net, data_loader, outfile, params):
     for n in range(n_candidates):
 
         if 'candidate' in outfile: # then dropout
+            print('candidate',n+1,'start...')
             outfile_n = outfile.replace('candidate', 'candidate'+str(n+1))
             feature_net.sample_random_subnet()
         else:
@@ -60,7 +61,8 @@ def save_features(feature_net, data_loader, outfile, params):
 
         count_var = f.create_dataset('count', (1,), dtype='i')
         count_var[0] = count
-
+        
+        print('Saved features to:', outfile_n)
         f.close()
 
 
