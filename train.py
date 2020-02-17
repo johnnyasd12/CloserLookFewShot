@@ -49,10 +49,11 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
         record['train_loss'].append(loss)
         record['val_acc'].append(acc)
         if acc > max_acc : #for baseline and baseline++, we don't use validation in default and we let acc = -1, but we allow options to validate with DB index
-            print("best model! save...")
+#             print("best model! save...")
             max_acc = acc
             best_epoch = epoch
             outfile = os.path.join(params.checkpoint_dir, 'best_model.tar')
+            print("best model! save at:", outfile)
             torch.save({'record':record, 'epoch':epoch, 'state':model.state_dict()}, outfile)
 
         if (epoch % params.save_freq==0) or (epoch==stop_epoch-1):
