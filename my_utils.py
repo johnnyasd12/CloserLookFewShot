@@ -209,12 +209,6 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         model.n_support = n_support
         model.n_query = n_query
         
-#         if adaptation:
-#             scores  = model.set_forward_adaptation(z_all, is_feature = True)
-#         else:
-#             scores  = model.set_forward(z_all, is_feature = True)
-        
-#         pred = scores.data.cpu().numpy().argmax(axis = 1)
         pred = get_pred(model, z_all)
         y = np.repeat(range( n_way ), n_query )
         acc = np.mean(pred == y)*100
@@ -231,23 +225,8 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
             perm_ids = np.random.permutation(n_support+n_query).tolist() # get shuffled idx inside one-class data
             perm_ids_dict[cl] = perm_ids
             
-#         z_all  = []
-#         for cl in select_class:
-#             img_feat = cl_feature_dict[cl]
-#             perm_ids = perm_ids_dict[cl] # get shuffled idx inside one-class data
-#             z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_support+n_query) ] ) # stack each batch
-#         z_all = np.array(z_all)
         z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
         z_all = torch.from_numpy(z_all) # z_support & z_query
-        
-#         model.n_query = n_query
-#         if adaptation:
-#             scores  = model.set_forward_adaptation(z_all, is_feature = True)
-#         else:
-#             scores  = model.set_forward(z_all, is_feature = True)
-#         pred = scores.data.cpu().numpy().argmax(axis = 1)
-#         y = np.repeat(range( n_way ), n_query )
-#         acc = np.mean(pred == y)*100
         
         acc = get_acc(model=model, z_all=z_all, n_way=n_way, n_support=n_support, n_query=n_query)
     else: # n_test_candidates setting
@@ -268,13 +247,7 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         
         for n in range(params.n_test_candidates): # for each candidate
             cl_feature_dict = cl_feature_dict_ls[n]
-#             z_all  = []
-#             for cl in select_class: # for each class
-#                 img_feat = cl_feature_dict[cl]
-#                 perm_ids = perm_ids_dict[cl]
-#                 # stack each batch
-#                 z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_support+n_query) ] )
-#             z_all = np.array(z_all)
+
             z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
             z_all = torch.from_numpy(z_all) # z_support & z_query
                         
@@ -289,27 +262,9 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
             n_sub_support = n_support//2 # 5//2 = 2
             n_sub_query = n_support - n_sub_support # 5-2 = 3
             
-#             perm_id = np.random.permutation(n_support).tolist()
-#             z_supp_perm = np.array([z_support_cpu[i,perm_id,:] for i in range(z_support.size(0))])
-#             print('z_supp_perm.shape:',z_supp_perm.shape) # (n_way, n_shot, *feature_dims)
-#             z_supp_perm = torch.Tensor(z_supp_perm).cuda() # support set, permutation is for the in-class samples
             if model.change_way:
 #                 model.n_way  = z_supp_perm.size(0)
                 model.n_way  = z_support.size(0)
-            
-#             model.n_support = n_sub_support
-#             model.n_query = n_sub_query
-#             y_sub_query = np.repeat(range( model.n_way ), n_sub_query ) # sub_query set label
-# #             y_sub_query = torch.from_numpy(y_sub_query)
-            
-#             if adaptation:
-# #                 scores  = model.set_forward_adaptation(z_supp_perm, is_feature = True)
-#                 scores  = model.set_forward_adaptation(z_support, is_feature = True)
-#             else:
-# #                 scores  = model.set_forward(z_supp_perm, is_feature = True)
-#                 scores  = model.set_forward(z_support, is_feature = True)
-#             pred = scores.data.cpu().numpy().argmax(axis = 1)
-#             sub_acc = np.mean(pred == y_sub_query)*100
             
             sub_acc = get_acc(model=model, z_all=z_support, 
                               n_way=n_way, n_support=n_sub_support, n_query=n_sub_query)
@@ -358,16 +313,3 @@ def to_device(tensor):
 
 def get_time_now():
     return datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-
-def cl_file_to_z_all(cl_feature_dict, n_way, n_support, n_query):
-    class_list = cl_feature_dict.keys()
-
-    select_class = random.sample(class_list,n_way)
-    z_all  = []
-    for cl in select_class:
-        img_feat = cl_feature_dict[cl]
-        perm_ids = np.random.permutation(len(img_feat)).tolist()
-        z_all.append( [ np.squeeze( img_feat[perm_ids[i]]) for i in range(n_support+n_query) ] )     # stack each batch
-
-    z_all = torch.from_numpy(np.array(z_all)) # z_support & z_query
-    return z_all
