@@ -103,12 +103,14 @@ if __name__ == '__main__':
         if 'candidate' in feature_file:
             feature_files = []
             cl_feature_dict_ls = [] # saved features of all candidates
-            for n in range(params.n_test_candidates):
+            print('Loading features to dictionaries...')
+            for n in tqdm(range(params.n_test_candidates)):
                 feature_file_n = feature_file.replace('candidate','candidate'+str(n+1))
                 feature_files.append(feature_file_n)
                 cl_feature_dict_n = feat_loader.init_loader(feature_file_n)
                 cl_feature_dict_ls.append(cl_feature_dict_n)
             
+            print('Evaluating...')
             # TODO: aggregate this and lower part of for loop, only cl_feature_dict are different
             for i in tqdm(range(iter_num)):
                 # TODO: fix data list? can only fix class list?
