@@ -169,9 +169,9 @@ def plot_PIL(img):
 def most_frequent(List): 
     return max(set(List), key = List.count)
 
-def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support = 5, n_query = 15, recons_func = None):
+def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_support = 5, n_query = 15, recons_func = None):
     ''' (for test.py) sample ONE episode to do evaluation
-    :param cl_feature_dict_ls: list of dictionary (len=1 if n_test_candidates is None), keys=label_idx, values = all extracted features
+    :param cl_feature_each_candidate: list of dictionary (len=1 if n_test_candidates is None), keys=label_idx, values = all extracted features
     :param recons_func: temporary no use
     :return: accuracy (%)
     '''
@@ -217,13 +217,50 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         acc = np.mean(pred == y)*100
         return acc
     
+    def get_acc_loocv(model, z_all, n_way, the_one='val'):
+        '''
+        Actually not really leave-one-out but "leave-one-out per-class"!!!
+        Args:
+            z_all (torch.Tensor): shape=(n_way, n_data, feature_dim) contain sub_support & sub_query set
+        '''
+        
+        n_data_per_class = z_all.size(1) # not sure lol, usually 5, also n_fold
+        k_fold = n_data_per_class
+#         n_way = z_all.size(0)
+        
+        n_support = 1 if the_one=='train' else n_data_per_class - 1
+        n_query = n_data_per_class - n_support
+        
+        swap_target_per_class = 0 if n_support==1 else k_fold-1 # first or last
+        # make model can parse feature correctly
+        model.n_support = n_support
+        model.n_query = n_query
+        acc_cv = [0]*k_fold
+        original_ids = [k for k in range(k_fold)]
+        
+        for k in range(k_fold):
+            # get swapped features
+            swapped_ids = original_ids.copy()
+            swapped_ids[swap_target_per_class] = k
+            swapped_ids[k] = swap_target_per_class
+            z_swapped = torch.index_select(z_all, 1, torch.LongTensor(swapped_ids).cuda())
+#             z_swapped = z_swapped.contiguous() # try to fix bug but failed
+        
+            pred = get_pred(model, z_swapped)
+            y = np.repeat(range( n_way ), n_query )
+            acc = np.mean(pred == y)*100
+            acc_cv[k] = acc
+        
+        return sum(acc_cv)/k_fold
+    
+    
     adaptation = params.adaptation
     
     if params.n_test_candidates is None: # common setting
-        class_list = cl_feature_dict_ls[0].keys()
+        class_list = cl_feature_each_candidate[0].keys()
         select_class = random.sample(class_list,n_way)
         
-        cl_feature_dict = cl_feature_dict_ls[0] # list only have 1 element
+        cl_feature_dict = cl_feature_each_candidate[0] # list only have 1 element
         perm_ids_dict = {} # permutation indices of each selected class
         # initialize perm_ids_dict
         for cl in select_class:
@@ -236,24 +273,25 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         
         acc = get_acc(model=model, z_all=z_all, n_way=n_way, n_support=n_support, n_query=n_query)
     else: # n_test_candidates setting
-        assert params.n_test_candidates == len(cl_feature_dict_ls), "features & params mismatch."
+        assert params.n_test_candidates == len(cl_feature_each_candidate), "features & params mismatch."
         
-        class_list = cl_feature_dict_ls[0].keys()
+        class_list = cl_feature_each_candidate[0].keys()
 #         print('feature_evaluation()/class_list:', class_list)
         select_class = random.sample(class_list,n_way)
         perm_ids_dict = {} # store the permutation indices of each class
-        sub_acc_ls = [] # store sub_query set accuracy of each candidate
+        sub_acc_each_candidate = [] # store sub_query set accuracy of each candidate
         
         # get shuffled data idx in each class (of all features?)
         for cl in select_class:
-#             tmp_cl_feature_dict = cl_feature_dict_ls[0]
+#             tmp_cl_feature_dict = cl_feature_each_candidate[0]
 #             img_feat = tmp_cl_feature_dict[cl]
             # I think len(img_feat) is always n_support+n_query so i don't write len(img_feat)
             perm_ids = np.random.permutation(n_support+n_query).tolist()
             perm_ids_dict[cl] = perm_ids
         
+        # here seems took most of the time cost
         for n in range(params.n_test_candidates): # for each candidate
-            cl_feature_dict = cl_feature_dict_ls[n] # features of the candidate
+            cl_feature_dict = cl_feature_each_candidate[n] # features of the candidate
 
             z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
             z_all = torch.from_numpy(z_all) # z_support & z_query
@@ -265,17 +303,21 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
             z_support   = z_support.contiguous() # TODO: what this means???
 #             z_support_cpu = z_support.data.cpu().numpy()
             
-            # TODO: tunable n_sub_support
-            n_sub_support = n_support//2 # 5//2 = 2
-            n_sub_query = n_support - n_sub_support # 5-2 = 3
-            
             if model.change_way:
-#                 model.n_way  = z_supp_perm.size(0)
                 model.n_way  = z_support.size(0)
+            # TODO: tunable n_sub_support
+            # leave-one-out (per-class) cv
+            loopccv = True
+            if loopccv:
+                sub_acc = get_acc_loocv(model=model, z_all=z_support, 
+                                        n_way=n_way, the_one='val')
+            else:
+                n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
+                n_sub_query = n_support - n_sub_support # those who are rest
+                sub_acc = get_acc(model=model, z_all=z_support, 
+                                  n_way=n_way, n_support=n_sub_support, n_query=n_sub_query)
             
-            sub_acc = get_acc(model=model, z_all=z_support, 
-                              n_way=n_way, n_support=n_sub_support, n_query=n_sub_query)
-            sub_acc_ls.append(sub_acc)
+            sub_acc_each_candidate.append(sub_acc)
             
         n_ensemble = 1 if params.frac_ensemble == None else int(params.frac_ensemble*params.n_test_candidates)
         # reset back
@@ -283,14 +325,14 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         model.n_query = n_query
         
         # get ensemble ids
-        sub_acc_ls = np.array(sub_acc_ls)
-        sorted_candidate_ids = np.argsort(-sub_acc_ls) # in descent order
+        sub_acc_each_candidate = np.array(sub_acc_each_candidate)
+        sorted_candidate_ids = np.argsort(-sub_acc_each_candidate) # in descent order
         elected_candidate_ids = sorted_candidate_ids[:n_ensemble]
         all_preds = []
         # repeat procedure of common setting to get query prediction
-        for elected_id in elected_candidate_ids: # here seems took most of the time cost????
+        for elected_id in elected_candidate_ids:
             # TODO: I think only cl_feature_dict should update??
-            cl_feature_dict = cl_feature_dict_ls[elected_id]
+            cl_feature_dict = cl_feature_each_candidate[elected_id]
             z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
             z_all = torch.from_numpy(z_all) # z_support & z_query
             pred = get_pred(model, z_all)
