@@ -1,3 +1,8 @@
+import os
+# for better error message when encounter RuntimeError: CUDA error: device-side assert triggered
+if False:
+    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+
 import torch
 import numpy as np
 from torch.autograd import Variable
@@ -5,7 +10,6 @@ import torch.nn as nn
 import torch.optim
 import json
 import torch.utils.data.sampler
-import os
 import glob
 import random
 import time
