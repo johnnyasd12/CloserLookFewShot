@@ -175,12 +175,11 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
     :param recons_func: temporary no use
     :return: accuracy (%)
     '''
-    adaptation = params.adaptation
     
     def get_all_perm_features(select_class, cl_feature_dict, perm_ids_dict):
         '''
         Return:
-            z_all (ndarray)
+            z_all (ndarray): shape=(n_way, n_support+n_query, ???)
         '''
         z_all  = []
         for cl in select_class:
@@ -196,16 +195,20 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         '''
         Args:
             z_all (torch.Tensor): z_support & z_query
+        Return:
+            pred (ndarray): query set prediction
         '''
         if adaptation:
             scores  = model.set_forward_adaptation(z_all, is_feature = True)
         else:
             scores  = model.set_forward(z_all, is_feature = True)
-        pred = scores.data.cpu().numpy().argmax(axis = 1)
+        scores = scores.data.cpu().numpy()
+        pred = scores.argmax(axis = 1)
         return pred
     
     def get_acc(model, z_all, n_way, n_support, n_query):
 #         z_all = torch.from_numpy(z_all) # z_support & z_query
+        # make model can parse feature correctly
         model.n_support = n_support
         model.n_query = n_query
         
@@ -214,14 +217,17 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         acc = np.mean(pred == y)*100
         return acc
     
+    adaptation = params.adaptation
+    
     if params.n_test_candidates is None: # common setting
         class_list = cl_feature_dict_ls[0].keys()
-        select_class = random.sample(class_list,n_way) # fixed, needed to be func input
+        select_class = random.sample(class_list,n_way)
         
-        cl_feature_dict = cl_feature_dict_ls[0]
+        cl_feature_dict = cl_feature_dict_ls[0] # list only have 1 element
+        perm_ids_dict = {} # permutation indices of each selected class
         # initialize perm_ids_dict
-        perm_ids_dict = {}
         for cl in select_class:
+            # I think len(img_feat) is always n_support+n_query so i don't write len(img_feat)
             perm_ids = np.random.permutation(n_support+n_query).tolist() # get shuffled idx inside one-class data
             perm_ids_dict[cl] = perm_ids
             
@@ -233,6 +239,7 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         assert params.n_test_candidates == len(cl_feature_dict_ls), "features & params mismatch."
         
         class_list = cl_feature_dict_ls[0].keys()
+#         print('feature_evaluation()/class_list:', class_list)
         select_class = random.sample(class_list,n_way)
         perm_ids_dict = {} # store the permutation indices of each class
         sub_acc_ls = [] # store sub_query set accuracy of each candidate
@@ -246,7 +253,7 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
             perm_ids_dict[cl] = perm_ids
         
         for n in range(params.n_test_candidates): # for each candidate
-            cl_feature_dict = cl_feature_dict_ls[n]
+            cl_feature_dict = cl_feature_dict_ls[n] # features of the candidate
 
             z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
             z_all = torch.from_numpy(z_all) # z_support & z_query
@@ -297,7 +304,7 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         
         y = np.repeat(range( n_way ), n_query )
         acc = np.mean(ensemble_preds == y)*100
-    
+#     hahahaha
     return acc
 
 def set_gpu_id(gpu_id):
