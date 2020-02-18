@@ -100,7 +100,7 @@ if __name__ == '__main__':
     else:
         datamgr         = AugSimpleDataManager(image_size, batch_size = 64, 
                                                aug_type=params.aug_type, aug_target='test-sample') # aug_target= 'all' or 'test-sample', NO 'test-batch'
-    data_loader      = datamgr.get_data_loader(loadfile, aug = False)
+    data_loader      = datamgr.get_data_loader(loadfile, aug = False, shuffle=False)
 
     backbone_func = get_backbone_func(params)
     backbone_net = backbone_func()

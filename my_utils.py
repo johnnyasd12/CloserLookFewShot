@@ -288,7 +288,7 @@ def feature_evaluation(cl_feature_dict_ls, model, params, n_way = 5, n_support =
         elected_candidate_ids = sorted_candidate_ids[:n_ensemble]
         all_preds = []
         # repeat procedure of common setting to get query prediction
-        for elected_id in elected_candidate_ids:
+        for elected_id in elected_candidate_ids: # here seems took most of the time cost????
             # TODO: I think only cl_feature_dict should update??
             cl_feature_dict = cl_feature_dict_ls[elected_id]
             z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
