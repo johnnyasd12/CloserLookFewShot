@@ -107,7 +107,7 @@ if __name__ == '__main__':
         if 'candidate' in feature_file:
             feature_files = []
             cl_feature_dict_ls = [] # saved features of all candidates
-            print('Loading features to dictionaries...')
+            print('Loading features of %s candidates into dictionaries...' %(params.n_test_candidates))
             for n in tqdm(range(params.n_test_candidates)):
                 feature_file_n = feature_file.replace('candidate','candidate'+str(n+1))
                 feature_files.append(feature_file_n)

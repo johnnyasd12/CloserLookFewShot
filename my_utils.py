@@ -307,11 +307,11 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 model.n_way  = z_support.size(0)
             # TODO: tunable n_sub_support
             # leave-one-out (per-class) cv
-            loopccv = True
-            if loopccv:
+            loopccv = 'val' # None, 'train', 'val'
+            if loopccv is not None:
                 sub_acc = get_acc_loocv(model=model, z_all=z_support, 
-                                        n_way=n_way, the_one='val')
-            else:
+                                        n_way=n_way, the_one=loopccv)
+            else: # common testing
                 n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
                 n_sub_query = n_support - n_sub_support # those who are rest
                 sub_acc = get_acc(model=model, z_all=z_support, 
@@ -331,7 +331,6 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         all_preds = []
         # repeat procedure of common setting to get query prediction
         for elected_id in elected_candidate_ids:
-            # TODO: I think only cl_feature_dict should update??
             cl_feature_dict = cl_feature_each_candidate[elected_id]
             z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
             z_all = torch.from_numpy(z_all) # z_support & z_query
