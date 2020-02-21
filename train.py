@@ -28,6 +28,7 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     else:
         raise ValueError('Unknown optimization, please define by yourself')
 
+    result = {}
     max_acc = 0
     best_epoch = 0
     
@@ -37,13 +38,13 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     else:
         early_stopping = None
 
+    if not os.path.isdir(params.checkpoint_dir):
+        os.makedirs(params.checkpoint_dir)
+    
     for epoch in range(start_epoch,stop_epoch):
         model.train()
         loss = model.train_loop(epoch, base_loader,  optimizer ) #model are called by reference, no need to return 
         model.eval()
-
-        if not os.path.isdir(params.checkpoint_dir):
-            os.makedirs(params.checkpoint_dir)
 
         acc = model.test_loop( val_loader)
         record['train_loss'].append(loss)
@@ -69,7 +70,15 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
         
     print('The best accuracy is',(str(max_acc)+'%'), 'at epoch', best_epoch)
     
-    return model
+    result['best_epoch'] = best_epoch
+    result['train_acc'] = None
+    result['val_acc'] = max_acc
+    
+    result['train_loss_his'] = record['train_loss'].copy()
+    result['train_acc_his'] = None
+    result['val_acc_his'] = record['val_loss'].copy()
+    
+    return model, result
 
 def get_train_val_filename(params):
     # this part CANNOT share with save_features.py & test.py
@@ -127,10 +136,6 @@ def get_train_val_loader(params):
             # DDDDDDEEEEEEEEBBBBUUUUGG DEBUG
             if configs.debug:
                 batch_x, batch_y = vaegan.data(32) # batch_size actually useless in omniglot & miniImagenet
-#                 batch_x = batch_x*0 + 0
-#                 describe(batch_x, 'train.py/batch_x')
-#                 describe(batch_x[0:1], 'train.py/batch_x[0:1]')
-#                 describe(batch_x[1:2], 'train.py/batch_x[1:2]')
                 fig_x = vaegan.data.data2fig(batch_x[:16], nr=4, nc=4, 
                                              save_path='./debug/rec_samples/x_batch.png')
                 rec_batch = vaegan.rec_samples(batch_x, lambda_zlogvar=params.zvar_lambda) # -1~1
@@ -139,15 +144,6 @@ def get_train_val_loader(params):
                 rec_single = vaegan.rec_samples(batch_x[:1], lambda_zlogvar=params.zvar_lambda) # -1~1
                 fig_rec = vaegan.data.data2fig(rec_single[:1], nr=1, nc=1, 
                                               save_path='./debug/rec_samples/rec_single.png')
-#                 rec_batch = vaegan.rec_samples(batch_x[:1], lambda_zlogvar=params.zvar_lambda) # -1~1
-#                 fig_x = vaegan.data.data2fig(batch_x[:1], nr=1, nc=1, 
-#                                              save_path='./debug/rec_samples/imgs1.png')
-#                 fig_rec = vaegan.data.data2fig(rec_batch[:1], nr=1, nc=1, 
-#                                               save_path='./debug/rec_samples/imgs1_rec.png')
-
-#                 vaegan.check_weights(name='GeneratorMnist/Conv2d_transpose_2/weights:0')
-#                 describe(rec_batch, 'rec_batch')
-                
                 
             base_datamgr            = VAESetDataManager(
                                         image_size, n_query=n_query, 
@@ -157,11 +153,6 @@ def get_train_val_loader(params):
                                         lambda_zlogvar=params.zvar_lambda, 
                                         fake_prob = params.fake_prob, 
                                         **train_few_shot_params)
-#             base_datamgr            = VAESetDataManager(
-#                                         image_size, n_query=n_query, 
-#                                         vaegan = vaegan, lambda_zlogvar=params.zvar_lambda, 
-#                                         fake_prob = params.fake_prob, 
-#                                         **train_few_shot_params)
             # train_val or val???
             val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
             
@@ -188,11 +179,10 @@ def get_train_val_loader(params):
         raise ValueError('Unknown method')
     return base_loader, val_loader
 
-if __name__=='__main__':
+def exp_train_val(params):
     start_time = get_time_now()
     print('Program started at',start_time)
     np.random.seed(10)
-    params = parse_args('train')
     record = {
         'train_loss':[], 
         'val_acc':[], 
@@ -203,13 +193,6 @@ if __name__=='__main__':
     
     base_file, val_file = get_train_val_filename(params)
     
-#     if 'Conv' in params.model:
-#         if params.dataset in ['omniglot', 'cross_char']:
-#             image_size = 28 if params.image_size is None else params.image_size
-#         else:
-#             image_size = 84 if params.image_size is None else params.image_size
-#     else:
-#         image_size = 224 # if params.image_size is None else params.image_size
     image_size = get_img_size(params)
     
     model = get_model(params, 'train')
@@ -226,7 +209,6 @@ if __name__=='__main__':
         model = to_device(model)
 
     params.checkpoint_dir = get_checkpoint_dir(params)
-    
     
     if not os.path.isdir(params.checkpoint_dir):
         print('making directory:',params.checkpoint_dir)
@@ -265,7 +247,13 @@ if __name__=='__main__':
         else:
             raise ValueError('No warm_up file')
 
-    model = train(base_loader, val_loader,  model, optimization, start_epoch, stop_epoch, params, record)
+    model, result = train(base_loader, val_loader,  model, optimization, start_epoch, stop_epoch, params, record)
     
     torch.cuda.empty_cache()
-    print('Program start at', start_time, ', end at', get_time_now())
+    print('exp_train_val() start at', start_time, ', end at', get_time_now())
+    
+    return result
+
+if __name__=='__main__':
+    params = parse_args('train')
+    result = exp_train_val(params)
