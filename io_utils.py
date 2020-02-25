@@ -45,26 +45,27 @@ def parse_args(script):
     parser.add_argument('--gpu_id'      , default=None, type=str, help='which gpu to use')
     
     # extra argument
-    # assign image resize
-    parser.add_argument('--image_size', default=None, type=int, help='the rescaled image size')
-    # auxiliary reconstruction task
-    parser.add_argument('--recons_decoder'   , default=None, choices=['FC','Conv','HiddenConv','Res18','Res10','HiddenRes10','ConvS','HiddenConvS'], help='reconstruction decoder')
-    # coefficient of reconstruction loss
-    parser.add_argument('--recons_lambda'   , default=0, type=float, help='lambda of reconstruction loss') # TODO: default=None? 0? will bug?
-    parser.add_argument('--aug_type', default=None, choices=['rotate', 'bright', 'contrast', 'mix'], help='task augmentation mode') # TODO: rename to aug_mode
-    parser.add_argument('--aug_target', default=None, choices=['batch', 'sample'], help='data augmentation by task or by sample')
-    # GMM_VAE_GAN augmentation
-    parser.add_argument('--vaegan_exp', default=None, type=str, help='the GMM_VAE_GAN experiment name')
-    parser.add_argument('--vaegan_step', default=None, type=int, help='the GMM_VAE_GAN restore step')
-    parser.add_argument('--zvar_lambda', default=None, type=float, help='the GMM_VAE_GAN zlogvar_lambda')
-    parser.add_argument('--fake_prob', default=None, type=float, help='the probability to replace real image with GMM_VAE_GAN generated image. ')
-    parser.add_argument('--vaegan_is_train', action='store_true', help='whether the vaegan is_training==True.')
-    
-    # domain CustomDropout
-    parser.add_argument('--dropout_p', default=0, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
+    parser.add_argument('--debug', action='store_true', help='whether is debugging. If True, then don\'t record.')
+    if script != 'expmgr':
+        # assign image resize
+        parser.add_argument('--image_size', default=None, type=int, help='the rescaled image size')
+        # auxiliary reconstruction task
+        parser.add_argument('--recons_decoder'   , default=None, choices=['FC','Conv','HiddenConv','Res18','Res10','HiddenRes10','ConvS','HiddenConvS'], help='reconstruction decoder')
+        # coefficient of reconstruction loss
+        parser.add_argument('--recons_lambda'   , default=0, type=float, help='lambda of reconstruction loss') # TODO: default=None? 0? will bug?
+        parser.add_argument('--aug_type', default=None, choices=['rotate', 'bright', 'contrast', 'mix'], help='task augmentation mode') # TODO: rename to aug_mode
+        parser.add_argument('--aug_target', default=None, choices=['batch', 'sample'], help='data augmentation by task or by sample')
+        # GMM_VAE_GAN augmentation
+        parser.add_argument('--vaegan_exp', default=None, type=str, help='the GMM_VAE_GAN experiment name')
+        parser.add_argument('--vaegan_step', default=None, type=int, help='the GMM_VAE_GAN restore step')
+        parser.add_argument('--zvar_lambda', default=None, type=float, help='the GMM_VAE_GAN zlogvar_lambda')
+        parser.add_argument('--fake_prob', default=None, type=float, help='the probability to replace real image with GMM_VAE_GAN generated image. ')
+        parser.add_argument('--vaegan_is_train', action='store_true', help='whether the vaegan is_training==True.')
+
+        # domain CustomDropout
+        parser.add_argument('--dropout_p', default=0, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
     
 
-    parser.add_argument('--debug', action='store_true', help='whether is debugging. If True, then don\'t record.')
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
         parser.add_argument('--save_freq'   , default=50, type=int, help='Save frequency')
@@ -91,6 +92,7 @@ def parse_args(script):
         parser.add_argument('--save_iter', default=-1, type=int,help ='saved feature from the model trained in x epoch, use the best model if x is -1')
         parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
         
+        parser.add_argument('--csv_name'       , default=None, type=str, help='extra record csv file name.')
 #         parser.add_argument('--test_aug_target', default=None, choices=['batch', 'sample'], help='test data augmentation by sample or batch')
         parser.add_argument('--target_bn', action='store_true', help='use target domain statistics to do batch normalization.')
         # CustomDropout

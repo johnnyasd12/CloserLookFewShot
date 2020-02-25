@@ -71,12 +71,14 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     print('The best accuracy is',(str(max_acc)+'%'), 'at epoch', best_epoch)
     
     result['best_epoch'] = best_epoch
-    result['train_acc'] = None
-    result['val_acc'] = max_acc
     
     result['train_loss_his'] = record['train_loss'].copy()
     result['train_acc_his'] = None
-    result['val_acc_his'] = record['val_loss'].copy()
+    result['val_acc_his'] = record['val_acc'].copy()
+    
+    result['train_loss'] = record['train_loss'][best_epoch]
+    result['train_acc'] = None
+    result['val_acc'] = max_acc
     
     return model, result
 
@@ -115,6 +117,10 @@ def set_default_stop_epoch(params):
 def get_train_val_loader(params):
     # to prevent circular import
     from data.datamgr import SimpleDataManager, SetDataManager, AugSetDataManager, VAESetDataManager
+    
+    image_size = get_img_size(params)
+    base_file, val_file = get_train_val_filename(params)
+    
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)
         base_loader     = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
@@ -179,9 +185,13 @@ def get_train_val_loader(params):
         raise ValueError('Unknown method')
     return base_loader, val_loader
 
-def exp_train_val(params):
+def exp_train_val(params, val_possible_params={}):
+    '''
+    Args:
+        val_possible_params (dict): e.g. {'frac_ensemble':[0.25, 0.5, 0.75]}
+    '''
     start_time = get_time_now()
-    print('Program started at',start_time)
+    print('exp_train_val() started at',start_time)
     np.random.seed(10)
     record = {
         'train_loss':[], 
@@ -191,9 +201,9 @@ def exp_train_val(params):
     if params.gpu_id:
         set_gpu_id(params.gpu_id)
     
-    base_file, val_file = get_train_val_filename(params)
     
-    image_size = get_img_size(params)
+    
+    
     
     model = get_model(params, 'train')
 
@@ -227,6 +237,8 @@ def exp_train_val(params):
             if 'record' in list(tmp.keys()):
                 record = tmp['record']
             model.load_state_dict(tmp['state'])
+        else:
+            raise ValueError('resume_file is None!!!')
     elif params.warmup: #We also support warmup from pretrained baseline feature, but we never used in our paper
         # TODO: checkpoint_dir for resume haven't synchronize
         baseline_checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, 'baseline')

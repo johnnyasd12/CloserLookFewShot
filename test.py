@@ -32,17 +32,12 @@ from tqdm import tqdm
 
 from model_utils import get_few_shot_params, get_model
 
-if __name__ == '__main__':
-    print('test.py start')
-    params = parse_args('test')
-
+def exp_test(params, iter_num, test_possible_params={}):
+    print('exp_test() start.')
     if params.gpu_id:
         set_gpu_id(params.gpu_id)
     
     acc_all = []
-
-    iter_num = 600
-
 
     model = get_model(params, 'test')
     
@@ -57,7 +52,7 @@ if __name__ == '__main__':
     checkpoint_dir = get_checkpoint_dir(params)
     
     #modelfile   = get_resume_file(checkpoint_dir)
-    # load model file ???
+    # load model
     print('loading from:',checkpoint_dir)
     if not params.method in ['baseline', 'baseline++'] : 
         if params.save_iter != -1:
@@ -80,11 +75,6 @@ if __name__ == '__main__':
 
     # train/val/novel
     split = params.split
-#     if params.save_iter != -1:
-#         split_str = split + "_" +str(params.save_iter)
-#     else:
-#         split_str = split
-    
     
     if params.method in ['maml', 'maml_approx']: #maml do not support testing with feature
         image_size = get_img_size(params)
@@ -100,7 +90,7 @@ if __name__ == '__main__':
 
     else: # not MAML
         # directly use extracted features
-#         feature_file = os.path.join( checkpoint_dir.replace("checkpoints","features"), split_str +".hdf5") #defaut split = novel, but you can also test base or val classes # so the variable name "feature_file" is proper?
+#defaut split = novel, but you can also test base or val classes # so the variable name "feature_file" is proper?
         feature_file = get_save_feature_filepath(params, checkpoint_dir, split)
         
         # TODO: from here to loop n_candidate???
@@ -137,6 +127,7 @@ if __name__ == '__main__':
         print('loaded from %d epoch model.' %(load_epoch))
         print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
     
+    torch.cuda.empty_cache()
     
     timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
     acc_str = '%4.2f%% +- %4.2f%%' % (acc_mean, 1.96* acc_std/np.sqrt(iter_num))
@@ -144,42 +135,63 @@ if __name__ == '__main__':
     # writing settings into csv
     acc_mean_str = '%4.2f' % (acc_mean)
     acc_std_str = '%4.2f' %(acc_std)
-    extra_dict = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str, 'epoch':load_epoch}
+    # beyond params
+    extra_record = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str, 'epoch':load_epoch}
     
-    
-    if not params.debug:
-        csv_path = './record/results.csv'
-        csv_backup_path = './record/results_backup_'+timestamp+'.csv'
+    return extra_record
+
+def record_csv(params, extra_record, csv_path):
+    if os.path.isfile(csv_path):
         print('reading:', csv_path)
         df = pd.read_csv(csv_path)
-        new_df = params2df(params, extra_dict)
+        new_df = params2df(params, extra_record)
         out_df = pd.concat([df, new_df], axis=0, join='outer', sort=False)
-        print('saving to:', csv_backup_path)
-        with open(csv_backup_path, 'w') as f:
-            out_df.to_csv(f, header=True, index=False)
-        print('saving to:', csv_path)
-        with open(csv_path, 'w') as f:
-            out_df.to_csv(f, header=True, index=False)
-    
-    # writing settings into txt
-    if params.save_iter != -1:
-        split_str = split + "_" +str(params.save_iter)
     else:
-        split_str = split
-    with open('./record/results.txt' , 'a') as f:
-        # this part should modify for every argument change
-        aug_str = '-aug' if params.train_aug else ''
-        aug_str += '-adapted' if params.adaptation else ''
-        aug_str += ('-Decoder' + params.recons_decoder+str(params.recons_lambda)) if params.recons_decoder else ''
-        aug_str += ('-'+params.aug_target+'('+params.aug_type+')') if params.aug_type else ''
+        print('making file:', csv_path)
+        out_df = params2df(params, extra_record)
         
-        if params.method in ['baseline', 'baseline++'] :
-            exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
-        else:
-            exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
-        acc_descr = '%d Test Acc = ' %(iter_num)
-        acc_descr += acc_str
-        f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_descr)  )
+    print('saving to:', csv_path)
+    with open(csv_path, 'w') as f:
+        out_df.to_csv(f, header=True, index=False)
+
+if __name__ == '__main__':
+    
+    print('test.py start')
+    
+    params = parse_args('test')
+    
+    # TODO: modify params.split to change between train/val/novel
+    # TODO: test_possible_params
+    # get test result
+    extra_record = exp_test(params=params, iter_num=600, test_possible_params={})
+    
+    # TODO: params assign csv_name
+    if not params.debug:
+        record_csv(params, extra_record, csv_path='./record/results.csv')
+#         record_csv(params, extra_record, csv_path='./record/results_backup_'+extra_record['time']+'.csv')
+        if params.csv_name is not None:
+            record_csv(params, extra_record, csv_path='./record/'+params.csv_name)
+
+# def record_txt(params, iter_num, acc_str):    
+#     # writing settings into txt
+#     if params.save_iter != -1:
+#         split_str = params.split + "_" +str(params.save_iter)
+#     else:
+#         split_str = params.split
+#     with open('./record/results.txt' , 'a') as f:
+#         # this part should modify for every argument change
+#         aug_str = '-aug' if params.train_aug else ''
+#         aug_str += '-adapted' if params.adaptation else ''
+#         aug_str += ('-Decoder' + params.recons_decoder+str(params.recons_lambda)) if params.recons_decoder else ''
+#         aug_str += ('-'+params.aug_target+'('+params.aug_type+')') if params.aug_type else ''
+        
+#         if params.method in ['baseline', 'baseline++'] :
+#             exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
+#         else:
+#             exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
+#         acc_descr = '%d Test Acc = ' %(iter_num)
+#         acc_descr += acc_str
+#         f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_descr)  )
         
     
-    torch.cuda.empty_cache()
+    
