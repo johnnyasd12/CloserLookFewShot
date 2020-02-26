@@ -33,8 +33,10 @@ decoder_dict = dict(
     HiddenRes10 = backbone.DeResNet10_2(), 
 )
 
-def parse_args(script):
+def parse_args(script, parse_str=None):
     parser = argparse.ArgumentParser(description= 'few-shot script %s' %(script))
+    
+    # expmgr.py, train.py, save_features.py, test.py
     parser.add_argument('--dataset'     , default=None, choices=['CUB','miniImagenet','cross','omniglot','cross_char'])#, required=True)
     parser.add_argument('--model'       , default=None,      help='model: Conv{4|6} / ResNet{10|18|34|50|101}') # 50 and 101 are not used in the paper
     parser.add_argument('--method'      , default=None,   help='baseline/baseline++/protonet/matchingnet/relationnet{_softmax}/maml{_approx}') #relationnet_softmax replace L2 norm with softmax to expedite training, maml_approx use first-order approximation in the gradient for efficiency
@@ -47,27 +49,28 @@ def parse_args(script):
     # extra argument
     parser.add_argument('--debug', action='store_true', help='whether is debugging. If True, then don\'t record.')
     
-    if script != 'expmgr': # train.py / save_features.py / test.py
-        # assign image resize
-        parser.add_argument('--image_size', default=None, type=int, help='the rescaled image size')
-        # auxiliary reconstruction task
-        parser.add_argument('--recons_decoder'   , default=None, choices=['FC','Conv','HiddenConv','Res18','Res10','HiddenRes10','ConvS','HiddenConvS'], help='reconstruction decoder')
-        # coefficient of reconstruction loss
-        parser.add_argument('--recons_lambda'   , default=0, type=float, help='lambda of reconstruction loss') # TODO: default=None? 0? will bug?
-        parser.add_argument('--aug_type', default=None, choices=['rotate', 'bright', 'contrast', 'mix'], help='task augmentation mode') # TODO: rename to aug_mode
-        parser.add_argument('--aug_target', default=None, choices=['batch', 'sample'], help='data augmentation by task or by sample')
-        # GMM_VAE_GAN augmentation
-        parser.add_argument('--vaegan_exp', default=None, type=str, help='the GMM_VAE_GAN experiment name')
-        parser.add_argument('--vaegan_step', default=None, type=int, help='the GMM_VAE_GAN restore step')
-        parser.add_argument('--zvar_lambda', default=None, type=float, help='the GMM_VAE_GAN zlogvar_lambda')
-        parser.add_argument('--fake_prob', default=None, type=float, help='the probability to replace real image with GMM_VAE_GAN generated image. ')
-        parser.add_argument('--vaegan_is_train', action='store_true', help='whether the vaegan is_training==True.')
+    ##### Custom Settings: train.py / save_features.py / test.py #####
+    # assign image resize
+    parser.add_argument('--image_size', default=None, type=int, help='the rescaled image size')
+    # auxiliary reconstruction task
+    parser.add_argument('--recons_decoder'   , default=None, choices=['FC','Conv','HiddenConv','Res18','Res10','HiddenRes10','ConvS','HiddenConvS'], help='reconstruction decoder')
+    # coefficient of reconstruction loss
+    parser.add_argument('--recons_lambda'   , default=0, type=float, help='lambda of reconstruction loss') # TODO: default=None? 0? will bug?
+    parser.add_argument('--aug_type', default=None, choices=['rotate', 'bright', 'contrast', 'mix'], help='task augmentation mode') # TODO: rename to aug_mode
+    parser.add_argument('--aug_target', default=None, choices=['batch', 'sample'], help='data augmentation by task or by sample')
+    # GMM_VAE_GAN augmentation
+    parser.add_argument('--vaegan_exp', default=None, type=str, help='the GMM_VAE_GAN experiment name')
+    parser.add_argument('--vaegan_step', default=None, type=int, help='the GMM_VAE_GAN restore step')
+    parser.add_argument('--zvar_lambda', default=None, type=float, help='the GMM_VAE_GAN zlogvar_lambda')
+    parser.add_argument('--fake_prob', default=None, type=float, help='the probability to replace real image with GMM_VAE_GAN generated image. ')
+    parser.add_argument('--vaegan_is_train', action='store_true', help='whether the vaegan is_training==True.')
 
-        # domain CustomDropout
-        parser.add_argument('--dropout_p', default=0, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
+    # domain CustomDropout
+    parser.add_argument('--dropout_p', default=0, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
     
-
-    if script == 'train':
+    if script == 'expmgr':
+        pass
+    elif script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
         parser.add_argument('--save_freq'   , default=None, type=int, help='Save frequency')
         parser.add_argument('--start_epoch' , default=0, type=int,help ='Starting epoch')
@@ -111,7 +114,10 @@ def parse_args(script):
     else:
         raise ValueError('Unknown script')
     
-    params = parser.parse_args()
+    if parse_str == None:
+        params = parser.parse_args()
+    else:
+        params = parser.parse_args(parse_str)
     
     # sanity check
     if script=='save_features' or script=='test':
