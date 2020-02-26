@@ -160,7 +160,7 @@ if __name__ == '__main__':
     
     params = parse_args('test')
     
-    # TODO: modify params.split to change between train/val/novel
+    # TODO: modify params.split to change between base/val/novel
     # TODO: test_possible_params
     # get test result
     extra_record = exp_test(params=params, iter_num=600, test_possible_params={})

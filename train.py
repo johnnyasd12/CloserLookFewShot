@@ -58,9 +58,10 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
             print("best model! save at:", outfile)
             torch.save({'record':record, 'epoch':epoch, 'state':model.state_dict()}, outfile)
 
-        if (epoch % params.save_freq==0) or (epoch==stop_epoch-1):
-            outfile = os.path.join(params.checkpoint_dir, '{:d}.tar'.format(epoch))
-            torch.save({'record':record, 'epoch':epoch, 'state':model.state_dict()}, outfile)
+        if params.save_freq != None:
+            if (epoch % params.save_freq==0) or (epoch==stop_epoch-1):
+                outfile = os.path.join(params.checkpoint_dir, '{:d}.tar'.format(epoch))
+                torch.save({'record':record, 'epoch':epoch, 'state':model.state_dict()}, outfile)
         
         if early_stopping is not None:
             early_stopping(acc, model)

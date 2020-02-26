@@ -166,8 +166,8 @@ def plot_PIL(img):
     pass
 
 
-def most_frequent(List): 
-    return max(set(List), key = List.count)
+# def most_frequent(List): 
+#     return max(set(List), key = List.count)
 
 def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_support = 5, n_query = 15, recons_func = None):
     ''' (for test.py) sample ONE episode to do evaluation

@@ -68,7 +68,7 @@ def parse_args(script):
 
     if script == 'train':
         parser.add_argument('--num_classes' , default=200, type=int, help='total number of classes in softmax, only used in baseline') #make it larger than the maximum label value in base class
-        parser.add_argument('--save_freq'   , default=50, type=int, help='Save frequency')
+        parser.add_argument('--save_freq'   , default=None, type=int, help='Save frequency')
         parser.add_argument('--start_epoch' , default=0, type=int,help ='Starting epoch')
         parser.add_argument('--stop_epoch'  , default=-1, type=int, help ='Stopping epoch') #for meta-learning methods, each epoch contains 100 episodes. The default epoch number is dataset dependent. See train.py
         parser.add_argument('--resume'      , action='store_true', help='continue from previous trained model with largest epoch')
@@ -78,26 +78,20 @@ def parse_args(script):
         parser.add_argument('--patience'    , default=None, type=int, help='early stopping patience')
         
         
-    elif script == 'save_features':
-        parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
-        parser.add_argument('--save_iter', default=-1, type=int,help ='save feature from the model trained in x epoch, use the best model if x is -1')
-        
-#         parser.add_argument('--test_aug_target', default=None, choices=['batch', 'sample'], help='test data augmentation by sample or batch')
-        parser.add_argument('--target_bn', action='store_true', help='use target domain statistics to do batch normalization.')
-        # CustomDropout
-        parser.add_argument('--n_test_candidates', default=None, type=int, help='the number of dropout subnet candidates.')
-        
-    elif script == 'test':
+    elif script=='save_features' or script=='test':
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
         parser.add_argument('--save_iter', default=-1, type=int,help ='saved feature from the model trained in x epoch, use the best model if x is -1')
-        parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
         
-        parser.add_argument('--csv_name'       , default=None, type=str, help='extra record csv file name.')
 #         parser.add_argument('--test_aug_target', default=None, choices=['batch', 'sample'], help='test data augmentation by sample or batch')
         parser.add_argument('--target_bn', action='store_true', help='use target domain statistics to do batch normalization.')
         # CustomDropout
         parser.add_argument('--n_test_candidates', default=None, type=int, help='the number of dropout subnet candidates.')
-        parser.add_argument('--frac_ensemble', default=None, type=float, help='the final fraction of dropout subnets ensemble. (default only 1 subnet, no ensemble)')
+        
+        if script == 'test':
+            parser.add_argument('--csv_name'       , default=None, type=str, help='extra record csv file name.')
+            parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
+            parser.add_argument('--frac_ensemble', default=None, type=float, help='the final fraction of dropout subnets ensemble. (default only 1 subnet, no ensemble)')
+        
         
     elif script == 'draw_features':
         parser.add_argument('--split'       , default='novel', help='base/val/novel') #default novel, but you can also test base/val class accuracy if you want 
