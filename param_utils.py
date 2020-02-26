@@ -31,6 +31,10 @@ def get_args(params: dict):
         setattr(args, k, v)
     return args
 
+def copy_args(args):
+    copied_args = Namespace(**vars(args))
+    return copied_args
+
 def get_modified_args(base_args, extra_params: dict):
     new_args = Namespace(**vars(base_args)) # copy base arguments
     for k,v in extra_params.items():

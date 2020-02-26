@@ -1,12 +1,14 @@
 import numpy as np
 from io_utils import parse_args
 from train import exp_train_val
-from param_utils import get_all_params_comb, get_all_args_ls, get_modified_args
+from save_features import exp_save_features
+from test import exp_test
+from param_utils import get_all_params_comb, get_all_args_ls, get_modified_args, copy_args
 
 class ExpManager:
 #     def __init__(self, base_args):
 #     def __init__(self, base_args, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params, record_csv=None):
-    def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params, record_csv=None):
+    def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params):
         '''
         Args:
             train_fixed_params (dict): e.g. {'stop_epoch':700}
@@ -18,7 +20,6 @@ class ExpManager:
 #         self.base_args = base_args # fixed params
         self.possible_params = {'general':general_possible_params, 'test':test_possible_params} # general means generalize to train/save_features/test
         self.fixed_params = {'train':train_fixed_params, 'test':test_fixed_params}
-        self.record_csv = record_csv # TODO: can merge into test_fixed_params?
         self.results = [] # params as well as results restore in the list of dictionaries? dictionary of lists? which better?
     
     def exp_grid(self):
@@ -46,8 +47,8 @@ class ExpManager:
                 records = {}
                 for split in splits:
                     final_test_args.split = split
-                    exp_save_features(final_test_args)
-                    record[split] = exp_test(final_test_args, iter_num=600)
+                    exp_save_features(copy_args(final_test_args))
+                    records[split] = exp_test(copy_args(final_test_args), iter_num=600)
                 
     def exp_grid_search(dataset, split): # choose the best according to dataset & split
         pass
