@@ -1,7 +1,7 @@
 import numpy as np
 from io_utils import parse_args
 from train import exp_train_val
-from param_utils import get_all_params_comb, get_all_args_ls, get_args
+from param_utils import get_all_params_comb, get_all_args_ls, get_modified_args
 
 class ExpManager:
 #     def __init__(self, base_args):
@@ -21,21 +21,20 @@ class ExpManager:
         self.record_csv = record_csv # TODO: can merge into test_fixed_params?
         self.results = [] # params as well as results restore in the list of dictionaries? dictionary of lists? which better?
     
-    def exp_grid():
+    def exp_grid(self):
         default_args = {} # the raw default args of the code
         default_args['train'] = parse_args('train', parse_str='')
         default_args['test'] = parse_args('test', parse_str='')
         possible_params = self.possible_params
         
-        train_args = get_modified_args(default_args['train'], self.fixed_params['train'])
-        test_args = get_modified_args(default_args['test'], self.fixed_params['test'])
+        train_args = get_modified_args(default_args['train'], {**self.base_params, **self.fixed_params['train']})
+        test_args = get_modified_args(default_args['test'], {**self.base_params, **self.fixed_params['test']})
         all_general_params = get_all_params_comb(possible_params=possible_params['general'])
         all_test_params = get_all_params_comb(possible_params=possible_params['test'])
         
         for params in all_general_params:
             modified_train_args = get_modified_args(train_args, params)
             modified_test_args = get_modified_args(test_args, params)
-            
             # train model
             _ = exp_train_val(modified_train_args)
             

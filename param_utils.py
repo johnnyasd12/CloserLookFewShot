@@ -1,5 +1,6 @@
 import numpy as np
 from argparse import Namespace
+import itertools
 
 def get_all_params_comb(possible_params: dict):
     '''
@@ -14,7 +15,7 @@ def get_all_params_comb(possible_params: dict):
     for key, ls in possible_params.items():
         tune_names.append(key)
         tune_lsls.append(ls)
-    params_comb = [list(x) for x in np.array(np.meshgrid(*tune_lsls)).T.reshape(-1,len(tune_lsls))] # e.g. [[0.25,0.1], [0.25,0.3], [0.25,0.5], ..., [0.75,0.5]]
+    params_comb = list(itertools.product(*tune_lsls)) # e.g. [[0.25,0.1], [0.25,0.3], [0.25,0.5], ..., [0.75,0.5]]
     n_combs = len(params_comb)
     params_ls = [] # e.g. [{'dropout_p':0.25, 'frac_ensemble':0.1}, ..., {'dropout_p':0.75, 'frac_ensemble':0.5}]
     for i in range(n_combs):
