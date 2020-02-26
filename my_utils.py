@@ -183,6 +183,20 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
     :param recons_func: temporary no use
     :return: accuracy (%)
     '''
+    def select_class_with_sanity(class_list, cl_feature_each_candidate): # i think this would make program slow...
+        select_class = random.sample(class_list,n_way)
+        # sanity check
+        while True:
+            sanity = True
+            for cl in select_class:
+                for cl_feature_dict in cl_feature_each_candidate:
+                    img_feat = cl_feature_dict[cl]
+                    if len(img_feat)!=n_support+n_query:
+                        sanity = False
+                        select_class = random.sample(class_list,n_way)
+            if sanity:
+                break
+        return select_class
     
     def get_all_perm_features(select_class, cl_feature_dict, perm_ids_dict):
         '''
@@ -266,9 +280,9 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
     
     if params.n_test_candidates is None: # common setting
         class_list = cl_feature_each_candidate[0].keys()
-        select_class = random.sample(class_list,n_way)
-        
         cl_feature_dict = cl_feature_each_candidate[0] # list only have 1 element
+        select_class = select_class_with_sanity(class_list, cl_feature_each_candidate)
+        
         perm_ids_dict = {} # permutation indices of each selected class
         # initialize perm_ids_dict
         for cl in select_class:
@@ -285,7 +299,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         class_list = cl_feature_each_candidate[0].keys()
 #         print('feature_evaluation()/class_list:', class_list)
-        select_class = random.sample(class_list,n_way)
+#         select_class = random.sample(class_list,n_way)
+        select_class = select_class_with_sanity(class_list, cl_feature_each_candidate)
         perm_ids_dict = {} # store the permutation indices of each class
         sub_acc_each_candidate = [] # store sub_query set accuracy of each candidate
         
