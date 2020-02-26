@@ -186,11 +186,7 @@ def get_train_val_loader(params):
         raise ValueError('Unknown method')
     return base_loader, val_loader
 
-def exp_train_val(params, val_possible_params={}):
-    '''
-    Args:
-        val_possible_params (dict): e.g. {'frac_ensemble':[0.25, 0.5, 0.75]}
-    '''
+def exp_train_val(params):
     start_time = get_time_now()
     print('exp_train_val() started at',start_time)
     np.random.seed(10)
@@ -201,10 +197,6 @@ def exp_train_val(params, val_possible_params={}):
 
     if params.gpu_id:
         set_gpu_id(params.gpu_id)
-    
-    
-    
-    
     
     model = get_model(params, 'train')
 

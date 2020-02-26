@@ -21,54 +21,7 @@ from my_utils import *
 from model_utils import get_backbone_func, batchnorm_use_target_stats
 from tqdm import tqdm
 
-def save_features(feature_net, data_loader, outfile, params):
-    
-    n_candidates = 1 if params.n_test_candidates == None else params.n_test_candidates
-    outfile_candidate = 'candidate' in outfile
-    print('candidate in outfile', outfile_candidate)
-    if (outfile_candidate)^(params.n_test_candidates != None):
-        raise ValueError('outfile & params.n_test_candidates mismatch.')
-        
-    for n in range(n_candidates):
-
-        if 'candidate' in outfile: # then dropout
-            print('candidate',n+1,'start...')
-            outfile_n = outfile.replace('candidate', 'candidate'+str(n+1))
-            feature_net.sample_random_subnet()
-        else:
-            outfile_n = outfile
-        
-        f = h5py.File(outfile_n, 'w')
-        max_count = len(data_loader)*data_loader.batch_size
-        all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
-        all_feats=None
-        count=0
-
-        for i, (x,y) in enumerate(tqdm(data_loader)):
-
-            if params.gpu_id:
-                x = x.cuda()
-            else:
-                x = to_device(x)
-
-            x_var = Variable(x)
-            feats = feature_net(x_var)
-            if all_feats is None:
-                all_feats = f.create_dataset('all_feats', [max_count] + list( feats.size()[1:]) , dtype='f')
-            all_feats[count:count+feats.size(0)] = feats.data.cpu().numpy()
-            all_labels[count:count+feats.size(0)] = y.cpu().numpy()
-            count = count + feats.size(0)
-
-        count_var = f.create_dataset('count', (1,), dtype='i')
-        count_var[0] = count
-        
-        print('Saved features to:', outfile_n)
-        f.close()
-
-
-if __name__ == '__main__':
-    params = parse_args('save_features')
-    
+def exp_save_features(params):
     assert params.method != 'maml' and params.method != 'maml_approx', 'maml do not support save_feature and run'
     if params.gpu_id:
         set_gpu_id(params.gpu_id)
@@ -132,3 +85,53 @@ if __name__ == '__main__':
         os.makedirs(dirname)
 #     print('saving features to:', outfile)
     save_features(backbone_net, data_loader, outfile, params)
+
+def save_features(feature_net, data_loader, outfile, params):
+    
+    n_candidates = 1 if params.n_test_candidates == None else params.n_test_candidates
+    outfile_candidate = 'candidate' in outfile
+    print('candidate in outfile', outfile_candidate)
+    if (outfile_candidate)^(params.n_test_candidates != None):
+        raise ValueError('outfile & params.n_test_candidates mismatch.')
+        
+    for n in range(n_candidates):
+
+        if 'candidate' in outfile: # then dropout
+            print('candidate',n+1,'start...')
+            outfile_n = outfile.replace('candidate', 'candidate'+str(n+1))
+            feature_net.sample_random_subnet()
+        else:
+            outfile_n = outfile
+        
+        f = h5py.File(outfile_n, 'w')
+        max_count = len(data_loader)*data_loader.batch_size
+        all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
+        all_feats=None
+        count=0
+
+        for i, (x,y) in enumerate(tqdm(data_loader)):
+
+            if params.gpu_id:
+                x = x.cuda()
+            else:
+                x = to_device(x)
+
+            x_var = Variable(x)
+            feats = feature_net(x_var)
+            if all_feats is None:
+                all_feats = f.create_dataset('all_feats', [max_count] + list( feats.size()[1:]) , dtype='f')
+            all_feats[count:count+feats.size(0)] = feats.data.cpu().numpy()
+            all_labels[count:count+feats.size(0)] = y.cpu().numpy()
+            count = count + feats.size(0)
+
+        count_var = f.create_dataset('count', (1,), dtype='i')
+        count_var[0] = count
+        
+        print('Saved features to:', outfile_n)
+        f.close()
+        
+if __name__ == '__main__':
+    params = parse_args('save_features')
+    exp_save_features(params)
+    
+

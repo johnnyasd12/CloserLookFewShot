@@ -32,7 +32,7 @@ from tqdm import tqdm
 
 from model_utils import get_few_shot_params, get_model
 
-def exp_test(params, iter_num, test_possible_params={}):
+def exp_test(params, iter_num):
     print('exp_test() start.')
     if params.gpu_id:
         set_gpu_id(params.gpu_id)
@@ -163,7 +163,7 @@ if __name__ == '__main__':
     # TODO: modify params.split to change between base/val/novel
     # TODO: test_possible_params
     # get test result
-    extra_record = exp_test(params=params, iter_num=600, test_possible_params={})
+    extra_record = exp_test(params=params, iter_num=600)
     
     # TODO: params assign csv_name
     if not params.debug:
