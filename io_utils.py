@@ -35,9 +35,9 @@ decoder_dict = dict(
 
 def parse_args(script):
     parser = argparse.ArgumentParser(description= 'few-shot script %s' %(script))
-    parser.add_argument('--dataset'     , choices=['CUB','miniImagenet','cross','omniglot','cross_char'], required=True)
-    parser.add_argument('--model'       , default='Conv4',      help='model: Conv{4|6} / ResNet{10|18|34|50|101}') # 50 and 101 are not used in the paper
-    parser.add_argument('--method'      , default='baseline',   help='baseline/baseline++/protonet/matchingnet/relationnet{_softmax}/maml{_approx}') #relationnet_softmax replace L2 norm with softmax to expedite training, maml_approx use first-order approximation in the gradient for efficiency
+    parser.add_argument('--dataset'     , default=None, choices=['CUB','miniImagenet','cross','omniglot','cross_char'])#, required=True)
+    parser.add_argument('--model'       , default=None,      help='model: Conv{4|6} / ResNet{10|18|34|50|101}') # 50 and 101 are not used in the paper
+    parser.add_argument('--method'      , default=None,   help='baseline/baseline++/protonet/matchingnet/relationnet{_softmax}/maml{_approx}') #relationnet_softmax replace L2 norm with softmax to expedite training, maml_approx use first-order approximation in the gradient for efficiency
     parser.add_argument('--train_n_way' , default=5, type=int,  help='class num to classify for training') #baseline and baseline++ would ignore this parameter
     parser.add_argument('--test_n_way'  , default=5, type=int,  help='class num to classify for testing (validation) ') #baseline and baseline++ only use this parameter in finetuning
     parser.add_argument('--n_shot'      , default=5, type=int,  help='number of labeled data in each class, same as n_support') #baseline and baseline++ only use this parameter in finetuning
@@ -46,7 +46,8 @@ def parse_args(script):
     
     # extra argument
     parser.add_argument('--debug', action='store_true', help='whether is debugging. If True, then don\'t record.')
-    if script != 'expmgr':
+    
+    if script != 'expmgr': # train.py / save_features.py / test.py
         # assign image resize
         parser.add_argument('--image_size', default=None, type=int, help='the rescaled image size')
         # auxiliary reconstruction task
@@ -87,10 +88,11 @@ def parse_args(script):
         # CustomDropout
         parser.add_argument('--n_test_candidates', default=None, type=int, help='the number of dropout subnet candidates.')
         
-        if script == 'test':
-            parser.add_argument('--csv_name'       , default=None, type=str, help='extra record csv file name.')
-            parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
-            parser.add_argument('--frac_ensemble', default=None, type=float, help='the final fraction of dropout subnets ensemble. (default only 1 subnet, no ensemble)')
+        ############ test.py ########## but i think save_features.py is okay
+#         if script == 'test': # can also parse in save_features.py?? i think no effect is ok
+        parser.add_argument('--csv_name'       , default=None, type=str, help='extra record csv file name.')
+        parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
+        parser.add_argument('--frac_ensemble', default=None, type=float, help='the final fraction of dropout subnets ensemble. (default only 1 subnet, no ensemble)')
         
         
     elif script == 'draw_features':
