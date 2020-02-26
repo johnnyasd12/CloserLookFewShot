@@ -85,6 +85,14 @@ class Timer2:
             print('Duration from "' + self.duration['from'] + '" to "' + self.duration['to'] +'": ')
             print('time:', self.duration['time'], ', process time:', self.duration['process_time'])
         self.last_t = self.end_t.copy()
+        
+    def end(self, summary=False):
+        
+        if summary:
+            self.summary()
+    
+    def summary(self):
+        pass
 
 class EarlyStopping:
     """
