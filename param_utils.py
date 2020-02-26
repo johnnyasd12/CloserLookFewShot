@@ -24,7 +24,7 @@ def get_all_params_comb(possible_params: dict):
         params_ls.append(d)
     return params_ls
 
-def get_tuned_args(base_args, extra_params: dict):
+def get_extended_args(base_args, extra_params: dict):
     new_args = Namespace(**vars(base_args)) # copy base arguments
     for k,v in extra_params.items():
         setattr(new_args, k, v)
@@ -34,6 +34,6 @@ def get_all_args_ls(base_args, possible_params: dict):
     params_comb_ls = get_all_params_comb(possible_params)
     all_args = []
     for params in params_comb_ls:
-        args = get_tuned_args(base_args, params)
+        args = get_extended_args(base_args, params)
         all_args.append(args)
     return all_args
