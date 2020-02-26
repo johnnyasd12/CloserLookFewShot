@@ -24,7 +24,7 @@ class ExpManager:
     
     def exp_grid(self):
         print('exp_grid() start.')
-        print(base_params)
+        print(self.base_params)
         default_args = {} # the raw default args of the code
         default_args['train'] = parse_args('train', parse_str='')
         default_args['test'] = parse_args('test', parse_str='')
@@ -39,6 +39,7 @@ class ExpManager:
             modified_train_args = get_modified_args(train_args, params)
             modified_test_args = get_modified_args(test_args, params)
             # train model
+            print('='*20, 'Training', '='*20)
             print(params)
             _ = exp_train_val(modified_train_args)
             
@@ -47,14 +48,21 @@ class ExpManager:
                 final_test_args = get_modified_args(modified_test_args, test_params)
                 
                 splits = ['val', 'novel'] # temporary no 'train'
-                records = {}
+                write_record = {}
                 for split in splits:
-                    final_test_args.split = split
+                    split_final_test_args = copy_args(final_test_args)
+                    split_final_test_args.split = split
+                    print('='*20, 'Saving Features', '='*20)
                     print(params)
                     print(test_params)
                     print(split)
-                    exp_save_features(copy_args(final_test_args))
-                    records[split] = exp_test(copy_args(final_test_args), iter_num=600)
+                    exp_save_features(copy_args(split_final_test_args))
+                    print('='*20, 'Testing', '='*20)
+                    record = exp_test(copy_args(split_final_test_args), iter_num=600)
+                    write_record['epoch'] = record['epoch']
+                    write_record[split+'_acc_mean'] = record['acc_mean']
+                
+                record_csv(final_test_args, write_record, csv_path='./record/'+final_test_args.csv_name)
                 
     def exp_grid_search(dataset, split): # choose the best according to dataset & split
         pass
