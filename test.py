@@ -166,11 +166,10 @@ if __name__ == '__main__':
     extra_record = exp_test(params=params, iter_num=600)
     
     # TODO: params assign csv_name
-    if not params.debug:
-        record_csv(params, extra_record, csv_path='./record/results.csv')
-#         record_csv(params, extra_record, csv_path='./record/results_backup_'+extra_record['time']+'.csv')
-        if params.csv_name is not None:
-            record_csv(params, extra_record, csv_path='./record/'+params.csv_name)
+    record_csv(params, extra_record, csv_path='./record/results.csv')
+#     record_csv(params, extra_record, csv_path='./record/results_backup_'+extra_record['time']+'.csv')
+    if params.csv_name is not None:
+        record_csv(params, extra_record, csv_path='./record/'+params.csv_name)
 
 # def record_txt(params, iter_num, acc_str):    
 #     # writing settings into txt

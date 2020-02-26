@@ -2,7 +2,7 @@ import numpy as np
 from io_utils import parse_args
 from train import exp_train_val
 from save_features import exp_save_features
-from test import exp_test
+from test import exp_test, record_csv
 from param_utils import get_all_params_comb, get_all_args_ls, get_modified_args, copy_args
 
 class ExpManager:
@@ -23,6 +23,8 @@ class ExpManager:
         self.results = [] # params as well as results restore in the list of dictionaries? dictionary of lists? which better?
     
     def exp_grid(self):
+        print('exp_grid() start.')
+        print(base_params)
         default_args = {} # the raw default args of the code
         default_args['train'] = parse_args('train', parse_str='')
         default_args['test'] = parse_args('test', parse_str='')
@@ -37,6 +39,7 @@ class ExpManager:
             modified_train_args = get_modified_args(train_args, params)
             modified_test_args = get_modified_args(test_args, params)
             # train model
+            print(params)
             _ = exp_train_val(modified_train_args)
             
             # loop over testing settings under each general setting
@@ -47,6 +50,9 @@ class ExpManager:
                 records = {}
                 for split in splits:
                     final_test_args.split = split
+                    print(params)
+                    print(test_params)
+                    print(split)
                     exp_save_features(copy_args(final_test_args))
                     records[split] = exp_test(copy_args(final_test_args), iter_num=600)
                 
