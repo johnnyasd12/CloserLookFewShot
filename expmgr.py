@@ -15,14 +15,12 @@ class ExpManager:
             test_fixed_params (dict): e.g. {'record_csv':'program_time.csv'}
             general_possible_params (dict): dictionary of list of tunable parameters, different param would train different model. e.g. {'dropout_p':[0.25, 0.5]}
         '''
-        self.base_params = base_params
-#         self.base_args = get_args(base_params) # fixed params
-#         self.base_args = base_args # fixed params
+        self.base_params = base_params # general fixed params
         self.possible_params = {'general':general_possible_params, 'test':test_possible_params} # general means generalize to train/save_features/test
         self.fixed_params = {'train':train_fixed_params, 'test':test_fixed_params}
-        self.results = [] # params as well as results restore in the list of dictionaries? dictionary of lists? which better?
+        self.results = [] # params as well as results restore in the list of dictionaries
     
-    def exp_grid(self):
+    def exp_grid(self, choose_by='val_acc_mean'):
         print('exp_grid() start.')
         print(self.base_params)
         default_args = {} # the raw default args of the code
@@ -48,7 +46,7 @@ class ExpManager:
                 final_test_args = get_modified_args(modified_test_args, test_params)
                 
                 splits = ['val', 'novel'] # temporary no 'train'
-                write_record = {}
+                write_record = {**params, **test_params}
                 for split in splits:
                     split_final_test_args = copy_args(final_test_args)
                     split_final_test_args.split = split
@@ -62,8 +60,16 @@ class ExpManager:
                     write_record['epoch'] = record['epoch']
                     write_record[split+'_acc_mean'] = record['acc_mean']
                 
+                self.results.append(write_record)
                 record_csv(final_test_args, write_record, csv_path='./record/'+final_test_args.csv_name)
                 
+        # TODO: can also loop dataset
+        for choose_by in ['val_acc_mean', 'novel_acc_mean']:
+            sorted_result = sorted(self.results, key = lambda i: i[choose_by], reverse=True)
+            best_result = sorted_result[0]
+            print(best_result)
+            print('The best test acc is', best_result['novel_acc_mean'],'%% on grid search chosen by:',choose_by)
+        
     def exp_grid_search(dataset, split): # choose the best according to dataset & split
         pass
     
