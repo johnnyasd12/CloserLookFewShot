@@ -193,6 +193,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                     img_feat = cl_feature_dict[cl]
                     if len(img_feat)!=n_support+n_query:
                         sanity = False
+                        print('sanity check failed, n_support+n_query =', n_support+n_query,'resample classes...')
                         select_class = random.sample(class_list,n_way)
             if sanity:
                 break
@@ -206,10 +207,11 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         z_all  = []
         for cl in select_class:
             img_feat = cl_feature_dict[cl]
+            n_data = len(img_feat)
             # get shuffled idx inside one-class data
             perm_ids = perm_ids_dict[cl] 
             # stack each batch
-            z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_support+n_query) ] )
+            z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_data) ] )
         z_all = np.array(z_all)
         return z_all
     
@@ -281,13 +283,16 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
     if params.n_test_candidates is None: # common setting
         class_list = cl_feature_each_candidate[0].keys()
         cl_feature_dict = cl_feature_each_candidate[0] # list only have 1 element
-        select_class = select_class_with_sanity(class_list, cl_feature_each_candidate)
+#         select_class = select_class_with_sanity(class_list, cl_feature_each_candidate)
+        select_class = random.sample(class_list,n_way)
         
         perm_ids_dict = {} # permutation indices of each selected class
         # initialize perm_ids_dict
         for cl in select_class:
-            # I think len(img_feat) is always n_support+n_query so i don't write len(img_feat)
-            perm_ids = np.random.permutation(n_support+n_query).tolist() # get shuffled idx inside one-class data
+            # I think len(img_feat) is always n_support+n_query so i don't write len(img_feat) # nonono BUGBUGBUG
+            img_feat = cl_feature_dict[cl]
+            n_data = len(img_feat)
+            perm_ids = np.random.permutation(n_data).tolist() # get shuffled idx inside one-class data
             perm_ids_dict[cl] = perm_ids
             
         z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
@@ -299,17 +304,22 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         class_list = cl_feature_each_candidate[0].keys()
 #         print('feature_evaluation()/class_list:', class_list)
-#         select_class = random.sample(class_list,n_way)
-        select_class = select_class_with_sanity(class_list, cl_feature_each_candidate)
+        select_class = random.sample(class_list,n_way)
+#         select_class = select_class_with_sanity(class_list, cl_feature_each_candidate)
         perm_ids_dict = {} # store the permutation indices of each class
         sub_acc_each_candidate = [] # store sub_query set accuracy of each candidate
         
         # get shuffled data idx in each class (of all features?)
+#         min_n_data_each_cl = {} # minimum n_data of candidates, NONONO i think all candidates have the same n_data
+#         for cl in select_class:
+#             n_data_each_candidate = []
+#             for cl_feature_dict in cl_feature_each_candidate:
+#                 n_data_each_candidate.append(len(cl_feature_dict[cl]))
         for cl in select_class:
-#             tmp_cl_feature_dict = cl_feature_each_candidate[0]
-#             img_feat = tmp_cl_feature_dict[cl]
-            # I think len(img_feat) is always n_support+n_query so i don't write len(img_feat)
-            perm_ids = np.random.permutation(n_support+n_query).tolist()
+            tmp_cl_feature_dict = cl_feature_each_candidate[0] # i think all candidates have the same n_data
+            img_feat = tmp_cl_feature_dict[cl]
+            # I think len(img_feat) is always n_support+n_query so i don't write len(img_feat) NONONO BUGBUGBUG
+            perm_ids = np.random.permutation(len(img_feat)).tolist()
             perm_ids_dict[cl] = perm_ids
         
         # here seems took most of the time cost
