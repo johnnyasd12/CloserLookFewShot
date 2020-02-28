@@ -53,7 +53,7 @@ class ExpManager:
                     print('='*20, 'Saving Features', '='*20)
                     print(params)
                     print(test_params)
-                    print(split)
+                    print('data split:', split)
                     exp_save_features(copy_args(split_final_test_args))
                     print('='*20, 'Testing', '='*20)
                     record = exp_test(copy_args(split_final_test_args), iter_num=600)
@@ -67,8 +67,9 @@ class ExpManager:
         for choose_by in ['val_acc_mean', 'novel_acc_mean']:
             sorted_result = sorted(self.results, key = lambda i: i[choose_by], reverse=True)
             best_result = sorted_result[0]
-            print(best_result)
-            print('The best test acc is', best_result['novel_acc_mean'],'%% on grid search chosen by:',choose_by)
+            
+            print('The best test acc is', best_result['novel_acc_mean'],'% on grid search chosen by:',choose_by)
+            print('Detail:\n', best_result)
         
     def exp_grid_search(dataset, split): # choose the best according to dataset & split
         pass

@@ -90,34 +90,48 @@ def exp_test(params, iter_num):
 
     else: # not MAML
         # directly use extracted features
-#defaut split = novel, but you can also test base or val classes # so the variable name "feature_file" is proper?
         feature_file = get_save_feature_filepath(params, checkpoint_dir, split)
         
-        # TODO: from here to loop n_candidate???
         if 'candidate' in feature_file:
             feature_files = []
-            cl_feature_dict_ls = [] # saved features of all candidates
+            candidate_cl_feature = [] # features of each class of each candidates
             print('Loading features of %s candidates into dictionaries...' %(params.n_test_candidates))
             for n in tqdm(range(params.n_test_candidates)):
-                feature_file_n = feature_file.replace('candidate','candidate'+str(n+1))
-                feature_files.append(feature_file_n)
-                cl_feature_dict_n = feat_loader.init_loader(feature_file_n)
-                cl_feature_dict_ls.append(cl_feature_dict_n)
+                print('Loading features of candidate', n, '...')
+                nth_feature_file = feature_file.replace('candidate','candidate'+str(n+1))
+                feature_files.append(nth_feature_file)
+                cl_feature = feat_loader.init_loader(nth_feature_file)
+                candidate_cl_feature.append(cl_feature)
+            
+            
+            ############### Sanity Check ###############
+            # check len(cl_feature) of each candidate
+            print('Sanity Check...')
+            prev_cl_feature = candidate_cl_feature[0]
+            for nth_cl_feature in candidate_cl_feature:
+                for cl in nth_cl_feature.keys():
+                    n_data_prev = len(prev_cl_feature[cl])
+                    n_data = len(nth_cl_feature[cl])
+                    if n_data_prev != n_data:
+                        print('n_data_prev & n_data NOT the same !!!!')
+                        print('cl:', cl, ', n_data:', n_data, ', n_data_prev:', n_data_prev)
+            ############### Sanity Check ###############
+            
             
             print('Evaluating...')
-            # TODO: aggregate this and lower part of for loop, only cl_feature_dict are different
+            # TODO: aggregate this and lower part of for loop, only cl_feature are different
             for i in tqdm(range(iter_num)):
                 # TODO: fix data list? can only fix class list?
-                acc = feature_evaluation(cl_feature_dict_ls, model, params=params, n_query=15, **few_shot_params)
+                acc = feature_evaluation(candidate_cl_feature, model, params=params, n_query=15, **few_shot_params)
                 # TODO: draw something here ???
                 acc_all.append(acc)
                 
         else: # common setting (no candidate)
-            cl_feature_dict = feat_loader.init_loader(feature_file)
-            cl_feature_dict_ls = [cl_feature_dict]
+            cl_feature = feat_loader.init_loader(feature_file)
+            cl_feature_single = [cl_feature]
             for i in tqdm(range(iter_num)):
                 # TODO: fix data list? can only fix class list?
-                acc = feature_evaluation(cl_feature_dict_ls, model, params=params, n_query=15, **few_shot_params)
+                acc = feature_evaluation(cl_feature_single, model, params=params, n_query=15, **few_shot_params)
                 # TODO: draw something here ???
                 acc_all.append(acc)
 

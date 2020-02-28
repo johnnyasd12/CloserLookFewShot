@@ -14,7 +14,11 @@ class SimpleHDF5Dataset:
             self.all_feats_dset = self.f['all_feats'][...]
             self.all_labels = self.f['all_labels'][...]
             self.total = self.f['count'][0]
-           # print('here')
+            
+            ############### Sanity Check ###############
+            print('SimpleHDF5Dataset/self.all_labels:', type(self.all_labels), self.all_labels.shape, self.all_labels)
+            ############### Sanity Check ###############
+            
     def __getitem__(self, i):
         return torch.Tensor(self.all_feats_dset[i,:]), int(self.all_labels[i])
 
@@ -28,20 +32,50 @@ def init_loader(filename):
     with h5py.File(filename, 'r') as f:
         fileset = SimpleHDF5Dataset(f)
 
-    #labels = [ l for l  in fileset.all_labels if l != 0]
-    feats = fileset.all_feats_dset # list?
-    labels = fileset.all_labels # list?
-    while np.sum(feats[-1]) == 0:
-        feats  = np.delete(feats,-1,axis = 0)
-        labels = np.delete(labels,-1,axis = 0)
-        
-    class_list = np.unique(np.array(labels)).tolist() 
-    inds = range(len(labels))
+    #all_labels = [ l for l  in fileset.all_labels if l != 0]
+    all_feats = fileset.all_feats_dset # ndarray, shape=(n_data, n_dims)
+    all_labels = fileset.all_labels # ndarray, shape=(n_data,)
+    
+    
+    ############### Sanity Check ###############
+    print('init_loader/all_labels:', type(all_labels), all_labels.shape, all_labels)
+    ############### Sanity Check ###############
+    
+    ########### TODO: WTF R U DOING HERE?????????? ###########
+    if False:
+        while np.sum(all_feats[-1]) == 0:
+            print('init_loader/all_feats[-1]:', all_feats[-1])
+            all_feats  = np.delete(all_feats,-1,axis = 0)
+            all_labels = np.delete(all_labels,-1,axis = 0)
+    ########### WTF R U DOING HERE?????????? ###########
+    
+    ############### Sanity Check ###############
+    print('init_loader/all_labels after delete:', type(all_labels), all_labels.shape, all_labels)
+    ############### Sanity Check ###############
+    
+    class_list = np.unique(np.array(all_labels)).tolist() 
+    inds = range(len(all_labels))
 
     cl_data_file = {}
     for cl in class_list:
         cl_data_file[cl] = []
+    
     for ind in inds:
-        cl_data_file[labels[ind]].append( feats[ind])
+        cl = all_labels[ind]
+        feats = all_feats[ind]
+        cl_data_file[cl].append(feats)
 
+    
+    ############### Sanity Check has Problem here!!!! ###############
+    sum_n_data = 0
+    for cl in class_list:
+        n_data = len(cl_data_file[cl])
+        sum_n_data += n_data
+        if n_data != 20:
+            print('init_loader/ class', cl, ', n_data:', n_data)
+            print('init_loader/ n_data NOT 20 !!!!!!!')
+    print('sum_n_data:', sum_n_data)
+    ############### Sanity Check ###############
+    
+    
     return cl_data_file

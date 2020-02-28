@@ -93,7 +93,11 @@ def save_features(feature_net, data_loader, outfile, params):
     print('candidate in outfile', outfile_candidate)
     if (outfile_candidate)^(params.n_test_candidates != None):
         raise ValueError('outfile & params.n_test_candidates mismatch.')
-        
+    
+    ########### Sanity Check ###########
+    cl_candidates_n_data = {}
+    ########### ???? ###########
+    
     for n in range(n_candidates):
 
         if 'candidate' in outfile: # then dropout
@@ -110,7 +114,7 @@ def save_features(feature_net, data_loader, outfile, params):
         count=0
 
         for i, (x,y) in enumerate(tqdm(data_loader)):
-
+            
             if params.gpu_id:
                 x = x.cuda()
             else:
@@ -128,7 +132,35 @@ def save_features(feature_net, data_loader, outfile, params):
         count_var[0] = count
         
         print('Saved features to:', outfile_n)
+        
+        
+        ####### Sanity Check #######
+        print('save_features/ candidate', n, ', all_labels:', all_labels.shape)
+        for cl in all_labels:
+            if cl not in cl_candidates_n_data: # no key
+                cl_candidates_n_data[cl] = [0]*n_candidates
+            cl_candidates_n_data[cl][n] += 1
+        ####### unfinished #######
+        
+        
         f.close()
+        
+        
+        
+    ############### Sanity Check ###############
+    print('Sanity Check...')
+    for cl in cl_candidates_n_data:
+        candidates_n_data = cl_candidates_n_data[cl]
+        if len(set(candidates_n_data)) != 1:
+            print('candidates_n_data NOT the same !!!!')
+            print('cl:', cl)
+            print('candidates_n_data:', candidates_n_data)
+#         else:
+#             print('cl:', cl, ', candidates_n_data:', candidates_n_data)
+    print('Finished Sanity Check.')
+    ########### no problem here i think ###########
+    
+    
         
 if __name__ == '__main__':
     params = parse_args('save_features')

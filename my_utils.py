@@ -207,11 +207,30 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         z_all  = []
         for cl in select_class:
             img_feat = cl_feature_dict[cl]
-            n_data = len(img_feat)
+            
+            ############# BUGFIX??? #############
+#             n_data = len(img_feat)
+#             n_data = n_support+n_query
+            n_data = n_support+n_query if n_support+n_query <= len(img_feat) else len(img_feat) # FIXME: should use this before perm_ids
+            ############# BUGFIX??? #############
+            
             # get shuffled idx inside one-class data
             perm_ids = perm_ids_dict[cl] 
             # stack each batch
+            
+            
+            ############## PROBLEM HERE ##############
             z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_data) ] )
+#             try:
+#                 z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_data) ] )
+#             except IndexError:
+#                 print('IndexError occurred!!')
+#                 print('len(perm_ids):', len(perm_ids))
+#                 print('len(img_feat):', len(img_feat))
+#                 print('n_support+n_query:', n_support+n_query)
+#                 print('正常來說 len = len = n+n = 20 (for omniglot)')
+            ############## PROBLEM HERE ##############
+    
         z_all = np.array(z_all)
         return z_all
     
@@ -310,11 +329,22 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         sub_acc_each_candidate = [] # store sub_query set accuracy of each candidate
         
         # get shuffled data idx in each class (of all features?)
-#         min_n_data_each_cl = {} # minimum n_data of candidates, NONONO i think all candidates have the same n_data
+        
+        # to check n_data of each candidate
+        n_data_each_candidate_each_cl = {} # n_data of candidates, all candidates SHOULD have the same n_data
 #         for cl in select_class:
 #             n_data_each_candidate = []
+# #             class_list_prev_cand = cl_feature_each_candidate[0].keys()
 #             for cl_feature_dict in cl_feature_each_candidate:
 #                 n_data_each_candidate.append(len(cl_feature_dict[cl]))
+# #                 if cl_feature_dict.keys() != class_list_prev_cand:
+# #                     print('class_list NOT the same !!!!!!')
+# #                 class_list_prev_cand = cl_feature_dict.keys()
+#             n_data_each_candidate_each_cl[cl] = n_data_each_candidate
+# #             if(len(set(n_data_each_candidate))!=1):
+# #                 print('n_data NOT the same !!!!!!')
+# #                 print('n_data_each_candidate:', n_data_each_candidate)
+        
         for cl in select_class:
             tmp_cl_feature_dict = cl_feature_each_candidate[0] # i think all candidates have the same n_data
             img_feat = tmp_cl_feature_dict[cl]
@@ -326,7 +356,14 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         for n in range(params.n_test_candidates): # for each candidate
             cl_feature_dict = cl_feature_each_candidate[n] # features of the candidate
 
+#             try:
             z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
+#             except IndexError:
+#                 print('IndexError occurred!!')
+#                 print('in each class:')
+#                 for cl in select_class:
+#                     print('class', cl)
+#                     print('n_data_each_candidate_each_cl[cl]:', n_data_each_candidate_each_cl[cl])
             z_all = torch.from_numpy(z_all) # z_support & z_query
                         
             # reset back
@@ -353,19 +390,24 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             sub_acc_each_candidate.append(sub_acc)
             
         n_ensemble = 1 if params.frac_ensemble == None else int(params.frac_ensemble*params.n_test_candidates)
-        # reset back
-        model.n_support = n_support
-        model.n_query = n_query
         
         # get ensemble ids
         sub_acc_each_candidate = np.array(sub_acc_each_candidate)
         sorted_candidate_ids = np.argsort(-sub_acc_each_candidate) # in descent order
-        elected_candidate_ids = sorted_candidate_ids[:n_ensemble]
+        elected_candidate_ids = sorted_candidate_ids[:n_ensemble] # TODO: rename elected_candidate to winners/superiors
         all_preds = []
+        
+        # reset back
+        model.n_support = n_support
+        model.n_query = n_query
         # repeat procedure of common setting to get query prediction
         for elected_id in elected_candidate_ids:
             cl_feature_dict = cl_feature_each_candidate[elected_id]
             z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
+#             if np.random.random()<1:
+#                 print('z_all.shape:', z_all.shape)
+#                 print('n_support:', n_support)
+#                 print('n_query:', n_query)
             z_all = torch.from_numpy(z_all) # z_support & z_query
             pred = get_pred(model, z_all)
             all_preds.append(pred)

@@ -19,13 +19,29 @@ class ProtoNet(MetaTemplate):
     def set_forward(self,x,is_feature = False):
         ''' get the last output (scores of query set) from image or embedding
         '''
+#         try:
         z_support, z_query  = self.parse_feature(x,is_feature)
+        z_query_cp = z_query # TODO: delete this line
 
         z_support   = z_support.contiguous()
         z_proto     = z_support.view(self.n_way, self.n_support, -1 ).mean(1) #the shape of z is [n_data, n_dim]
         z_query     = z_query.contiguous().view(self.n_way* self.n_query, -1 )
 
+
         dists = euclidean_dist(z_query, z_proto)
+#             if np.random.random() < 0.1:
+#                 print('x.size():', x.size())
+#                 print('z_support.size():', z_support.size())
+#                 print('z_query_cp.size():', z_query_cp.size())
+#                 print('z_proto.size():', z_proto.size())
+#                 print('z_query.size():', z_query.size())
+#         except AssertionError:
+#             print('AssertionError occurred!!')
+#             print('x.size():', x.size())
+#             print('z_support.size():', z_support.size())
+#             print('z_query_cp.size():', z_query_cp.size()) # problem is z_query_cp.size(1) should be n_way*n_query
+#             print('z_proto.size():', z_proto.size())
+#             print('z_query.size():', z_query.size())
         scores = -dists
         return scores
 
