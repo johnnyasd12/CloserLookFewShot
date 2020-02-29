@@ -94,9 +94,9 @@ def save_features(feature_net, data_loader, outfile, params):
     if (outfile_candidate)^(params.n_test_candidates != None):
         raise ValueError('outfile & params.n_test_candidates mismatch.')
     
-    ########### Sanity Check ###########
+    ########### for Sanity Check ###########
     cl_candidates_n_data = {}
-    ########### ???? ###########
+    ########### for Sanity Check ###########
     
     for n in range(n_candidates):
 
@@ -148,8 +148,10 @@ def save_features(feature_net, data_loader, outfile, params):
         
         
     ############### Sanity Check ###############
-    print('Sanity Check...')
+    cl_n_data0 = {}
+    print('Sanity Check if candidates_n_data the same...')
     for cl in cl_candidates_n_data:
+        cl_n_data0[cl] = cl_candidates_n_data[cl][0]
         candidates_n_data = cl_candidates_n_data[cl]
         if len(set(candidates_n_data)) != 1:
             print('candidates_n_data NOT the same !!!!')
@@ -160,6 +162,22 @@ def save_features(feature_net, data_loader, outfile, params):
     print('Finished Sanity Check.')
     ########### no problem here i think ###########
     
+    
+    ############### Sanity Check if cl n_data proper ###############
+    n_data_frequency = {}
+    for cl,cl_n_data in cl_n_data0.items():
+        if cl_n_data in n_data_frequency:
+            n_data_frequency[cl_n_data] += 1
+        else:
+            n_data_frequency[cl_n_data] = 1
+    most_freq_n_data = max(n_data_frequency.keys(), key=(lambda k: n_data_frequency[k]))
+    print('save_features/Sanity Check if cl n_data proper')
+    for cl in cl_candidates_n_data:
+        n_data = cl_candidates_n_data[cl][0]
+        if n_data != most_freq_n_data:
+            print('cl:', cl, ', n_data:', n_data, 'is not', most_freq_n_data, '!!!!')
+    print('Sanity Check Finished.')
+    ############### ??? ###############
     
         
 if __name__ == '__main__':

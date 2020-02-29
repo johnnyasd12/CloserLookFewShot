@@ -193,7 +193,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                     img_feat = cl_feature_dict[cl]
                     if len(img_feat)<n_support+n_query:
                         sanity = False
-                        print('sanity check failed, n_support+n_query =', n_support+n_query,'resample classes...')
+#                         print('select_class sanity check failed, len(img_feat) =',len(img_feat),'<',n_support+n_query,'resample classes...')
                         select_class = random.sample(class_list,n_way)
             if sanity:
                 break
@@ -208,18 +208,14 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         for cl in select_class:
             img_feat = cl_feature_dict[cl]
             
-            ############# BUGFIX??? #############
-#             n_data = len(img_feat)
-#             n_data = n_support+n_query
-            n_data = n_support+n_query if n_support+n_query<=len(img_feat) else len(img_feat)
-            ############# BUGFIX??? #############
+            n_data = n_support+n_query
+#             n_data = n_support+n_query if n_support+n_query<=len(img_feat) else len(img_feat)
             
             # get shuffled idx inside one-class data
             perm_ids = perm_ids_dict[cl] 
-            # stack each batch
-            
             
             ############## PROBLEM HERE ##############
+            # stack each batch
             z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_data) ] )
 #             try:
 #                 z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_data) ] )
@@ -303,8 +299,6 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         class_list = cl_feature_each_candidate[0].keys()
         cl_feature_dict = cl_feature_each_candidate[0] # list only have 1 element
         
-        
-#         select_class = select_class_with_sanity(class_list, cl_feature_each_candidate)
         select_class = random.sample(class_list,n_way)
 
         
@@ -327,10 +321,10 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         class_list = cl_feature_each_candidate[0].keys()
 #         print('feature_evaluation()/class_list:', class_list)
         
-        ######### BUGFIX????? #########
+        ######### BUGFIX (may be can recover to original)#########
 #         select_class = random.sample(class_list,n_way)
         select_class = select_class_with_sanity(class_list, cl_feature_each_candidate)
-        ######### BUGFIX????? #########
+        ######### BUGFIX #########
         
         
         perm_ids_dict = {} # store the permutation indices of each class

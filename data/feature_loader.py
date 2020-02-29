@@ -47,7 +47,7 @@ def init_loader(filename):
             print('init_loader/all_feats[-1]:', all_feats[-1])
             all_feats  = np.delete(all_feats,-1,axis = 0)
             all_labels = np.delete(all_labels,-1,axis = 0)
-    ########### WTF R U DOING HERE?????????? ###########
+    ########### this code make candidates have different n_data  ###########
     
     ############### Sanity Check ###############
     print('init_loader/all_labels after delete:', type(all_labels), all_labels.shape, all_labels)
@@ -66,14 +66,23 @@ def init_loader(filename):
         cl_data_file[cl].append(feats)
 
     
-    ############### Sanity Check has Problem here!!!! ###############
+    ############### Sanity Check has Problem here (problem trace to save_features) ###############
     sum_n_data = 0
+    
+    n_data_frequency = {}
+    for cl in class_list: # find the most frequent number
+        n_data = len(cl_data_file[cl])
+        if n_data in n_data_frequency:
+            n_data_frequency[n_data] += 1
+        else:
+            n_data_frequency[n_data] = 1
+    most_freq_n_data = max(n_data_frequency.keys(), key=(lambda k: n_data_frequency[k]))
+    
     for cl in class_list:
         n_data = len(cl_data_file[cl])
         sum_n_data += n_data
-        if n_data != 20:
-            print('init_loader/ class', cl, ', n_data:', n_data)
-            print('init_loader/ n_data NOT 20 !!!!!!!')
+#         if n_data != most_freq_n_data:
+#             print('init_loader/ class', cl, ', n_data:', n_data, 'is NOT', most_freq_n_data, '!!!!!!!')
     print('sum_n_data:', sum_n_data)
     ############### Sanity Check ###############
     
