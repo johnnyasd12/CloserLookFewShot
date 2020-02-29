@@ -108,13 +108,15 @@ def save_features(feature_net, data_loader, outfile, params):
             outfile_n = outfile
         
         f = h5py.File(outfile_n, 'w')
-        max_count = len(data_loader)*data_loader.batch_size
+#         max_count_ori = len(data_loader)*data_loader.batch_size # SHOULD be calculated by dataset not dataloader
+        max_count = len(data_loader.dataset)
+#         print('max_count_ori:', max_count_ori)
+#         print('max_count:', max_count)
         all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
         all_feats=None
         count=0
-
+        
         for i, (x,y) in enumerate(tqdm(data_loader)):
-            
             if params.gpu_id:
                 x = x.cuda()
             else:
@@ -131,7 +133,7 @@ def save_features(feature_net, data_loader, outfile, params):
         count_var = f.create_dataset('count', (1,), dtype='i')
         count_var[0] = count
         
-        print('Saved features to:', outfile_n)
+        print('Finish saving features to:', outfile_n)
         
         
         ####### Sanity Check #######
@@ -141,7 +143,6 @@ def save_features(feature_net, data_loader, outfile, params):
                 cl_candidates_n_data[cl] = [0]*n_candidates
             cl_candidates_n_data[cl][n] += 1
         ####### unfinished #######
-        
         
         f.close()
         
@@ -164,13 +165,15 @@ def save_features(feature_net, data_loader, outfile, params):
     
     
     ############### Sanity Check if cl n_data proper ###############
-    n_data_frequency = {}
+    # compute the most frequent n_data
+    n_data_frequencies = {}
     for cl,cl_n_data in cl_n_data0.items():
-        if cl_n_data in n_data_frequency:
-            n_data_frequency[cl_n_data] += 1
+        if cl_n_data in n_data_frequencies:
+            n_data_frequencies[cl_n_data] += 1
         else:
-            n_data_frequency[cl_n_data] = 1
-    most_freq_n_data = max(n_data_frequency.keys(), key=(lambda k: n_data_frequency[k]))
+            n_data_frequencies[cl_n_data] = 1
+    most_freq_n_data = max(n_data_frequencies.keys(), key=(lambda k: n_data_frequencies[k]))
+    
     print('save_features/Sanity Check if cl n_data proper')
     for cl in cl_candidates_n_data:
         n_data = cl_candidates_n_data[cl][0]
