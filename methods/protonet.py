@@ -21,7 +21,7 @@ class ProtoNet(MetaTemplate):
         '''
 #         try:
         z_support, z_query  = self.parse_feature(x,is_feature)
-        z_query_cp = z_query # TODO: delete this line
+#         z_query_cp = z_query # TODO: delete this line
 
         z_support   = z_support.contiguous()
         z_proto     = z_support.view(self.n_way, self.n_support, -1 ).mean(1) #the shape of z is [n_data, n_dim]

@@ -95,7 +95,7 @@ def save_features(feature_net, data_loader, outfile, params):
         raise ValueError('outfile & params.n_test_candidates mismatch.')
     
     ########### for Sanity Check ###########
-    cl_candidates_n_data = {}
+#     cl_candidates_n_data = {}
     ########### for Sanity Check ###########
     
     for n in range(n_candidates):
@@ -137,11 +137,11 @@ def save_features(feature_net, data_loader, outfile, params):
         
         
         ####### Sanity Check #######
-        print('save_features/ candidate', n, ', all_labels:', all_labels.shape)
-        for cl in all_labels:
-            if cl not in cl_candidates_n_data: # no key
-                cl_candidates_n_data[cl] = [0]*n_candidates
-            cl_candidates_n_data[cl][n] += 1
+#         print('save_features/ candidate', n, ', all_labels:', all_labels.shape)
+#         for cl in all_labels:
+#             if cl not in cl_candidates_n_data: # no key
+#                 cl_candidates_n_data[cl] = [0]*n_candidates
+#             cl_candidates_n_data[cl][n] += 1
         ####### unfinished #######
         
         f.close()
@@ -149,37 +149,37 @@ def save_features(feature_net, data_loader, outfile, params):
         
         
     ############### Sanity Check ###############
-    cl_n_data0 = {}
-    print('Sanity Check if candidates_n_data the same...')
-    for cl in cl_candidates_n_data:
-        cl_n_data0[cl] = cl_candidates_n_data[cl][0]
-        candidates_n_data = cl_candidates_n_data[cl]
-        if len(set(candidates_n_data)) != 1:
-            print('candidates_n_data NOT the same !!!!')
-            print('cl:', cl)
-            print('candidates_n_data:', candidates_n_data)
-#         else:
-#             print('cl:', cl, ', candidates_n_data:', candidates_n_data)
-    print('Finished Sanity Check.')
+#     cl_n_data0 = {}
+#     print('Sanity Check if candidates_n_data the same...')
+#     for cl in cl_candidates_n_data:
+#         cl_n_data0[cl] = cl_candidates_n_data[cl][0]
+#         candidates_n_data = cl_candidates_n_data[cl]
+#         if len(set(candidates_n_data)) != 1:
+#             print('candidates_n_data NOT the same !!!!')
+#             print('cl:', cl)
+#             print('candidates_n_data:', candidates_n_data)
+# #         else:
+# #             print('cl:', cl, ', candidates_n_data:', candidates_n_data)
+#     print('Finished Sanity Check.')
     ########### no problem here i think ###########
     
     
     ############### Sanity Check if cl n_data proper ###############
     # compute the most frequent n_data
-    n_data_frequencies = {}
-    for cl,cl_n_data in cl_n_data0.items():
-        if cl_n_data in n_data_frequencies:
-            n_data_frequencies[cl_n_data] += 1
-        else:
-            n_data_frequencies[cl_n_data] = 1
-    most_freq_n_data = max(n_data_frequencies.keys(), key=(lambda k: n_data_frequencies[k]))
+#     n_data_frequencies = {}
+#     for cl,cl_n_data in cl_n_data0.items():
+#         if cl_n_data in n_data_frequencies:
+#             n_data_frequencies[cl_n_data] += 1
+#         else:
+#             n_data_frequencies[cl_n_data] = 1
+#     most_freq_n_data = max(n_data_frequencies.keys(), key=(lambda k: n_data_frequencies[k]))
     
-    print('save_features/Sanity Check if cl n_data proper')
-    for cl in cl_candidates_n_data:
-        n_data = cl_candidates_n_data[cl][0]
-        if n_data != most_freq_n_data:
-            print('cl:', cl, ', n_data:', n_data, 'is not', most_freq_n_data, '!!!!')
-    print('Sanity Check Finished.')
+#     print('save_features/Sanity Check if cl n_data proper')
+#     for cl in cl_candidates_n_data:
+#         n_data = cl_candidates_n_data[cl][0]
+#         if n_data != most_freq_n_data:
+#             print('cl:', cl, ', n_data:', n_data, 'is not', most_freq_n_data, '!!!!')
+#     print('Sanity Check Finished.')
     ############### ??? ###############
     
         
