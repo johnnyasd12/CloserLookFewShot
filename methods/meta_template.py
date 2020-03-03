@@ -119,7 +119,7 @@ class MetaTemplate(nn.Module):
         return float(top1_correct), len(y_query)
 
     def correct_batch(self, x):
-        ''' compute accuracy of query_set in an episode
+        ''' (seems i wrote this?) compute accuracy of query_set in an episode
         :param x: x_support & x_query before parse_feature
         :return: n_correct, n_query
         '''
@@ -143,7 +143,7 @@ class MetaTemplate(nn.Module):
         '''
         pass
     
-    def train_loop(self, epoch, train_loader, optimizer ): # every epoch call this function
+    def train_loop(self, epoch, train_loader, optimizer, return_acc=True): # every epoch call this function
         print_freq = 10
 
         avg_loss=0
@@ -154,17 +154,20 @@ class MetaTemplate(nn.Module):
             if self.change_way:
                 self.n_way  = x.size(0)
             optimizer.zero_grad()
-            # no need label to compute loss because x is ordered
-            loss = self.total_loss(x) #self.set_forward_loss( x ) + recons_lambda*self.decoder_loss(x)
+            
+            # compute loss
+            loss = self.total_loss(x) # no need label to compute loss because x is ordered
             loss.backward()
             optimizer.step()
-            
             cur_loss = loss.item()
             avg_loss = avg_loss+cur_loss
 
+            # TODO: compute acc
+            if return_acc:
+                pass
+            
             if i % print_freq==0:
                 #print(optimizer.state_dict()['param_groups'][0]['lr'])
-#                 print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader), avg_loss/float(i+1)))
                 tt.set_description('Epoch %d: avg Loss = %.2f'%(epoch, avg_loss/float(i+1)))
         
         avg_loss = avg_loss/float(i+1)
