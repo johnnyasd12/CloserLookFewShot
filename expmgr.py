@@ -40,6 +40,7 @@ class ExpManager:
             print('='*20, 'Training', '='*20)
             print(params)
             _ = exp_train_val(modified_train_args)
+            # TODO: record train_acc here
             
             # loop over testing settings under each general setting
             for test_params in all_test_params:
@@ -56,9 +57,14 @@ class ExpManager:
                     print('data split:', split)
                     exp_save_features(copy_args(split_final_test_args))
                     print('='*20, 'Testing', '='*20)
+                    print(params)
+                    print(test_params)
+                    print('data split:', split)
                     record = exp_test(copy_args(split_final_test_args), iter_num=600)
                     write_record['epoch'] = record['epoch']
                     write_record[split+'_acc_mean'] = record['acc_mean']
+                
+                # TODO: record train_acc
                 
                 self.results.append(write_record)
                 record_csv(final_test_args, write_record, csv_path='./record/'+final_test_args.csv_name)
@@ -75,6 +81,17 @@ class ExpManager:
         pass
     
     def exp_random_search():
+        pass
+    
+    def draw_hyper_relation(hyper, control_params):
+        ''' draw multiple figures to see hyper-performance relation
+        Args:
+            hyper (str)
+            fix_params (List): draw figures for each combinations of fix_params
+        Draw:
+            x-axis: hyper values
+            y-axis: performance
+        '''
         pass
 
 
