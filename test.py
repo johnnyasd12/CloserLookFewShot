@@ -97,7 +97,6 @@ def exp_test(params, iter_num):
             candidate_cl_feature = [] # features of each class of each candidates
             print('Loading features of %s candidates into dictionaries...' %(params.n_test_candidates))
             for n in tqdm(range(params.n_test_candidates)):
-                print('Loading features of candidate', n, '...')
                 nth_feature_file = feature_file.replace('candidate','candidate'+str(n+1))
                 feature_files.append(nth_feature_file)
                 cl_feature = feat_loader.init_loader(nth_feature_file)
@@ -106,15 +105,15 @@ def exp_test(params, iter_num):
             
             ############### Sanity Check ###############
             # check len(cl_feature) of each candidate
-            print('Sanity Check...')
-            prev_cl_feature = candidate_cl_feature[0]
-            for nth_cl_feature in candidate_cl_feature:
-                for cl in nth_cl_feature.keys():
-                    n_data_prev = len(prev_cl_feature[cl])
-                    n_data = len(nth_cl_feature[cl])
-                    if n_data_prev != n_data:
-                        print('n_data_prev & n_data NOT the same !!!!')
-                        print('cl:', cl, ', n_data:', n_data, ', n_data_prev:', n_data_prev)
+#             print('Sanity Check...')
+#             prev_cl_feature = candidate_cl_feature[0]
+#             for nth_cl_feature in candidate_cl_feature:
+#                 for cl in nth_cl_feature.keys():
+#                     n_data_prev = len(prev_cl_feature[cl])
+#                     n_data = len(nth_cl_feature[cl])
+#                     if n_data_prev != n_data:
+#                         print('n_data_prev & n_data NOT the same !!!!')
+#                         print('cl:', cl, ', n_data:', n_data, ', n_data_prev:', n_data_prev)
             ############### Sanity Check ###############
             
             
