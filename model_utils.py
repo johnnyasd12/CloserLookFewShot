@@ -51,7 +51,7 @@ def get_backbone_func(params):
         if params.dropout_p==0:
             backbone_func = model_dict[params.model] 
         else:
-            backbone_func = lambda: model_dict[params.model](dropout_p=params.dropout_p)
+            backbone_func = lambda: model_dict[params.model](dropout_p=params.dropout_p, dropout_block_id=params.dropout_block_id)
 
     return backbone_func
 
