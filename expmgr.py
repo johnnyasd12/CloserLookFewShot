@@ -40,7 +40,6 @@ class ExpManager:
             print('='*20, 'Training', '='*20)
             print(params)
             train_result = exp_train_val(modified_train_args)
-            # TODO: record train_acc here
             
             # loop over testing settings under each general setting
             for test_params in all_test_params:
@@ -48,6 +47,8 @@ class ExpManager:
                 
                 splits = ['val', 'novel'] # temporary no 'train'
                 write_record = {**params, **test_params}
+                write_record['train_acc_mean'] = train_result['train_acc']
+                
                 for split in splits:
                     split_final_test_args = copy_args(final_test_args)
                     split_final_test_args.split = split
@@ -64,8 +65,6 @@ class ExpManager:
                     write_record['epoch'] = record['epoch']
                     write_record[split+'_acc_mean'] = record['acc_mean']
                 
-                # TODO: record train_acc
-                write_record['train_acc_mean'] = train_result['train_acc']
                 self.results.append(write_record)
                 record_csv(final_test_args, write_record, csv_path='./record/'+final_test_args.csv_name)
                 
