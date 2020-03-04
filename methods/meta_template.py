@@ -118,24 +118,24 @@ class MetaTemplate(nn.Module):
         top1_correct = np.sum(topk_ind[:,0] == y_query)
         return float(top1_correct), len(y_query)
 
-    def correct_batch(self, x):
-        ''' (seems i wrote this?) compute accuracy of query_set in an episode
-        :param x: x_support & x_query before parse_feature
-        :return: n_correct, n_query
-        '''
-        print('correct_batch: x.shape =', x.shape)
-        scores = self.set_forward(x)
-        y_query = np.repeat(range(self.n_way), self.n_query)
-        topk_scores, topk_labels = scores.data.topk(1, 1, True, True)
-        topk_ind = topk_labels.cpu().numpy()
-        correct_bool = topk_ind[:,0] == y_query
-        top1_correct = np.sum(correct_bool)
-        print('plot support set...')
+#     def correct_batch(self, x):
+#         ''' (seems i wrote this?) compute accuracy of query_set in an episode
+#         :param x: x_support & x_query before parse_feature
+#         :return: n_correct, n_query
+#         '''
+#         print('correct_batch: x.shape =', x.shape)
+#         scores = self.set_forward(x)
+#         y_query = np.repeat(range(self.n_way), self.n_query)
+#         topk_scores, topk_labels = scores.data.topk(1, 1, True, True)
+#         topk_ind = topk_labels.cpu().numpy()
+#         correct_bool = topk_ind[:,0] == y_query
+#         top1_correct = np.sum(correct_bool)
+#         print('plot support set...')
         
-        print('plot correct query set...')
+#         print('plot correct query set...')
         
-        print('plot misclassified query set...')
-        return float(top1_correct), len(y_query)
+#         print('plot misclassified query set...')
+#         return float(top1_correct), len(y_query)
     
     def sample_plt(self, x):
         '''
@@ -143,10 +143,12 @@ class MetaTemplate(nn.Module):
         '''
         pass
     
-    def train_loop(self, epoch, train_loader, optimizer, return_acc=True): # every epoch call this function
+    def train_loop(self, epoch, train_loader, optimizer, compute_acc=True): # every epoch call this function
         print_freq = 10
 
-        avg_loss=0
+        sum_loss=0
+        acc_all = []
+        
         tt = tqdm(train_loader)
         for i, (x,_ ) in enumerate(tt):
             # x.size = batch, 3, 28, 28 for omniglot (wtf?
@@ -160,24 +162,36 @@ class MetaTemplate(nn.Module):
             loss.backward()
             optimizer.step()
             cur_loss = loss.item()
-            avg_loss = avg_loss+cur_loss
+            sum_loss = sum_loss+cur_loss
 
             # TODO: compute acc
-            if return_acc:
-                pass
+            if compute_acc:
+                correct_this, count_this = self.correct(x)
+                acc = correct_this/count_this * 100
+                acc_all.append(acc)
             
             if i % print_freq==0:
                 #print(optimizer.state_dict()['param_groups'][0]['lr'])
-                tt.set_description('Epoch %d: avg Loss = %.2f'%(epoch, avg_loss/float(i+1)))
+                description_str = 'Epoch %d: avg Loss = %.2f'%(epoch, sum_loss/float(i+1))
+                if compute_acc:
+                    avg_acc = np.asarray(acc_all)
+                    avg_acc = np.mean(avg_acc)
+                    description_str += ' , avg Acc = %.2f'%(avg_acc)
+                tt.set_description(description_str)
         
-        avg_loss = avg_loss/float(i+1)
-        return avg_loss
+        avg_loss = sum_loss/float(i+1)
+        
+        if compute_acc:
+            avg_acc = np.mean(acc_all)
+            return avg_acc, avg_loss
+        else:
+            return avg_loss
     
     def test_loop(self, test_loader, record = None):
         ''' not for MAML, MAML will override this function
         '''
-        correct =0
-        count = 0
+#         correct =0 # useless in original code
+#         count = 0 # useless in original code
         acc_all = []
         
         iter_num = len(test_loader) 

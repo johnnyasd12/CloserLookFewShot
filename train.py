@@ -32,6 +32,8 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     max_acc = 0
     best_epoch = 0
     
+    need_train_acc = True
+    
     if params.patience is not None:
         stop_delta = 0.
         early_stopping = EarlyStopping(patience=params.patience, verbose=False, delta=stop_delta, mode='max')
@@ -43,13 +45,19 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     
     for epoch in range(start_epoch,stop_epoch):
         model.train()
-        loss = model.train_loop(epoch, base_loader,  optimizer ) #model are called by reference, no need to return 
+        if need_train_acc:
+            train_acc, train_loss = model.train_loop(epoch, base_loader,  optimizer, compute_acc=need_train_acc)
+        else:
+            train_loss = model.train_loop(epoch, base_loader,  optimizer, compute_acc=need_train_acc)
         model.eval()
 
         acc = model.test_loop( val_loader)
-        record['train_loss'].append(loss)
-        # TODO: record train_acc !!!!
+        record['train_loss'].append(train_loss)
         record['val_acc'].append(acc)
+        
+        if need_train_acc:
+            record['train_acc'].append(train_acc)
+            
         if acc > max_acc : #for baseline and baseline++, we don't use validation in default and we let acc = -1, but we allow options to validate with DB index
 #             print("best model! save...")
             max_acc = acc
@@ -70,15 +78,16 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
                 break
         
     print('The best accuracy is',(str(max_acc)+'%'), 'at epoch', best_epoch)
+    # TODO: print train_acc
     
     result['best_epoch'] = best_epoch
     
     result['train_loss_his'] = record['train_loss'].copy()
-    result['train_acc_his'] = None
+    result['train_acc_his'] = record['train_acc'].copy()
     result['val_acc_his'] = record['val_acc'].copy()
     
-    result['train_loss'] = record['train_loss'][best_epoch]
-    result['train_acc'] = None
+    result['train_loss'] = record['train_loss'][best_epoch]# avg train_acc of best epoch
+    result['train_acc'] = record['train_acc'][best_epoch] # avg train_acc of best epoch
     result['val_acc'] = max_acc
     
     return model, result
@@ -193,6 +202,7 @@ def exp_train_val(params):
     record = {
         'train_loss':[], 
         'val_acc':[], 
+        'train_acc':[], 
     }
 
     if params.gpu_id:

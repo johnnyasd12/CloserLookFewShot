@@ -39,7 +39,7 @@ class ExpManager:
             # train model
             print('='*20, 'Training', '='*20)
             print(params)
-            _ = exp_train_val(modified_train_args)
+            train_result = exp_train_val(modified_train_args)
             # TODO: record train_acc here
             
             # loop over testing settings under each general setting
@@ -65,7 +65,7 @@ class ExpManager:
                     write_record[split+'_acc_mean'] = record['acc_mean']
                 
                 # TODO: record train_acc
-                
+                write_record['train_acc_mean'] = train_result['train_acc']
                 self.results.append(write_record)
                 record_csv(final_test_args, write_record, csv_path='./record/'+final_test_args.csv_name)
                 
