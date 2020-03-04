@@ -157,7 +157,7 @@ def get_checkpoint_dir(params):
     
     # custom dropout experiments
     if params.dropout_p != 0:
-        checkpoint_dir += '_dropout%s' % (params.dropout_p)
+        checkpoint_dir += '_dropout%s_block%s' % (params.dropout_p, params.dropout_block_id)
     
     return checkpoint_dir
 
