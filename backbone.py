@@ -444,7 +444,7 @@ class BottleneckBlock(nn.Module): # utilized by ResNet50, ResNet101
 
 
 class ConvNet(nn.Module):
-    def __init__(self, depth, flatten = True, dropout_p=0.): # CUB/miniImgnet Conv input = 84*84*3
+    def __init__(self, depth, flatten = True, dropout_p=0., m_dropout_block_id=3): # CUB/miniImgnet Conv input = 84*84*3
         super(ConvNet,self).__init__()
         trunk = []
         for i in range(depth): 
@@ -457,7 +457,7 @@ class ConvNet(nn.Module):
             indim = 3 if i == 0 else 64 # if the 1st block then input is image, otherwise 64 from pre-block
             outdim = 64
             
-            dropout_cond = i==depth-1 # last layer
+            dropout_cond = i==m_dropout_block_id # last layer
             block_dropout_p = dropout_p if dropout_cond else 0.
             
             B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) #only pooling for first 4 layers
