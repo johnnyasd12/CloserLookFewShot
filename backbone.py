@@ -515,7 +515,7 @@ class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in
 
 
 class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
-    def __init__(self, depth, flatten = True, dropout_p=0.):
+    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3):
         super(ConvNetS,self).__init__()
         trunk = []
         # TODO: trunk.append only select 1 channel
@@ -530,7 +530,7 @@ class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
             indim = 1 if i == 0 else 64
             outdim = 64
             
-            dropout_cond = i==depth-1 # last layer
+            dropout_cond = i==dropout_block_id # last layer
             block_dropout_p = dropout_p if dropout_cond else 0.
             
             B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) #only pooling for first 4 layers
@@ -833,8 +833,8 @@ class DeConvNet2(nn.Module):
 # def Conv4Drop(dropout_p=0.):
 #     return ConvNet(4,dropout_p=dropout_p)
 
-def Conv4(dropout_p=0.):
-    return ConvNet(4,dropout_p=dropout_p)
+def Conv4(dropout_p=0., dropout_block_id=3):
+    return ConvNet(4,dropout_p=dropout_p, dropout_block_id=dropout_block_id)
 
 def Conv6(dropout_p=0.):
     return ConvNet(6,dropout_p=dropout_p)
@@ -851,8 +851,8 @@ def Conv6NP():
 # def Conv4SDrop(dropout_p=0.):
 #     return ConvNetS(4,dropout_p=dropout_p)
 
-def Conv4S(dropout_p=0.):
-    return ConvNetS(4,dropout_p=dropout_p)
+def Conv4S(dropout_p=0., dropout_block_id=3):
+    return ConvNetS(4, dropout_p=dropout_p, dropout_block_id=dropout_block_id)
 
 def Conv4SNP():
     return ConvNetSNopool(4)
