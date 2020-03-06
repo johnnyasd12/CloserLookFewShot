@@ -25,9 +25,16 @@ class ExpPlotter:
             mean_dependent_values = []
             df = self.df_drop.copy()
             for independent_value in possible_values:
-                sub_df = df[df[independent_var]==independent_value]
+                if independent_value==independent_value: # not nan
+                    sub_df = df[df[independent_var]==independent_value]
+                else: # nan
+                    sub_df = df[df[independent_var]!=df[independent_var]]
                 mean_value = sub_df[dependent_var].mean()
                 mean_dependent_values.append(mean_value)
+                
+#                 print('df:', df)
+#                 print('sub_df["%s"]:'%(dependent_var), sub_df[dependent_var])
+#                 break
             
             xs = np.asarray(possible_values)
             ys = np.asarray(mean_dependent_values)
@@ -35,7 +42,9 @@ class ExpPlotter:
             print('%s:\n'%(dependent_var), ys)
             
             baseline = min(ys)-(max(ys)-min(ys))
-            bar_width = (max(xs)-min(xs))/(len(xs)+3)
+            bar_width = (np.nanmax(xs)-np.nanmin(xs))/(len(xs)+3)
+            print('baseline:', baseline)
+            print('bar_width:', bar_width)
             plt.bar(xs, ys-baseline, width=bar_width, bottom=baseline)
             plt.show()
             
@@ -59,7 +68,7 @@ class ExpPlotter:
                 print('%s:\n'%(dependent_var), ys)
                 
                 baseline = min(ys)-(max(ys)-min(ys))
-                bar_width = (max(xs)-min(xs))/(len(xs)+3)
+                bar_width = (np.nanmax(xs)-np.nanmin(xs))/(len(xs)+3)
                 plt.bar(xs, ys-baseline, width=bar_width, bottom=baseline)
                 plt.show()
     
