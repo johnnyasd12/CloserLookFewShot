@@ -32,8 +32,13 @@ class ExpPlotter:
                 else: # v is nan
                     sub_df = sub_df[sub_df[k]!=sub_df[k]]
 
-            print(sub_df)
-#             plt.hist()
+            xs = sub_df[independent_var].values
+            ys = sub_df[dependent_var].values
+            print('%s:\n'%(independent_var), xs)
+            print('%s:\n'%(dependent_var), ys)
+            baseline = min(ys)-(max(ys)-min(ys))
+            plt.bar(xs, ys-baseline, width=0.1, bottom=baseline)
+            plt.show()
     
     
     def drop_duplicate(df):
