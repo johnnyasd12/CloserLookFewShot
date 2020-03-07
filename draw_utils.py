@@ -16,9 +16,29 @@ class ExpPlotter:
         
         
     def plot_exps(self, independent_var, dependent_var, specific=True):
+        
+        def process_nan_xs(xs, ys, mode):
+            '''
+            Args:
+                mode (str): 'delete' or 'replace'
+                    delete data that x is nan, or replace nan x with 0?
+            '''
+            is_nan = np.isnan(xs)
+            if any(is_nan):
+                nan_id = np.argwhere(is_nan)[0][0] # dunno why 2 dims, whatever...
+                print('nan process mode:', mode)
+                print('nan_id:', nan_id)
+                if mode == 'delete':
+                    xs = np.delete(xs, nan_id)
+                    ys = np.delete(ys, nan_id)
+                else:
+                    xs[nan_id] = 0
+                    
+            return xs, ys
+        
         control_vars = self.controllable_vars.copy()
         control_vars.remove(independent_var)
-#         print('control_vars:', control_vars)
+        nan_x_process_mode = 'replace'
         
         if not specific:
             possible_values = self.df_drop[independent_var].drop_duplicates().values
@@ -38,6 +58,8 @@ class ExpPlotter:
             
             xs = np.asarray(possible_values)
             ys = np.asarray(mean_dependent_values)
+            xs, ys = process_nan_xs(xs, ys, mode=nan_x_process_mode)
+            
             print('%s:\n'%(independent_var), xs)
             print('%s:\n'%(dependent_var), ys)
             
@@ -64,6 +86,8 @@ class ExpPlotter:
 
                 xs = sub_df[independent_var].values
                 ys = sub_df[dependent_var].values
+                xs, ys = process_nan_xs(xs, ys, mode=nan_x_process_mode)
+                
                 print('%s:\n'%(independent_var), xs)
                 print('%s:\n'%(dependent_var), ys)
                 
