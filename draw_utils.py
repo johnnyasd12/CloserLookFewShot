@@ -18,11 +18,6 @@ class ExpPlotter:
     def plot_exps(self, independent_var, dependent_var, specific=True):
         
         def process_nan_xs(xs, ys, mode):
-            '''
-            Args:
-                mode (str): 'delete' or 'replace'
-                    delete data that x is nan, or replace nan x with 0?
-            '''
             is_nan = np.isnan(xs)
             if any(is_nan):
                 nan_id = np.argwhere(is_nan)[0][0] # dunno why 2 dims, whatever...
@@ -31,10 +26,20 @@ class ExpPlotter:
                 if mode == 'delete':
                     xs = np.delete(xs, nan_id)
                     ys = np.delete(ys, nan_id)
-                else:
+                elif mode == 'replace':
                     xs[nan_id] = 0
+                else:
+                    raise ValueError('Invalid mode: %s'%(mode))
                     
             return xs, ys
+        
+        def get_y_baseline(ys):
+            baseline = min(ys)-2 #min(ys)-(max(ys)-min(ys))
+            return baseline
+        
+        def get_barwidth(xs):
+            bar_width = (np.nanmax(xs)-np.nanmin(xs))/(len(xs)+3)
+            return bar_width
         
         control_vars = self.controllable_vars.copy()
         control_vars.remove(independent_var)
@@ -63,8 +68,8 @@ class ExpPlotter:
             print('%s:\n'%(independent_var), xs)
             print('%s:\n'%(dependent_var), ys)
             
-            baseline = min(ys)-(max(ys)-min(ys))
-            bar_width = (np.nanmax(xs)-np.nanmin(xs))/(len(xs)+3)
+            baseline = get_y_baseline(ys)
+            bar_width = get_barwidth(xs)
             print('baseline:', baseline)
             print('bar_width:', bar_width)
             plt.bar(xs, ys-baseline, width=bar_width, bottom=baseline)
@@ -91,8 +96,8 @@ class ExpPlotter:
                 print('%s:\n'%(independent_var), xs)
                 print('%s:\n'%(dependent_var), ys)
                 
-                baseline = min(ys)-(max(ys)-min(ys))
-                bar_width = (np.nanmax(xs)-np.nanmin(xs))/(len(xs)+3)
+                baseline = get_y_baseline(ys)
+                bar_width = get_barwidth(xs)
                 plt.bar(xs, ys-baseline, width=bar_width, bottom=baseline)
                 plt.show()
     
