@@ -27,6 +27,7 @@ from methods.maml import MAML
 # from io_utils import model_dict, parse_args, get_resume_file, get_best_file , get_assigned_file, decoder_dict, get_checkpoint_dir
 from io_utils import *
 from my_utils import *
+from my_utils import set_random_seed
 import pandas as pd
 from tqdm import tqdm
 
@@ -34,6 +35,9 @@ from model_utils import get_few_shot_params, get_model
 
 def exp_test(params, iter_num):
     print('exp_test() start.')
+    
+    set_random_seed(0) # successfully reproduce "normal" testing. 
+    
     if params.gpu_id:
         set_gpu_id(params.gpu_id)
     
@@ -41,7 +45,6 @@ def exp_test(params, iter_num):
 
     model = get_model(params, 'test')
     
-#     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot) # BUGFIX: decoder ?
     few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
     
     if params.gpu_id:
