@@ -18,6 +18,7 @@ from methods.maml import MAML
 from io_utils import *
 
 from my_utils import *
+from my_utils import set_random_seed
 from model_utils import get_backbone_func, batchnorm_use_target_stats
 from tqdm import tqdm
 
@@ -87,6 +88,8 @@ def exp_save_features(params):
     save_features(backbone_net, data_loader, outfile, params)
 
 def save_features(feature_net, data_loader, outfile, params):
+    
+    set_random_seed(0)
     
     n_candidates = 1 if params.n_test_candidates == None else params.n_test_candidates
     outfile_candidate = 'candidate' in outfile

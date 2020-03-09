@@ -420,7 +420,6 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         y = np.repeat(range( n_way ), n_query )
         acc = np.mean(ensemble_preds == y)*100
-#     hahahaha
     return acc
 
 def set_gpu_id(gpu_id):
