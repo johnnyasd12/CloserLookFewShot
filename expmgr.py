@@ -4,6 +4,7 @@ from train import exp_train_val
 from save_features import exp_save_features
 from test import exp_test, record_csv
 from param_utils import get_all_params_comb, get_all_args_ls, get_modified_args, copy_args
+import pandas as pd
 
 class ExpManager:
 #     def __init__(self, base_args):
@@ -20,7 +21,7 @@ class ExpManager:
         self.fixed_params = {'train':train_fixed_params, 'test':test_fixed_params}
         self.results = [] # params as well as results restore in the list of dictionaries
     
-    def exp_grid(self, choose_by='val_acc_mean'):
+    def exp_grid(self, choose_by='val_acc_mean', resume=False):
         print('exp_grid() start.')
         print(self.base_params)
         default_args = {} # the raw default args of the code
@@ -33,16 +34,60 @@ class ExpManager:
         all_general_params = get_all_params_comb(possible_params=possible_params['general'])
         all_test_params = get_all_params_comb(possible_params=possible_params['test'])
         
+#         if resume:
+#             for general_param in all_general_params:
+#                 for test_param in all_test_params:
+#                     check_param = {**general_param, **test_param}
+        
         for params in all_general_params:
+            print('='*20, 'Training', '='*20)
+            print(params)
+            
+            if resume:
+                # read csv
+                csv_path = './record/'+self.fixed_params['test']['csv_name']
+                loaded_df = pd.read_csv(csv_path)
+#                 cols = list(params.keys()) + list(all_test_params[0].keys())
+#                 print(loaded_df[cols])
+
+                # check if ALL test_params has been experimented, if so, then do NOT even train model
+                should_train = False
+                for test_params in all_test_params:
+                    check_df = loaded_df.copy()
+                    check_param = {**params, **test_params}
+                    for k,v in check_param.items():
+                        if v is not None: # common df value
+                            check_df = check_df[check_df[k]==v]
+                        else: # should find df value nan
+                            check_df = check_df[check_df[k]!=check_df[k]]
+                    print(len(check_df), test_params)
+                    if len(check_df)==0:
+                        should_train = True
+                if not should_train:
+                    print('NO need to train since already in record:', csv_path)
+                    continue
+#                 hohohoho
+            
             modified_train_args = get_modified_args(train_args, params)
             modified_test_args = get_modified_args(test_args, params)
             # train model
-            print('='*20, 'Training', '='*20)
-            print(params)
+            
             train_result = exp_train_val(modified_train_args)
             
             # loop over testing settings under each general setting
             for test_params in all_test_params:
+                if resume:
+                    check_df = loaded_df.copy()
+                    check_param = {**params, **test_params}
+                    for k,v in check_param.items():
+                        if v is not None: # common df value
+                            check_df = check_df[check_df[k]==v]
+                        else: # should find df value nan
+                            check_df = check_df[check_df[k]!=check_df[k]]
+                    if len(check_df)>0: # already experiments
+                        continue
+#                     print(len(check_df), test_params)
+                    
                 final_test_args = get_modified_args(modified_test_args, test_params)
                 
                 splits = ['val', 'novel'] # temporary no 'train'
@@ -50,6 +95,11 @@ class ExpManager:
                 write_record['train_acc_mean'] = train_result['train_acc']
                 
                 for split in splits:
+                    # TODO: check if already experimented in csv file
+#                     if resume:
+#                         if check_already_recorded(params, test_params):
+#                             continue
+                    
                     split_final_test_args = copy_args(final_test_args)
                     split_final_test_args.split = split
                     print('='*20, 'Saving Features', '='*20)
@@ -70,6 +120,7 @@ class ExpManager:
                 
         # TODO: can also loop dataset
         for choose_by in ['val_acc_mean', 'novel_acc_mean']:
+            # TODO: 改成讀 csv 來判斷吧?
             sorted_result = sorted(self.results, key = lambda i: i[choose_by], reverse=True)
             best_result = sorted_result[0]
             
