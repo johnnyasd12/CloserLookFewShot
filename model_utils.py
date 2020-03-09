@@ -148,6 +148,8 @@ def get_model(params, mode):
             model.n_task     = 32
             model.task_update_num = 1
             model.train_lr = 0.1
+    else:
+        raise ValueError('Unexpected params.method: %s'%(params.method))
     
     return model
 
