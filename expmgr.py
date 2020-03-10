@@ -8,8 +8,6 @@ import pandas as pd
 import os
 
 class ExpManager:
-#     def __init__(self, base_args):
-#     def __init__(self, base_args, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params, record_csv=None):
     def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params):
         '''
         Args:
@@ -71,11 +69,6 @@ class ExpManager:
                 check_df = loaded_df.copy()
                 check_param = {**self.base_params, **params}
                 check_df = get_matched_df(check_param, check_df)
-#                 for k,v in check_params.items():
-#                     if v is not None: # common df value
-#                         check_df = check_df[check_df[k]==v]
-#                     else: # df value nan
-#                         check_df = check_df[check_df[k]!=check_df[k]]
                 num_experiments = len(check_df)
                 if num_experiments!=0:
                     should_train = False
@@ -90,8 +83,7 @@ class ExpManager:
                     modified_train_args = get_modified_args(train_args, params)
                     train_result = exp_train_val(modified_train_args)
                 else:
-                    print('NO need to train since already trained once in record:', csv_path)
-                    print(check_df['train_acc_mean'])
+                    print('NO need to train since already trained in record:', csv_path)
             
             else: # not resume
                 # train model
@@ -113,11 +105,6 @@ class ExpManager:
                     check_df = loaded_df.copy()
                     check_param = {**self.base_params, **params, **test_params}
                     check_df = get_matched_df(check_param, loaded_df)
-#                     for k,v in check_param.items():
-#                         if v is not None: # common df value
-#                             check_df = check_df[check_df[k]==v]
-#                         else: # should find df value nan
-#                             check_df = check_df[check_df[k]!=check_df[k]]
                     num_test_experiments = len(check_df)
                     if num_test_experiments>0: # already experiments
                         print('NO need to test since already tested %s times in record: %s'%(num_test_experiments, csv_path))
@@ -134,7 +121,6 @@ class ExpManager:
                         # to get train_acc, so no need test_params
                         check_df = loaded_df.copy()
                         check_df = get_matched_df({**self.base_params, **params}, check_df)
-                        print('check_df:', check_df)
                         write_record['train_acc_mean'] = check_df['train_acc_mean'].iloc[0]
                 else:
                     write_record['train_acc_mean'] = train_result['train_acc']
@@ -177,9 +163,6 @@ class ExpManager:
             print()
             print('='*20,'Top %s results sorted by: %s'%(top_k, choose_by), '='*20)
             print(sorted_df[compare_cols].head(top_k))
-            
-            
-            
             
 #             print('self.results:', self.results)
             
