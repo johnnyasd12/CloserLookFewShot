@@ -156,7 +156,7 @@ def exp_test(params, iter_num):
     
     return extra_record
 
-def record_csv(params, extra_record, csv_path):
+def record_to_csv(params, extra_record, csv_path):
     if os.path.isfile(csv_path):
         print('reading:', csv_path)
         df = pd.read_csv(csv_path)
@@ -182,10 +182,10 @@ if __name__ == '__main__':
     extra_record = exp_test(params=params, iter_num=600)
     
     # TODO: params assign csv_name
-    record_csv(params, extra_record, csv_path='./record/results.csv')
-#     record_csv(params, extra_record, csv_path='./record/results_backup_'+extra_record['time']+'.csv')
+    record_to_csv(params, extra_record, csv_path='./record/results.csv')
+#     record_to_csv(params, extra_record, csv_path='./record/results_backup_'+extra_record['time']+'.csv')
     if params.csv_name is not None:
-        record_csv(params, extra_record, csv_path='./record/'+params.csv_name)
+        record_to_csv(params, extra_record, csv_path='./record/'+params.csv_name)
 
 # def record_txt(params, iter_num, acc_str):    
 #     # writing settings into txt
