@@ -140,7 +140,7 @@ class ExpManager:
                     print(params)
                     print(test_params)
                     print('data split:', split)
-                    record = exp_test(copy_args(split_final_test_args), iter_num=600)
+                    record = exp_test(copy_args(split_final_test_args), iter_num=600, should_del_features=True)
                     write_record['epoch'] = record['epoch']
                     write_record[split+'_acc_mean'] = record['acc_mean']
                 
@@ -159,7 +159,7 @@ class ExpManager:
             compare_cols = compare_cols + ['val_acc_mean', 'novel_acc_mean']
             top_k = 10
             print()
-            print('Best Test Acc: %s, selected by %s'%(sorted_df[compare_cols].iloc[0], choose_by))
+            print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
             print()
             print('='*20,'Top %s results sorted by: %s'%(top_k, choose_by), '='*20)
             print(sorted_df[compare_cols].head(top_k))
