@@ -140,7 +140,6 @@ def exp_test(params, iter_num, should_del_features=False):
     extra_record = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str, 'epoch':load_epoch}
     
     if should_del_features:
-        print('='*20, 'Deleting Features', '='*20)
         del_features(params)
     
     return extra_record
