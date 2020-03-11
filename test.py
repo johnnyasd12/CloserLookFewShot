@@ -33,7 +33,7 @@ from tqdm import tqdm
 
 from model_utils import get_few_shot_params, get_model
 
-def exp_test(params, iter_num):
+def exp_test(params, iter_num, should_del_features=False):
     print('exp_test() start.')
     
     set_random_seed(0) # successfully reproduce "normal" testing. 
@@ -77,11 +77,11 @@ def exp_test(params, iter_num):
         load_epoch = -1 # TODO: get load_epoch, first save 'epoch' in train.py
 
     # train/val/novel
-    split = params.split
+#     split = params.split
     
     if params.method in ['maml', 'maml_approx']: #maml do not support testing with feature
         image_size = get_img_size(params)
-        load_file = get_loadfile_path(params, split)
+        load_file = get_loadfile_path(params, params.split)
 
         datamgr         = SetDataManager(image_size, n_episode = iter_num, n_query = 15 , **few_shot_params)
         
@@ -93,7 +93,7 @@ def exp_test(params, iter_num):
 
     else: # not MAML
         # directly use extracted features
-        feature_file = get_save_feature_filepath(params, checkpoint_dir, split)
+        feature_file = get_save_feature_filepath(params, checkpoint_dir, params.split)
         
         if 'candidate' in feature_file:
             feature_files = []
@@ -104,21 +104,6 @@ def exp_test(params, iter_num):
                 feature_files.append(nth_feature_file)
                 cl_feature = feat_loader.init_loader(nth_feature_file)
                 candidate_cl_feature.append(cl_feature)
-            
-            
-            ############### Sanity Check ###############
-            # check len(cl_feature) of each candidate
-#             print('Sanity Check...')
-#             prev_cl_feature = candidate_cl_feature[0]
-#             for nth_cl_feature in candidate_cl_feature:
-#                 for cl in nth_cl_feature.keys():
-#                     n_data_prev = len(prev_cl_feature[cl])
-#                     n_data = len(nth_cl_feature[cl])
-#                     if n_data_prev != n_data:
-#                         print('n_data_prev & n_data NOT the same !!!!')
-#                         print('cl:', cl, ', n_data:', n_data, ', n_data_prev:', n_data_prev)
-            ############### Sanity Check ###############
-            
             
             print('Evaluating...')
             # TODO: aggregate this and lower part of for loop, only cl_feature are different
@@ -155,6 +140,27 @@ def exp_test(params, iter_num):
     extra_record = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str, 'epoch':load_epoch}
     
     return extra_record
+
+def del_features(params):
+    
+    if params.method in ['maml', 'maml_approx']: #maml do not support testing with feature
+        pass
+    else:
+        checkpoint_dir = get_checkpoint_dir(params)
+        feature_file = get_save_feature_filepath(params, checkpoint_dir, params.split)
+        if 'candidate' in feature_file:
+            all_feature_files = []
+            for n in tqdm(range(params.n_test_candidates)):
+                nth_feature_file = feature_file.replace('candidate','candidate'+str(n+1))
+                all_feature_files.append(nth_feature_file)
+        else:
+            all_feature_files = [feature_file]
+        
+        files_tqdm = tqdm(all_feature_files)
+        for filename in files_tqdm:
+            files_tqdm.set_description('Deleting file:', filename)
+            os.remove(filename)
+
 
 def record_to_csv(params, extra_record, csv_path):
     if os.path.isfile(csv_path):
