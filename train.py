@@ -20,6 +20,7 @@ from methods.maml import MAML
 # from io_utils import model_dict, parse_args, get_resume_file, decoder_dict, get_checkpoint_dir
 from io_utils import *
 from my_utils import *
+from my_utils import set_random_seed
 from model_utils import get_few_shot_params, get_model, restore_vaegan
 
 def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch, params, record):
@@ -43,6 +44,8 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     if not os.path.isdir(params.checkpoint_dir):
         os.makedirs(params.checkpoint_dir)
     
+    set_random_seed(0) # training episodes should be the same for each execution
+    seeds = np.random.randint(100*stop_epoch, size=stop_epoch)
     for epoch in range(start_epoch,stop_epoch):
         model.train()
         if need_train_acc:
@@ -51,7 +54,10 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
             train_loss = model.train_loop(epoch, base_loader,  optimizer, compute_acc=need_train_acc)
         model.eval()
 
+        set_random_seed(42) # validation episodes should be the same for each loop
         acc = model.test_loop( val_loader)
+        set_random_seed(seeds[epoch])
+        
         record['train_loss'].append(train_loss)
         record['val_acc'].append(acc)
         
@@ -148,18 +154,6 @@ def get_train_val_loader(params):
             # TODO
             is_training = False
             vaegan = restore_vaegan(params.dataset, params.vaegan_exp, params.vaegan_step, is_training=is_training)
-            
-            # DDDDDDEEEEEEEEBBBBUUUUGG DEBUG
-            if configs.debug:
-                batch_x, batch_y = vaegan.data(32) # batch_size actually useless in omniglot & miniImagenet
-                fig_x = vaegan.data.data2fig(batch_x[:16], nr=4, nc=4, 
-                                             save_path='./debug/rec_samples/x_batch.png')
-                rec_batch = vaegan.rec_samples(batch_x, lambda_zlogvar=params.zvar_lambda) # -1~1
-                fig_rec = vaegan.data.data2fig(rec_batch[:16], nr=4, nc=4, 
-                                              save_path='./debug/rec_samples/rec_batch.png')
-                rec_single = vaegan.rec_samples(batch_x[:1], lambda_zlogvar=params.zvar_lambda) # -1~1
-                fig_rec = vaegan.data.data2fig(rec_single[:1], nr=1, nc=1, 
-                                              save_path='./debug/rec_samples/rec_single.png')
                 
             base_datamgr            = VAESetDataManager(
                                         image_size, n_query=n_query, 

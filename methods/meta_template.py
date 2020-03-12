@@ -59,17 +59,6 @@ class MetaTemplate(nn.Module):
             z_support: shape=(n_way, n_support,...)
             z_query: shape=(n_way, batch_size - n_support, ...)
         '''
-        
-#         x = Variable(x.cuda())
-        
-#         print('x.shape =', x.shape, ', x.max() =', x.max(),' ,x.min() =', x.min())
-#         print('0.min = %s, 0.max = %s' % (x[:,:,0,:,:].min(),x[:,:,0,:,:].max()))
-#         print('1.min = %s, 1.max = %s' % (x[:,:,1,:,:].min(),x[:,:,1,:,:].max()))
-#         print('2.min = %s, 2.max = %s' % (x[:,:,2,:,:].min(),x[:,:,2,:,:].max()))
-#         if self.device is None:
-# #             x = Variable(to_device(x))
-#             x = x.cuda()
-#         else:
         x = x.cuda()
         
         # x.size = n_way, (n_supp + n_que), 3, size, size (even for omniglot channel size is 3
@@ -117,25 +106,6 @@ class MetaTemplate(nn.Module):
         topk_ind = topk_labels.cpu().numpy()
         top1_correct = np.sum(topk_ind[:,0] == y_query)
         return float(top1_correct), len(y_query)
-
-#     def correct_batch(self, x):
-#         ''' (seems i wrote this?) compute accuracy of query_set in an episode
-#         :param x: x_support & x_query before parse_feature
-#         :return: n_correct, n_query
-#         '''
-#         print('correct_batch: x.shape =', x.shape)
-#         scores = self.set_forward(x)
-#         y_query = np.repeat(range(self.n_way), self.n_query)
-#         topk_scores, topk_labels = scores.data.topk(1, 1, True, True)
-#         topk_ind = topk_labels.cpu().numpy()
-#         correct_bool = topk_ind[:,0] == y_query
-#         top1_correct = np.sum(correct_bool)
-#         print('plot support set...')
-        
-#         print('plot correct query set...')
-        
-#         print('plot misclassified query set...')
-#         return float(top1_correct), len(y_query)
     
     def sample_plt(self, x):
         '''
@@ -151,7 +121,11 @@ class MetaTemplate(nn.Module):
         
         tt = tqdm(train_loader)
         for i, (x,_ ) in enumerate(tt):
-            # x.size = batch, 3, 28, 28 for omniglot (wtf?
+            # x.size = batch, 3, 28, 28 for omniglot
+            ############### DEBUG ###############
+#             if i<10:
+#                 print(x.size(), x[0,0,1,14,:])
+            ############### DEBUG ###############
             self.n_query = x.size(1) - self.n_support           
             if self.change_way:
                 self.n_way  = x.size(0)
@@ -196,7 +170,11 @@ class MetaTemplate(nn.Module):
         
         iter_num = len(test_loader) 
         tt = tqdm(test_loader, desc='Validation')
-        for i, (x,_) in enumerate(tt): # episode
+        for i, (x,_) in enumerate(tt): # for each episode
+            ############### DEBUG ###############
+#             if i<10:
+#                 print(x.size(), x[0,0,1,14,:])
+            ############### DEBUG ###############
             self.n_query = x.size(1) - self.n_support
             if self.change_way:
                 self.n_way  = x.size(0)
