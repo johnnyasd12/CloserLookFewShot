@@ -437,9 +437,9 @@ def get_time_now():
     return datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
 def set_random_seed(seed=None): # TODO: keras, theano and so forth
-    if seed is None:
-        # seed = int(os.getenv("SEED", 12))
-        pass
+#     if seed is None:
+#         # seed = int(os.getenv("SEED", 12))
+#         pass
     tf.set_random_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
