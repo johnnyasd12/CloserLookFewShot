@@ -51,10 +51,10 @@ class ExpManager:
             is_csv_new = len(loaded_df)==0
         else:
             is_csv_new = True
-        if resume:
-            assert not is_csv_new, "csv file should exist and be filled with some content."
-        else: # new experiments
-            assert is_csv_new, "csv file shouldn't exist or should be empty."
+#         if resume:
+#             assert not is_csv_new, "csv file should exist and be filled with some content."
+#         else: # new experiments
+#             assert is_csv_new, "csv file shouldn't exist or should be empty."
         
         for params in all_general_params:
             
