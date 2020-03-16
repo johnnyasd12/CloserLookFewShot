@@ -12,8 +12,9 @@ class ExpManager:
     def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params):
         '''
         Args:
-            train_fixed_params (dict): e.g. {'stop_epoch':700}
-            test_fixed_params (dict): e.g. {'record_csv':'program_time.csv'}
+            base_params (dict): the core settings of the experiment
+            train_fixed_params (dict): e.g. {'stop_epoch':700, 'gpu_id':0}
+            test_fixed_params (dict): e.g. {'record_csv':'program_time.csv', 'gpu_id':0}
             general_possible_params (dict): dictionary of list of tunable parameters, different param would train different model. e.g. {'dropout_p':[0.25, 0.5]}
         '''
         self.base_params = base_params # general fixed params
@@ -176,12 +177,14 @@ class ExpManager:
         default_test_args = parse_args('test', parse_str='')
         default_test_params = default_test_args.__dict__
         important_fixed_params = {**default_test_params, **self.base_params, **self.fixed_params['test']}
-        # TODO: delete negligible_vars, 
+        # delete negligible_vars & changeable vars
         del_keys(important_fixed_params, self.negligible_vars)
-        del_keys(important_fixed_params, self.possible_params['general'])
-        del_keys(important_fixed_params, self.possible_params['test'])
+        del_keys(important_fixed_params, self.possible_params['general'].keys())
+        del_keys(important_fixed_params, self.possible_params['test'].keys())
         
-        matched_df = get_matched_df(important_fixed_params, record_df)
+        all_possible_params = {**self.possible_params['general'], **self.possible_params['test']}
+        
+        matched_df = get_matched_df(important_fixed_params, record_df, possible_params=all_possible_params)
 
         sorted_df = matched_df.sort_values(by=choose_by, ascending=False)
         compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())

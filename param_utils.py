@@ -49,7 +49,11 @@ def get_all_args_ls(base_args, possible_params: dict):
         all_args.append(args)
     return all_args
 
-def get_matched_df(params, df):
+def get_matched_df(params, df, possible_params=None):
+    '''
+    Args:
+        possible_params (dict): dictionary of list
+    '''
     for k,v in params.items():
         if k in list(df.columns):
             if v==None or v!=v: # nan
@@ -58,4 +62,14 @@ def get_matched_df(params, df):
                 df = df[df[k]==v]
         else:
             print('Warning: %s not in df.columns'%(k))
+    
+    if possible_params != None:
+        all_conds = []
+        for k, possible_values in possible_params.items():
+            k_cond = None
+            for value in possible_values:
+                cond = df[k]==value if value != None else df[k]!=df[k]
+                k_cond = k_cond | cond if k_cond is not None else cond
+            df = df[k_cond]
+            
     return df
