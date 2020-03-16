@@ -448,6 +448,10 @@ def set_random_seed(seed): # TODO: keras, theano and so forth
     random.seed(seed)
     torch.manual_seed(seed)
 
+def del_keys(d: dict, keys):
+    for key in keys:
+        if key in d:
+            del d[key]
 
 
 

@@ -3,9 +3,10 @@ from io_utils import parse_args
 from train import exp_train_val
 from save_features import exp_save_features
 from test import exp_test, record_to_csv
-from param_utils import get_all_params_comb, get_all_args_ls, get_modified_args, copy_args
+from param_utils import get_all_params_comb, get_all_args_ls, get_modified_args, copy_args, get_matched_df
 import pandas as pd
 import os
+from my_utils import del_keys
 
 class ExpManager:
     def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params):
@@ -18,17 +19,12 @@ class ExpManager:
         self.base_params = base_params # general fixed params
         self.possible_params = {'general':general_possible_params, 'test':test_possible_params} # general means generalize to train/save_features/test
         self.fixed_params = {'train':train_fixed_params, 'test':test_fixed_params}
+        
         self.results = [] # params as well as results restore in the list of dictionaries
+        self.record_folder = './record'
+        self.negligible_vars = ['gpu_id', 'csv_name',] # can be ignored when comparing results but in ArgParser
     
     def exp_grid(self, choose_by='val_acc_mean', resume=False):
-        
-        def get_matched_df(params, df):
-            for k,v in params.items():
-                if v==None or v!=v: # nan
-                    df = df[df[k]!=df[k]]
-                else:
-                    df = df[df[k]==v]
-            return df
         
         print('exp_grid() start.')
         print(self.base_params)
@@ -42,7 +38,7 @@ class ExpManager:
         all_general_params = get_all_params_comb(possible_params=possible_params['general'])
         all_test_params = get_all_params_comb(possible_params=possible_params['test'])
         
-        csv_path = './record/'+self.fixed_params['test']['csv_name']
+        csv_path = os.path.join(self.record_folder, self.fixed_params['test']['csv_name'])
         
         # TODO: refactor 成許多 function，有 argument: resume (boolean)
         is_csv_exists = os.path.exists(csv_path)
@@ -172,8 +168,29 @@ class ExpManager:
 #             print('The best test acc is', best_result['novel_acc_mean'],'% on grid search chosen by:',choose_by)
 #             print('Detail:\n', best_result)
         
-    def exp_grid_search(dataset, split): # choose the best according to dataset & split
-        pass
+    def sum_up_results(self, choose_by, top_k): # choose the best according to dataset & split
+        csv_path = os.path.join(self.record_folder, self.fixed_params['test']['csv_name'])
+        print('Reading file:', csv_path)
+        record_df = pd.read_csv(csv_path)
+        
+        default_test_args = parse_args('test', parse_str='')
+        default_test_params = default_test_args.__dict__
+        important_fixed_params = {**default_test_params, **self.base_params, **self.fixed_params['test']}
+        # TODO: delete negligible_vars, 
+        del_keys(important_fixed_params, self.negligible_vars)
+        del_keys(important_fixed_params, self.possible_params['general'])
+        del_keys(important_fixed_params, self.possible_params['test'])
+        
+        matched_df = get_matched_df(important_fixed_params, record_df)
+
+        sorted_df = matched_df.sort_values(by=choose_by, ascending=False)
+        compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
+        compare_cols = compare_cols + ['val_acc_mean', 'novel_acc_mean']
+        print()
+        print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
+        print()
+        print('='*20,'Top %s results sorted by: %s'%(top_k, choose_by), '='*20)
+        print(sorted_df[compare_cols].head(top_k))
     
     def exp_random_search():
         pass
