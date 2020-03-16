@@ -4,17 +4,51 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 class ExpPlotter:
-    def __init__(self, csv_name, record_folder, negligible_vars, dependent_vars):
+    def __init__(self, csv_name, record_folder, base_params, negligible_vars, dependent_vars):
+        '''
+        Args:
+            csv_name        (str)  : record file name (exclude file path)
+            record_folder   (str)  : record file folder
+            base_params     (dict) : only consider this setting
+            negligible_vars (list) : ignore these variables
+            dependent_vars  (list) : result variables
+        '''
+        
         self.csv_path = os.path.join(record_folder, csv_name)
         self.df = pd.read_csv(self.csv_path)
+        
+        self.base_params = base_params
         self.negligible_vars = negligible_vars
         self.dependent_vars = dependent_vars
         
-        self.df_drop = ExpPlotter.drop_duplicate(self.df)
+        self.df_drop = ExpPlotter.get_matched_df(base_params, self.df)
+        self.df_drop = ExpPlotter.drop_duplicate(self.df_drop)
+        
         self.controllable_vars = [x for x in list(self.df_drop.columns) if x not in negligible_vars and x not in dependent_vars] # contains independent variable & controlled variables
         
-        
-        
+    def get_matched_df(params, df):
+        for k,v in params.items():
+            if v==None or v!=v: # nan
+                df = df[df[k]!=df[k]]
+            else:
+                df = df[df[k]==v]
+        return df
+    
+    def show_best_results(self, choose_by, top_k):
+        '''
+        Args:
+            choose_by (str) : val_acc_mean, novel_acc_mean
+            top_k (int)     : 
+        '''
+        sorted_df = self.df_drop.sort_values(by=choose_by, ascending=False)
+#         compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
+#         compare_cols = compare_cols + ['val_acc_mean', 'novel_acc_mean']
+        print()
+        print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
+        print()
+        print('='*20,'Top %s results sorted by: %s of all %s experiments'%(top_k, choose_by, len(sorted_df)), '='*20)
+        print(sorted_df.head(top_k))
+    
     def plot_exps(self, independent_var, dependent_var, specific=True):
         
         def process_nan_xs(xs, ys, mode):
@@ -38,8 +72,11 @@ class ExpPlotter:
             return baseline
         
         def get_barwidth(xs):
-            bar_width = (np.nanmax(xs)-np.nanmin(xs))/(len(xs)+3)
+#             bar_width = (np.nanmax(xs)-np.nanmin(xs))/(len(xs)+3)
+            bar_width = (np.nanmax(xs)-np.nanmin(xs))/len(xs) * 0.5
             return bar_width
+        
+        print(self.base_params)
         
         control_vars = self.controllable_vars.copy()
         control_vars.remove(independent_var)
@@ -56,10 +93,6 @@ class ExpPlotter:
                     sub_df = df[df[independent_var]!=df[independent_var]]
                 mean_value = sub_df[dependent_var].mean()
                 mean_dependent_values.append(mean_value)
-                
-#                 print('df:', df)
-#                 print('sub_df["%s"]:'%(dependent_var), sub_df[dependent_var])
-#                 break
             
             xs = np.asarray(possible_values)
             ys = np.asarray(mean_dependent_values)
@@ -81,7 +114,7 @@ class ExpPlotter:
             for _, setting_row in all_settings_df.iterrows():
                 sub_df = self.df_drop.copy()
 
-                print('Control Variables:')
+                print('='*20, 'Control Variables:', '='*20)
                 for k,v in setting_row.items():
                     print(k, ':', v)
                     if v==v: # v is not nan
