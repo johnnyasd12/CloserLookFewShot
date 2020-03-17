@@ -7,6 +7,7 @@ from param_utils import get_all_params_comb, get_all_args_ls, get_modified_args,
 import pandas as pd
 import os
 from my_utils import del_keys
+import logging
 
 class ExpManager:
     def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params):
@@ -20,10 +21,13 @@ class ExpManager:
         self.base_params = base_params # general fixed params
         self.possible_params = {'general':general_possible_params, 'test':test_possible_params} # general means generalize to train/save_features/test
         self.fixed_params = {'train':train_fixed_params, 'test':test_fixed_params}
+        self.negligible_vars = ['gpu_id', 'csv_name',] # can be ignored when comparing results but in ArgParser
         
         self.results = [] # params as well as results restore in the list of dictionaries
         self.record_folder = './record'
-        self.negligible_vars = ['gpu_id', 'csv_name',] # can be ignored when comparing results but in ArgParser
+        self.csv_path = os.path.join(self.record_folder, test_fixed_params['csv_name'])
+        if os.path.exists(self.csv_path):
+            self.df = pd.read_csv(self.csv_path)
     
     def exp_grid(self, choose_by='val_acc_mean', resume=False):
         
@@ -175,8 +179,9 @@ class ExpManager:
         record_df = pd.read_csv(csv_path)
         
         default_test_args = parse_args('test', parse_str='')
-        default_test_params = default_test_args.__dict__
+        default_test_params = default_test_args.__dict__ # to avoid including other exps
         important_fixed_params = {**default_test_params, **self.base_params, **self.fixed_params['test']}
+
         # delete negligible_vars & changeable vars
         del_keys(important_fixed_params, self.negligible_vars)
         del_keys(important_fixed_params, self.possible_params['general'].keys())
@@ -185,15 +190,19 @@ class ExpManager:
         all_possible_params = {**self.possible_params['general'], **self.possible_params['test']}
         
         matched_df = get_matched_df(important_fixed_params, record_df, possible_params=all_possible_params)
+#         logging.debug('matched_df:\n%s'%(matched_df))
 
-        sorted_df = matched_df.sort_values(by=choose_by, ascending=False)
-        compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
-        compare_cols = compare_cols + ['val_acc_mean', 'novel_acc_mean']
-        print()
-        print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
-        print()
-        print('='*20,'Top %s results sorted by: %s'%(top_k, choose_by), '='*20)
-        print(sorted_df[compare_cols].head(top_k))
+        if len(matched_df)!=0:
+            sorted_df = matched_df.sort_values(by=choose_by, ascending=False)
+            compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
+            compare_cols = compare_cols + ['val_acc_mean', 'novel_acc_mean']
+            print()
+            print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
+            print()
+            print('='*20,'Top %s/%s results sorted by: %s'%(top_k, len(matched_df), choose_by), '='*20)
+            print(sorted_df[compare_cols].head(top_k))
+        else:
+            print('='*20, 'No experiment matching the conditions', '='*20)
     
     def exp_random_search():
         pass

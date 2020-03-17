@@ -50,27 +50,33 @@ def get_all_args_ls(base_args, possible_params: dict):
         all_args.append(args)
     return all_args
 
-def get_matched_df(params, df, possible_params=None):
+def get_matched_df(params, df, possible_params={}):
     '''
     Args:
         possible_params (dict): dictionary of list
     '''
+    base_cond = None
     for k,v in params.items():
         if k in list(df.columns):
-            if v==None or v!=v: # nan
-                df = df[df[k]!=df[k]]
-            else:
-                df = df[df[k]==v]
+            cond = df[k]==v if (v!=None and v==v) else df[k]!=df[k]
+            base_cond = base_cond&cond if base_cond is not None else cond
+#             logging.debug('get_matched_df()/ %s==%s:\n%s'%(k,v,cond))
         else:
             logging.warning('Warning: %s not in df.columns'%(k))
     
-    if possible_params != None:
-        all_conds = []
+    df = df[base_cond]
+    
+#     logging.debug('get_matched_df()/df after params:\n%s'%(df))
+    
+#     logging.debug('possible_params: %s'%(possible_params))
+    if len(possible_params)!=0:
         for k, possible_values in possible_params.items():
             k_cond = None
             for value in possible_values:
                 cond = df[k]==value if value != None else df[k]!=df[k]
-                k_cond = k_cond | cond if k_cond is not None else cond
+#                 logging.debug('cond: %s'%(cond))
+                k_cond = k_cond|cond if k_cond is not None else cond
+#             logging.debug('k_cond: %s'%(k_cond))
             df = df[k_cond]
             
     return df
