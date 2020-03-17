@@ -151,20 +151,23 @@ class ExpManager:
                 
         # TODO: can also loop dataset
         for choose_by in ['val_acc_mean', 'novel_acc_mean']:
-            # TODO: 改成讀 csv 來判斷吧?
-            record_df = pd.read_csv(csv_path)
-            record_df = get_matched_df(self.base_params, record_df)
-            
-            sorted_df = record_df.sort_values(by=choose_by, ascending=False)
-            compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
-            compare_cols = compare_cols + ['val_acc_mean', 'novel_acc_mean']
+            # read csv to compare results
             top_k = 10
-            print()
-            print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
-            print()
-            print('='*20,'Top %s results sorted by: %s'%(top_k, choose_by), '='*20)
-            print(sorted_df[compare_cols].head(top_k))
-            
+            if True:
+                record_df = pd.read_csv(csv_path)
+                record_df = get_matched_df(self.base_params, record_df)
+
+                sorted_df = record_df.sort_values(by=choose_by, ascending=False)
+                compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
+                compare_cols = compare_cols + ['val_acc_mean', 'novel_acc_mean']
+                print()
+                print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
+                print()
+                print('='*20,'Top %s results sorted by: %s'%(top_k, choose_by), '='*20)
+                print(sorted_df[compare_cols].head(top_k))
+            else:
+                # TODO: haven't debug yet
+                self.sum_up_results(choose_by, top_k)
 #             print('self.results:', self.results)
             
 #             sorted_result = sorted(self.results, key = lambda i: i[choose_by], reverse=True)
@@ -192,6 +195,8 @@ class ExpManager:
         matched_df = get_matched_df(important_fixed_params, record_df, possible_params=all_possible_params)
 #         logging.debug('matched_df:\n%s'%(matched_df))
 
+        if top_k==None:
+            top_k = len(matched_df)
         if len(matched_df)!=0:
             sorted_df = matched_df.sort_values(by=choose_by, ascending=False)
             compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
