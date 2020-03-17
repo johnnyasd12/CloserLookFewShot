@@ -1,6 +1,7 @@
 import numpy as np
 from argparse import Namespace
 import itertools
+import logging
 
 def get_all_params_comb(possible_params: dict):
     '''
@@ -61,7 +62,7 @@ def get_matched_df(params, df, possible_params=None):
             else:
                 df = df[df[k]==v]
         else:
-            print('Warning: %s not in df.columns'%(k))
+            logging.warning('Warning: %s not in df.columns'%(k))
     
     if possible_params != None:
         all_conds = []
