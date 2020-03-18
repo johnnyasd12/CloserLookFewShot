@@ -177,6 +177,16 @@ class ExpManager:
 #             print('Detail:\n', best_result)
         
     def sum_up_results(self, choose_by, top_k): # choose the best according to dataset & split
+        
+        def select_cols_if_exists(df, cols: list):
+            for col in cols.copy(): # BUGFIX?
+                if col not in list(df.columns):
+                    logging.warning('sum_up_results()/"%s" not in dataframe, deleted from cols.'%(col))
+                    cols.remove(col)
+            logging.debug('sum_up_results()/cols: %s'%(cols))
+            logging.debug('sum_up_results()/df.columns: %s'%(df.columns))
+            return df[cols]
+        
         csv_path = os.path.join(self.record_folder, self.fixed_params['test']['csv_name'])
         print('Reading file:', csv_path)
         record_df = pd.read_csv(csv_path)
@@ -200,12 +210,14 @@ class ExpManager:
         if len(matched_df)!=0:
             sorted_df = matched_df.sort_values(by=choose_by, ascending=False)
             compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
-            compare_cols = compare_cols + ['val_acc_mean', 'novel_acc_mean']
+            compare_cols = compare_cols + ['train_acc_mean', 'val_acc_mean', 'novel_acc_mean']
             print()
             print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
             print()
             print('='*20,'Top %s/%s results sorted by: %s'%(top_k, len(matched_df), choose_by), '='*20)
-            print(sorted_df[compare_cols].head(top_k))
+            show_df = select_cols_if_exists(sorted_df, compare_cols)
+            print(show_df.head(top_k))
+#             print(sorted_df[compare_cols].head(top_k))
         else:
             print('='*20, 'No experiment matching the conditions', '='*20)
     
