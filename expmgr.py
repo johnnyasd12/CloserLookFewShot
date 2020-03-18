@@ -152,7 +152,7 @@ class ExpManager:
         # TODO: can also loop dataset
         for choose_by in ['val_acc_mean', 'novel_acc_mean']:
             # read csv to compare results
-            top_k = 10
+            top_k = None
             if True:
                 record_df = pd.read_csv(csv_path)
                 record_df = get_matched_df(self.base_params, record_df)
@@ -164,6 +164,8 @@ class ExpManager:
                 print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
                 print()
                 print('='*20,'Top %s results sorted by: %s'%(top_k, choose_by), '='*20)
+                if top_k == None:
+                    top_k = len(sorted_df)
                 print(sorted_df[compare_cols].head(top_k))
             else:
                 # TODO: haven't debug yet
