@@ -62,7 +62,7 @@ def get_matched_df(params, df, possible_params={}):
             base_cond = base_cond&cond if base_cond is not None else cond
 #             logging.debug('get_matched_df()/ %s==%s:\n%s'%(k,v,cond))
         else:
-            logging.warning('Warning: %s not in df.columns'%(k))
+            logging.warning('param_utils/get_matched_df/"%s" not in df.columns'%(k))
     
     df = df[base_cond]
     
@@ -71,12 +71,15 @@ def get_matched_df(params, df, possible_params={}):
 #     logging.debug('possible_params: %s'%(possible_params))
     if len(possible_params)!=0:
         for k, possible_values in possible_params.items():
-            k_cond = None
-            for value in possible_values:
-                cond = df[k]==value if value != None else df[k]!=df[k]
-#                 logging.debug('cond: %s'%(cond))
-                k_cond = k_cond|cond if k_cond is not None else cond
-#             logging.debug('k_cond: %s'%(k_cond))
-            df = df[k_cond]
+            if k in list(df.columns):
+                k_cond = None
+                for value in possible_values:
+                    cond = df[k]==value if value != None else df[k]!=df[k]
+    #                 logging.debug('cond: %s'%(cond))
+                    k_cond = k_cond|cond if k_cond is not None else cond
+    #             logging.debug('k_cond: %s'%(k_cond))
+                df = df[k_cond]
+            else:
+                logging.warning('"%s" not in df.columns'%(k))
             
     return df
