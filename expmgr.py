@@ -153,7 +153,7 @@ class ExpManager:
         for choose_by in ['val_acc_mean', 'novel_acc_mean']:
             # read csv to compare results
             top_k = None
-            if True:
+            if False:
                 record_df = pd.read_csv(csv_path)
                 record_df = get_matched_df(self.base_params, record_df)
 
