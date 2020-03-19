@@ -275,7 +275,6 @@ class ConvBlock(nn.Module):
         if dropout_p == 0:
             self.parametrized_layers = [self.C, self.BN, self.relu]
         else: # dropout
-            # TODO: custom dropout
             self.dropout = CustomDropout2D(n_features=outdim, p=dropout_p)
             self.parametrized_layers = [self.C, self.BN, self.relu, self.dropout]
         
@@ -330,7 +329,7 @@ class DeSimpleBlock(nn.Module):
 # Simple ResNet Block
 class SimpleBlock(nn.Module):
     maml = False #Default
-    def __init__(self, indim, outdim, half_res): # half_res means output size would be half
+    def __init__(self, indim, outdim, half_res, dropout_p=0): # half_res means output size would be half
         super(SimpleBlock, self).__init__()
         self.indim = indim
         self.outdim = outdim
@@ -349,9 +348,9 @@ class SimpleBlock(nn.Module):
 
         self.parametrized_layers = [self.C1, self.C2, self.BN1, self.BN2]
 
-        self.half_res = half_res
+        self.half_res = half_res # half_res means output size would be half
 
-        # if the input number of channels is not equal to the output, then need a 1x1 convolution
+        # setting shortcut. need a 1x1 convolution if in_dim!=out_dim
         if indim!=outdim:
             if self.maml:
                 self.shortcut = Conv2d_fw(indim, outdim, 1, 2 if half_res else 1, bias=False)
@@ -366,6 +365,10 @@ class SimpleBlock(nn.Module):
         else:
             self.shortcut_type = 'identity'
 
+        if dropout_p != 0:
+            self.dropout = CustomDropout2D(n_features=outdim, p=dropout_p)
+            self.parametrized_layers.append(self.dropout)
+        
         for layer in self.parametrized_layers:
             init_layer(layer)
 
@@ -378,6 +381,7 @@ class SimpleBlock(nn.Module):
         short_out = x if self.shortcut_type == 'identity' else self.BNshortcut(self.shortcut(x))
         out = out + short_out
         out = self.relu2(out)
+        out = self.dropout(out)
         return out
 
 
@@ -457,7 +461,7 @@ class ConvNet(nn.Module):
             indim = 3 if i == 0 else 64 # if the 1st block then input is image, otherwise 64 from pre-block
             outdim = 64
             
-            dropout_cond = i==dropout_block_id # last layer
+            dropout_cond = i==dropout_block_id # whether this layer should dropout
             block_dropout_p = dropout_p if dropout_cond else 0.
             
             B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) #only pooling for first 4 layers
@@ -530,11 +534,10 @@ class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
             indim = 1 if i == 0 else 64
             outdim = 64
             
-            dropout_cond = i==dropout_block_id # last layer
+            dropout_cond = i==dropout_block_id # whether this layer should dropout
             block_dropout_p = dropout_p if dropout_cond else 0.
             
             B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) #only pooling for first 4 layers
-#             B = ConvBlock(indim, outdim, pool = ( i <4 ) ) #only pooling for first 4 layers
             trunk.append(B)
 
         if flatten:
@@ -546,7 +549,6 @@ class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
         # CustomDropout
         self.dropout_p = dropout_p
         self.active_dropout_ls = []
-#         for name, module in self.named_children():
         for module in self.modules():
             if isinstance(module, CustomDropout):
                 if module.p != 0: # becuz not all of CustomDropout module are active
@@ -751,7 +753,12 @@ class ResNet(nn.Module):
                 block 3-1: half_res=False, 512*7*7
                 '''
                 half_res = (i>=1) and (j==0) # only stage 2 and 3's first block?
-                B = block(indim, list_of_out_dims[i], half_res)
+                
+                dropout_cond = i==dropout_block_id # whether this layer should dropout
+                block_dropout_p = dropout_p if dropout_cond else 0.
+                
+                B = block(indim, list_of_out_dims[i], half_res, dropout_p=block_dropout_p)
+#                 B = block(indim, list_of_out_dims[i], half_res)
                 trunk.append(B)
                 indim = list_of_out_dims[i]
 
@@ -768,6 +775,19 @@ class ResNet(nn.Module):
     def forward(self,x):
         out = self.trunk(x)
         return out
+    
+    def sample_random_subnet(self):
+        # traverse all over the nn.Modules to get CustomDropout
+        has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
+        assert has_custom_dropout, "there should be CustomDropout module to sample random subnet"
+        assert not self.training, "should be in eval() mode when calling function"
+        for module in self.active_dropout_ls:
+            module.set_random_eval_mask()
+    
+    def reset_dropout(self):
+        for module in self.active_dropout_ls:
+            module.eval_mask = None
+
 
 class DeConvNet(nn.Module): # for AE, input: flattened 64*5*5
     def __init__(self):
@@ -836,8 +856,8 @@ class DeConvNet2(nn.Module):
 def Conv4(dropout_p=0., dropout_block_id=3):
     return ConvNet(4,dropout_p=dropout_p, dropout_block_id=dropout_block_id)
 
-def Conv6(dropout_p=0.):
-    return ConvNet(6,dropout_p=dropout_p)
+def Conv6():
+    return ConvNet(6)
 
 def Conv4NP():
     return ConvNetNopool(4)
@@ -857,9 +877,10 @@ def Conv4S(dropout_p=0., dropout_block_id=3):
 def Conv4SNP():
     return ConvNetSNopool(4)
 
-def ResNet10(flatten=True):
+def ResNet10(flatten=True, dropout_p=0, dropout_block_id=10):
     # WTF i dunno why SimpleBlock cost less memory
-    return ResNet(SimpleBlock, [1,1,1,1],[64,128,256,512], flatten)
+    return ResNet(SimpleBlock, [1,1,1,1],[64,128,256,512], flatten, 
+                 dropout_p=dropout_p, dropout_block_id=dropout_block_id)
 #     return ResNet(BottleneckBlock, [1,1,1,1],[64,128,256,512], flatten)
 
 def DeResNet10(flatten=True):
@@ -868,8 +889,10 @@ def DeResNet10(flatten=True):
 def DeResNet10_2(flatten=False):
     return DeResNet(DeSimpleBlock, [1,1], [128,64], flatten, indim=128)
 
-def ResNet18( flatten = True):
-    return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten)
+def ResNet18(flatten = True, dropout_p=0, dropout_block_id=10):
+    return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten, flatten, 
+                 dropout_p=dropout_p, dropout_block_id=dropout_block_id)
+#     return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten)
 
 def DeResNet18(flatten=True):
     return DeResNet(DeSimpleBlock, [2,2,2,2], [512,256,128,64], flatten, indim=512)

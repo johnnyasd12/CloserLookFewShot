@@ -181,12 +181,10 @@ class ExpManager:
     def sum_up_results(self, choose_by, top_k): # choose the best according to dataset & split
         
         def select_cols_if_exists(df, cols: list):
-            for col in cols.copy(): # BUGFIX?
+            for col in cols.copy(): # BUGFIX: some of col not removed
                 if col not in list(df.columns):
                     logging.warning('sum_up_results()/"%s" not in dataframe, deleted from cols.'%(col))
                     cols.remove(col)
-            logging.debug('sum_up_results()/cols: %s'%(cols))
-            logging.debug('sum_up_results()/df.columns: %s'%(df.columns))
             return df[cols]
         
         csv_path = os.path.join(self.record_folder, self.fixed_params['test']['csv_name'])
