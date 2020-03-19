@@ -257,6 +257,37 @@ class CustomDropout2D(MyDropout2D, CustomDropout):
         return mask
 
 
+class CustomDropoutNet:
+    def record_active_dropout(self):
+        self.active_dropout_ls = []
+        for module in self.modules():
+            if isinstance(module, CustomDropout):
+                if module.p != 0: # becuz not all of CustomDropout module are active
+                    self.active_dropout_ls.append(module)
+        
+        
+        self.active_dropout_ls = []
+        for module in self.modules():
+            if isinstance(module, CustomDropout):
+                if module.p != 0: # becuz not all of CustomDropout module are active
+                    self.active_dropout_ls.append(module)
+                    ######################## BUGFIX??? ########################
+#                     self.modules().active_dropout_ls.append(module)
+                    ######################## BUGFIX??? ########################
+                    
+    def sample_random_subnet(self):
+        # traverse all over the nn.Modules to get CustomDropout
+        has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
+        assert has_custom_dropout, "there should be CustomDropout module to sample random subnet"
+        assert not self.training, "should be in eval() mode when calling function"
+        for module in self.active_dropout_ls:
+            module.set_random_eval_mask()
+        
+    def reset_dropout(self):
+        for module in self.active_dropout_ls:
+            module.eval_mask = None
+
+
 # Simple Conv Block
 class ConvBlock(nn.Module):
     maml = False #Default
@@ -365,6 +396,7 @@ class SimpleBlock(nn.Module):
         else:
             self.shortcut_type = 'identity'
 
+        self.dropout = None
         if dropout_p != 0:
             self.dropout = CustomDropout2D(n_features=outdim, p=dropout_p)
             self.parametrized_layers.append(self.dropout)
@@ -381,7 +413,8 @@ class SimpleBlock(nn.Module):
         short_out = x if self.shortcut_type == 'identity' else self.BNshortcut(self.shortcut(x))
         out = out + short_out
         out = self.relu2(out)
-        out = self.dropout(out)
+        if self.dropout != None:
+            out = self.dropout(out)
         return out
 
 
@@ -475,8 +508,8 @@ class ConvNet(nn.Module):
         
         # CustomDropout
         self.dropout_p = dropout_p
+        
         self.active_dropout_ls = []
-#         for name, module in self.named_children():
         for module in self.modules():
             if isinstance(module, CustomDropout):
                 if module.p != 0: # becuz not all of CustomDropout module are active
@@ -534,6 +567,7 @@ class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
             indim = 1 if i == 0 else 64
             outdim = 64
             
+            # CustomDropout
             dropout_cond = i==dropout_block_id # whether this layer should dropout
             block_dropout_p = dropout_p if dropout_cond else 0.
             
@@ -700,9 +734,10 @@ class DeResNet(nn.Module):
 #         print('out2.min = %s, out2.max = %s' % (out[:,2,:,:].min(),out[:,2,:,:].max()))
         return out
 
-class ResNet(nn.Module):
+class ResNet(nn.Module, CustomDropoutNet):
     maml = False #Default
-    def __init__(self,block,list_of_num_blocks, list_of_out_dims, flatten = True): # not flatten only RelationNet?
+    def __init__(self,block,list_of_num_blocks, list_of_out_dims, flatten = True, 
+                dropout_p=0, dropout_block_id=3): # not flatten only RelationNet?
         # list_of_num_blocks specifies number of blocks in each stage
         # list_of_out_dims specifies number of output channel for each stage
         super(ResNet,self).__init__() # input 224*224
@@ -771,22 +806,25 @@ class ResNet(nn.Module):
             self.final_feat_dim = [ indim, 7, 7] # 512*7*7 for ResNet18 (RelationNet?)
 
         self.trunk = nn.Sequential(*trunk)
+        
+        # for CustomDropout
+        self.record_active_dropout()
 
     def forward(self,x):
         out = self.trunk(x)
         return out
     
-    def sample_random_subnet(self):
-        # traverse all over the nn.Modules to get CustomDropout
-        has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
-        assert has_custom_dropout, "there should be CustomDropout module to sample random subnet"
-        assert not self.training, "should be in eval() mode when calling function"
-        for module in self.active_dropout_ls:
-            module.set_random_eval_mask()
+#     def sample_random_subnet(self):
+#         # traverse all over the nn.Modules to get CustomDropout
+#         has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
+#         assert has_custom_dropout, "there should be CustomDropout module to sample random subnet"
+#         assert not self.training, "should be in eval() mode when calling function"
+#         for module in self.active_dropout_ls:
+#             module.set_random_eval_mask()
     
-    def reset_dropout(self):
-        for module in self.active_dropout_ls:
-            module.eval_mask = None
+#     def reset_dropout(self):
+#         for module in self.active_dropout_ls:
+#             module.eval_mask = None
 
 
 class DeConvNet(nn.Module): # for AE, input: flattened 64*5*5
