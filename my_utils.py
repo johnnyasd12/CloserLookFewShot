@@ -210,10 +210,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             
             n_data = n_support+n_query
 #             n_data = n_support+n_query if n_support+n_query<=len(img_feat) else len(img_feat)
-            
             # get shuffled idx inside one-class data
             perm_ids = perm_ids_dict[cl] 
-            
             # stack each batch
             z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_data) ] )
     
@@ -235,22 +233,27 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         pred = scores.argmax(axis = 1)
         return pred
     
-    def get_acc(model, z_all, n_way, n_support, n_query):
-#         z_all = torch.from_numpy(z_all) # z_support & z_query
+    def get_result(model, z_all, n_way, n_support, n_query, metric):
         # make model can parse feature correctly
         model.n_support = n_support
         model.n_query = n_query
         
-        pred = get_pred(model, z_all)
-        y = np.repeat(range( n_way ), n_query )
-        acc = np.mean(pred == y)*100
-        return acc
+        if metric == 'acc':
+            pred = get_pred(model, z_all)
+            y = np.repeat(range( n_way ), n_query )
+            result = np.mean(pred == y)*100
+        elif metric == 'loss':
+            pass
+        else:
+            raise ValueError('Unknown metric: %s'%(metric))
+        return result
     
-    def get_acc_loocv(model, z_all, n_way, the_one='val'):
+    def get_result_loocv(model, z_all, n_way, metric, the_one='val'):
         '''
         Actually not really leave-one-out but "leave-one-out per-class"!!!
         Args:
             z_all (torch.Tensor): shape=(n_way, n_data, feature_dim) contain sub_support & sub_query set
+            metric (str): 'acc' or 'loss'
         '''
         
         n_data_per_class = z_all.size(1) # not sure lol, usually 5, also n_fold
@@ -304,7 +307,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
         z_all = torch.from_numpy(z_all) # z_support & z_query
         
-        acc = get_acc(model=model, z_all=z_all, n_way=n_way, n_support=n_support, n_query=n_query)
+        acc = get_result(model=model, z_all=z_all, n_way=n_way, n_support=n_support, n_query=n_query)
     else: # n_test_candidates setting
         assert params.n_test_candidates == len(cl_feature_each_candidate), "features & params mismatch."
         
@@ -317,10 +320,6 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         sub_acc_each_candidate = [] # store sub_query set accuracy of each candidate
         
         # get shuffled data idx in each class (of all features?)
-        
-        # to check n_data of each candidate
-        n_data_each_candidate_each_cl = {} # n_data of candidates, all candidates SHOULD have the same n_data
-        
         for cl in select_class:
             tmp_cl_feature_dict = cl_feature_each_candidate[0] # i think all candidates have the same n_data
             img_feat = tmp_cl_feature_dict[cl]
@@ -332,14 +331,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         for n in range(params.n_test_candidates): # for each candidate
             cl_feature_dict = cl_feature_each_candidate[n] # features of the candidate
 
-#             try:
             z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
-#             except IndexError:
-#                 print('IndexError occurred!!')
-#                 print('in each class:')
-#                 for cl in select_class:
-#                     print('class', cl)
-#                     print('n_data_each_candidate_each_cl[cl]:', n_data_each_candidate_each_cl[cl])
             z_all = torch.from_numpy(z_all) # z_support & z_query
                         
             # reset back
@@ -352,15 +344,15 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             if model.change_way:
                 model.n_way  = z_support.size(0)
             # TODO: tunable n_sub_support
-            # leave-one-out (per-class) cv
-            loopccv = 'val' # None, 'train', 'val'
-            if loopccv is not None:
-                sub_acc = get_acc_loocv(model=model, z_all=z_support, 
-                                        n_way=n_way, the_one=loopccv)
+            # leave-one-out (per-class) cross validation
+            loopccv_the_one = 'val' # None, 'train', 'val'
+            if loopccv_the_one is not None:
+                sub_acc = get_result_loocv(model=model, z_all=z_support, 
+                                        n_way=n_way, the_one=loopccv_the_one)
             else: # common testing
                 n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
                 n_sub_query = n_support - n_sub_support # those who are rest
-                sub_acc = get_acc(model=model, z_all=z_support, 
+                sub_acc = get_result(model=model, z_all=z_support, 
                                   n_way=n_way, n_support=n_sub_support, n_query=n_sub_query)
             
             sub_acc_each_candidate.append(sub_acc)

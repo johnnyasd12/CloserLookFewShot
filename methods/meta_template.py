@@ -79,8 +79,6 @@ class MetaTemplate(nn.Module):
         :return: x_support, x_query, shape=[n_way, n_sample, dim]
         '''
         assert not is_feature, 'x must not be feature'
-        
-        
 #         x = Variable(x.cuda())
 #         if self.device is None:
 # #             x = Variable(to_device(x))
@@ -122,11 +120,7 @@ class MetaTemplate(nn.Module):
         tt = tqdm(train_loader)
         for i, (x,_ ) in enumerate(tt):
             # x.size = batch, 3, 28, 28 for omniglot
-            ############### DEBUG ###############
-#             if i<10:
-#                 print(x.size(), x[0,0,1,14,:])
-            ############### DEBUG ###############
-            self.n_query = x.size(1) - self.n_support           
+            self.n_query = x.size(1) - self.n_support
             if self.change_way:
                 self.n_way  = x.size(0)
             optimizer.zero_grad()
@@ -138,7 +132,7 @@ class MetaTemplate(nn.Module):
             cur_loss = loss.item()
             sum_loss = sum_loss+cur_loss
 
-            # TODO: compute acc
+            # compute acc
             if compute_acc:
                 correct_this, count_this = self.correct(x)
                 acc = correct_this/count_this * 100
