@@ -214,18 +214,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             # get shuffled idx inside one-class data
             perm_ids = perm_ids_dict[cl] 
             
-            ############## PROBLEM HERE ##############
             # stack each batch
             z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_data) ] )
-#             try:
-#                 z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_data) ] )
-#             except IndexError:
-#                 print('IndexError occurred!!')
-#                 print('len(perm_ids):', len(perm_ids))
-#                 print('len(img_feat):', len(img_feat))
-#                 print('n_support+n_query:', n_support+n_query)
-#                 print('正常來說 len = len = n+n = 20 (for omniglot)')
-            ############## PROBLEM HERE ##############
     
         z_all = np.array(z_all)
         return z_all
@@ -319,8 +309,6 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         assert params.n_test_candidates == len(cl_feature_each_candidate), "features & params mismatch."
         
         class_list = cl_feature_each_candidate[0].keys()
-#         print('feature_evaluation()/class_list:', class_list)
-        
         
         select_class = random.sample(class_list,n_way)
 #         select_class = select_class_with_sanity(class_list, cl_feature_each_candidate) # no need to fix bug this way now 
@@ -332,18 +320,6 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         # to check n_data of each candidate
         n_data_each_candidate_each_cl = {} # n_data of candidates, all candidates SHOULD have the same n_data
-#         for cl in select_class:
-#             n_data_each_candidate = []
-# #             class_list_prev_cand = cl_feature_each_candidate[0].keys()
-#             for cl_feature_dict in cl_feature_each_candidate:
-#                 n_data_each_candidate.append(len(cl_feature_dict[cl]))
-# #                 if cl_feature_dict.keys() != class_list_prev_cand:
-# #                     print('class_list NOT the same !!!!!!')
-# #                 class_list_prev_cand = cl_feature_dict.keys()
-#             n_data_each_candidate_each_cl[cl] = n_data_each_candidate
-# #             if(len(set(n_data_each_candidate))!=1):
-# #                 print('n_data NOT the same !!!!!!')
-# #                 print('n_data_each_candidate:', n_data_each_candidate)
         
         for cl in select_class:
             tmp_cl_feature_dict = cl_feature_each_candidate[0] # i think all candidates have the same n_data
