@@ -69,11 +69,11 @@ class RelationNet(MetaTemplate):
             y = torch.from_numpy(y_numpy) # shape = (n_way*n_query, ), value = [0 0 1 1 2 2 ...]
             scores = self.set_forward(sub_x, is_feature = True) # split support set into sub_supp & sub_query, then compute sub_query set scores
             if self.loss_type == 'mse':
-                y_oh = utils.one_hot(y, self.n_way)
-                y_oh = Variable(y_oh.cuda())
-#                 y_oh = Variable(to_device(y_oh))
+                y_onehot = utils.one_hot(y, self.n_way)
+                y_onehot = Variable(y_onehot.cuda())
+#                 y_onehot = Variable(to_device(y_onehot))
 
-                loss =  self.loss_fn(scores, y_oh )
+                loss =  self.loss_fn(scores, y_onehot )
             else:
                 y = Variable(y.cuda())
 #                 y = Variable(to_device(y))
@@ -104,11 +104,11 @@ class RelationNet(MetaTemplate):
 
         scores = self.set_forward(x)
         if self.loss_type == 'mse':
-            y_oh = utils.one_hot(y, self.n_way)
-            y_oh = Variable(y_oh.cuda())
-#             y_oh = Variable(to_device(y_oh))
+            y_onehot = utils.one_hot(y, self.n_way)
+            y_onehot = Variable(y_onehot.cuda())
+#             y_onehot = Variable(to_device(y_onehot))
 
-            return self.loss_fn(scores, y_oh )
+            return self.loss_fn(scores, y_onehot )
         else:
             y = Variable(y.cuda())
 #             y = Variable(to_device(y))
