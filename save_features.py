@@ -48,6 +48,7 @@ def exp_save_features(params):
         modelfile   = get_best_file(checkpoint_dir)
 
     outfile = get_save_feature_filepath(params, checkpoint_dir, split) # string type
+    print('outfile: %s'%(outfile))
 
     if params.aug_type is None:
         datamgr         = SimpleDataManager(image_size, batch_size = 64)
