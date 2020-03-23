@@ -58,9 +58,16 @@ def get_matched_df(params, df, possible_params={}):
     base_cond = None
     for k,v in params.items():
         if k in list(df.columns):
+            ###################### DEBUG ######################
+#             try:
             cond = df[k]==v if (v!=None and v==v) else df[k]!=df[k]
+#             except TypeError:
+#                 logging.error('TypeError: invalid type comparison.')
+#                 logging.debug('k: %s'%k)
+#                 logging.debug('v: %s'%v)
+#                 logging.debug('df[%s] = %s'%(k,df[k]))
+            ###################### DEBUG ######################
             base_cond = base_cond&cond if base_cond is not None else cond
-#             logging.debug('get_matched_df()/ %s==%s:\n%s'%(k,v,cond))
         else:
             logging.warning('param_utils/get_matched_df/"%s" not in df.columns'%(k))
     
@@ -75,11 +82,10 @@ def get_matched_df(params, df, possible_params={}):
                 k_cond = None
                 for value in possible_values:
                     cond = df[k]==value if value != None else df[k]!=df[k]
-    #                 logging.debug('cond: %s'%(cond))
                     k_cond = k_cond|cond if k_cond is not None else cond
-    #             logging.debug('k_cond: %s'%(k_cond))
                 df = df[k_cond]
             else:
                 logging.warning('"%s" not in df.columns'%(k))
+                # TODO: add column filled with default value
             
     return df
