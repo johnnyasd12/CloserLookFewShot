@@ -97,6 +97,7 @@ def parse_args(script, parse_str=None):
         parser.add_argument('--csv_name'       , default=None, type=str, help='extra record csv file name.')
         parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
         parser.add_argument('--frac_ensemble', default=None, type=float, help='the final fraction of dropout subnets ensemble. (default only 1 subnet, no ensemble)')
+        parser.add_argument('--candidate_metric', default=None, choices=['loss'], type=str, help='evaluating on sub-validation set with which metric to choose the ensemble subnets. (if None then "acc")')
         
         
     elif script == 'draw_features':

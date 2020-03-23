@@ -42,6 +42,12 @@ class MetaTemplate(nn.Module):
         '''
         pass
 
+    def scores2loss(self, scores):
+        y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
+        y_query = Variable(y_query.cuda())
+        loss = self.loss_fn(scores, y_query )
+        return loss
+    
     def forward(self,x):
         ''' get feature embedding Tensor???
         :param x: input image i think
@@ -104,13 +110,7 @@ class MetaTemplate(nn.Module):
         topk_ind = topk_labels.cpu().numpy()
         top1_correct = np.sum(topk_ind[:,0] == y_query)
         return float(top1_correct), len(y_query)
-    
-    def sample_plt(self, x):
-        '''
-        :param x: x_support & x_query before parse_feature
-        '''
-        pass
-    
+
     def train_loop(self, epoch, train_loader, optimizer, compute_acc=True): # every epoch call this function
         print_freq = 10
 

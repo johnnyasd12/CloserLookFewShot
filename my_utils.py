@@ -8,6 +8,9 @@ import time
 import os
 import tensorflow as tf
 
+from methods.meta_template import MetaTemplate
+from methods.baselinetrain import BaselineTrain
+from methods.baselinefinetune import BaselineFinetune
 # global_datasets = [] # for multi-processsing
 
 def describe(obj, obj_str): # support ndarray, tf.Tensor, dict, iterable
@@ -225,10 +228,13 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         Return:
             pred (ndarray): query set prediction
         '''
-        if adaptation:
-            scores  = model.set_forward_adaptation(z_all, is_feature = True)
+        if isinstance(model, MetaTemplate):
+            if adaptation:
+                scores  = model.set_forward_adaptation(z_all, is_feature = True)
+            else:
+                scores  = model.set_forward(z_all, is_feature = True)
         else:
-            scores  = model.set_forward(z_all, is_feature = True)
+            raise ValueError('Unsupported method.')
         scores = scores.data.cpu().numpy()
         pred = scores.argmax(axis = 1)
         return pred
@@ -240,10 +246,17 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         if metric == 'acc':
             pred = get_pred(model, z_all)
-            y = np.repeat(range( n_way ), n_query )
+            y = np.repeat(range( n_way ), model.n_query )
             result = np.mean(pred == y)*100
         elif metric == 'loss':
-            pass
+            if isinstance(model, MetaTemplate):
+                scores = model.set_forward(z_all, is_feature=True)
+            elif isinstance(model, BaselineTrain) or isinstance(model, BaselineFinetune):
+                raise ValueError('not support Baseline yet. ')
+                scores = model.forward() # only support original data (not feature)
+            else:
+                raise ValueError('Unsupported method.')
+            result = model.scores2loss(scores)
         else:
             raise ValueError('Unknown metric: %s'%(metric))
         return result
@@ -260,30 +273,40 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         k_fold = n_data_per_class
 #         n_way = z_all.size(0)
         
-        n_support = 1 if the_one=='train' else n_data_per_class - 1
-        n_query = n_data_per_class - n_support
+        n_support_cv = 1 if the_one=='train' else n_data_per_class - 1
+        n_query_cv = n_data_per_class - n_support_cv
         
-        swap_target_per_class = 0 if n_support==1 else k_fold-1 # first or last
-        # make model can parse feature correctly
-        model.n_support = n_support
-        model.n_query = n_query
-        acc_cv = [0]*k_fold
+        swap_the_one_per_class = 0 if the_one=='train' else n_data_per_class-1 # first or last
+        # TODO: NO NEED THIS if all use get_results. (make model can parse feature correctly)
+        # TODO: or NO NEED function args "n_support" & "n_query" if already here
+        model.n_support = n_support_cv
+        model.n_query = n_query_cv
+        
+        result_cv = [0]*k_fold
         original_ids = [k for k in range(k_fold)]
         
         for k in range(k_fold):
             # get swapped features
             swapped_ids = original_ids.copy()
-            swapped_ids[swap_target_per_class] = k
-            swapped_ids[k] = swap_target_per_class
+            swapped_ids[swap_the_one_per_class] = k
+            swapped_ids[k] = swap_the_one_per_class
             z_swapped = torch.index_select(z_all, 1, torch.LongTensor(swapped_ids).cuda())
 #             z_swapped = z_swapped.contiguous() # try to fix bug but failed
         
-            pred = get_pred(model, z_swapped)
-            y = np.repeat(range( n_way ), n_query )
-            acc = np.mean(pred == y)*100
-            acc_cv[k] = acc
+#             if metric == 'acc':
+#                 pred = get_pred(model, z_swapped)
+#                 y = np.repeat(range( n_way ), n_query_cv )
+#                 acc = np.mean(pred == y)*100
+#                 result_cv[k] = acc
+#             elif metric == 'loss':
+            result = get_result(
+                model=model, z_all=z_swapped, 
+                n_way=n_way, n_support=n_support_cv, n_query=n_query_cv, 
+                metric=metric
+            )
+            result_cv[k]=result
         
-        return sum(acc_cv)/k_fold
+        return sum(result_cv)/k_fold
     
     
     adaptation = params.adaptation
@@ -307,7 +330,11 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
         z_all = torch.from_numpy(z_all) # z_support & z_query
         
-        acc = get_result(model=model, z_all=z_all, n_way=n_way, n_support=n_support, n_query=n_query)
+        # here should be acc
+        acc = get_result(
+            model=model, z_all=z_all, 
+            n_way=n_way, n_support=n_support, n_query=n_query, metric='acc')
+    
     else: # n_test_candidates setting
         assert params.n_test_candidates == len(cl_feature_each_candidate), "features & params mismatch."
         
@@ -317,7 +344,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
 #         select_class = select_class_with_sanity(class_list, cl_feature_each_candidate) # no need to fix bug this way now 
         
         perm_ids_dict = {} # store the permutation indices of each class
-        sub_acc_each_candidate = [] # store sub_query set accuracy of each candidate
+        sub_result_each_candidate = [] # store sub_query set result of each candidate
         
         # get shuffled data idx in each class (of all features?)
         for cl in select_class:
@@ -347,35 +374,38 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             # leave-one-out (per-class) cross validation
             loopccv_the_one = 'val' # None, 'train', 'val'
             if loopccv_the_one is not None:
-                sub_acc = get_result_loocv(model=model, z_all=z_support, 
-                                        n_way=n_way, the_one=loopccv_the_one)
+                sub_result = get_result_loocv(model=model, z_all=z_support, 
+                                        n_way=n_way, the_one=loopccv_the_one, metric=params.candidate_metric)
             else: # common testing
                 n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
                 n_sub_query = n_support - n_sub_support # those who are rest
-                sub_acc = get_result(model=model, z_all=z_support, 
-                                  n_way=n_way, n_support=n_sub_support, n_query=n_sub_query)
+                sub_result = get_result(
+                    model=model, z_all=z_support, 
+                    n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
+                    metric=params.candidate_metric)
             
-            sub_acc_each_candidate.append(sub_acc)
+            sub_result_each_candidate.append(sub_result)
             
         n_ensemble = 1 if params.frac_ensemble == None else int(params.frac_ensemble*params.n_test_candidates)
         
         # get ensemble ids
-        sub_acc_each_candidate = np.array(sub_acc_each_candidate)
-        sorted_candidate_ids = np.argsort(-sub_acc_each_candidate) # in descent order
-        elected_candidate_ids = sorted_candidate_ids[:n_ensemble] # TODO: rename elected_candidate to winners/superiors
+        sub_result_each_candidate = np.array(sub_result_each_candidate)
+        if params.candidate_metric == 'acc':
+            sorted_candidate_ids = np.argsort(-sub_result_each_candidate) # in descent order
+        elif params.candidate_metric == 'loss':
+            sorted_candidate_ids = np.argsort(sub_result_each_candidate) # in ascent order
+        else:
+            raise ValueError('Unknown candidate_metric: %s'%(metric))
+        elected_ids = sorted_candidate_ids[:n_ensemble] # TODO: rename elected_candidate to winners/superiors
         all_preds = []
         
         # reset back
         model.n_support = n_support
         model.n_query = n_query
         # repeat procedure of common setting to get query prediction
-        for elected_id in elected_candidate_ids:
+        for elected_id in elected_ids:
             cl_feature_dict = cl_feature_each_candidate[elected_id]
             z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
-#             if np.random.random()<1:
-#                 print('z_all.shape:', z_all.shape)
-#                 print('n_support:', n_support)
-#                 print('n_query:', n_query)
             z_all = torch.from_numpy(z_all) # z_support & z_query
             pred = get_pred(model, z_all)
             all_preds.append(pred)
@@ -383,8 +413,6 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         all_preds = np.array(all_preds).T # shape:(n_query*n_way, n_ensemble)
         ensemble_preds = [np.argmax(np.bincount(preds)) for preds in all_preds]
         ensemble_preds = np.array(ensemble_preds)
-#         print('all_preds.shape:',all_preds.shape)
-#         print('ensemble_preds.shape:',ensemble_preds.shape)
         
         y = np.repeat(range( n_way ), n_query )
         acc = np.mean(ensemble_preds == y)*100
