@@ -32,9 +32,11 @@ import pandas as pd
 from tqdm import tqdm
 
 from model_utils import get_few_shot_params, get_model
+import datetime
 
 def exp_test(params, iter_num, should_del_features=False):
-    print('exp_test() start.')
+    start_time = datetime.datetime.now()
+    print('exp_test() started at',start_time)
     
     set_random_seed(0) # successfully reproduce "normal" testing. 
     
@@ -141,6 +143,10 @@ def exp_test(params, iter_num, should_del_features=False):
     
     if should_del_features:
         del_features(params)
+    
+    end_time = datetime.datetime.now()
+    print('exp_test() start at', start_time, ', end at', end_time, '.\n')
+    print('exp_test() totally took:', end_time-start_time)
     
     return extra_record
 

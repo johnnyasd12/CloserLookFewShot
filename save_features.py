@@ -21,8 +21,12 @@ from my_utils import *
 from my_utils import set_random_seed
 from model_utils import get_backbone_func, batchnorm_use_target_stats
 from tqdm import tqdm
+import datetime
 
 def exp_save_features(params):
+    start_time = datetime.datetime.now()
+    print('exp_save_features() started at',start_time)
+    
     assert params.method != 'maml' and params.method != 'maml_approx', 'maml do not support save_feature and run'
     if params.gpu_id:
         set_gpu_id(params.gpu_id)
@@ -87,6 +91,10 @@ def exp_save_features(params):
         os.makedirs(dirname)
 #     print('saving features to:', outfile)
     save_features(backbone_net, data_loader, outfile, params)
+    
+    end_time = datetime.datetime.now()
+    print('exp_save_features() start at', start_time, ', end at', end_time, '.\n')
+    print('exp_save_features() totally took:', end_time-start_time)
 
 def save_features(feature_net, data_loader, outfile, params):
     

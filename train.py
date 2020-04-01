@@ -22,6 +22,7 @@ from io_utils import *
 from my_utils import *
 from my_utils import set_random_seed
 from model_utils import get_few_shot_params, get_model, restore_vaegan
+import datetime
 
 def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch, params, record):
     if optimization == 'Adam':
@@ -190,7 +191,8 @@ def get_train_val_loader(params):
     return base_loader, val_loader
 
 def exp_train_val(params):
-    start_time = get_time_now()
+    start_time = datetime.datetime.now()
+#     start_time = get_time_now()
     print('exp_train_val() started at',start_time)
     np.random.seed(10)
     record = {
@@ -259,7 +261,10 @@ def exp_train_val(params):
     model, result = train(base_loader, val_loader,  model, optimization, start_epoch, stop_epoch, params, record)
     
     torch.cuda.empty_cache()
-    print('exp_train_val() start at', start_time, ', end at', get_time_now())
+    end_time = datetime.datetime.now()
+#     print('exp_train_val() start at', start_time, ', end at', get_time_now())
+    print('exp_train_val() start at', start_time, ', end at', end_time, '.\n')
+    print('exp_train_val() totally took:', end_time-start_time)
     
     return result
 

@@ -87,5 +87,5 @@ def get_matched_df(params, df, possible_params={}):
             else:
                 logging.warning('"%s" not in df.columns'%(k))
                 # TODO: add column filled with default value
-            
+
     return df
