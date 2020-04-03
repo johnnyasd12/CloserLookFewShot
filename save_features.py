@@ -72,6 +72,7 @@ def exp_save_features(params):
         tmp = torch.load(modelfile)
     
     state = tmp['state']
+    load_epoch = tmp['epoch'] if 'epoch' in tmp else -1
     state_keys = list(state.keys())
     for i, key in enumerate(state_keys):
         if "feature." in key:
@@ -80,7 +81,9 @@ def exp_save_features(params):
         else:
             state.pop(key)
             
+    print('Loading %s epoch state_dict into backbone...'%(load_epoch))
     backbone_net.load_state_dict(state)
+    print('Finished Loading.')
     backbone_net.eval()
     if params.target_bn:
         print('switching batch_norm layers to train mode...')
