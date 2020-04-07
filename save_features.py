@@ -105,7 +105,7 @@ def save_features(feature_net, data_loader, outfile, params):
     
     n_candidates = 1 if params.n_test_candidates == None else params.n_test_candidates
     outfile_candidate = 'candidate' in outfile
-    print('candidate in outfile', outfile_candidate)
+    print('Whether candidate in outfile:', outfile_candidate)
     if (outfile_candidate)^(params.n_test_candidates != None):
         raise ValueError('outfile & params.n_test_candidates mismatch.')
     
