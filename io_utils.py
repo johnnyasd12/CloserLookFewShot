@@ -68,6 +68,7 @@ def parse_args(script, parse_str=None):
     # domain CustomDropout
     parser.add_argument('--dropout_p', default=0, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
     parser.add_argument('--dropout_block_id', default=3, type=int, help='the domain CustomDropout block id. Useless if dropout_p is 0.')
+#     parser.add_argument('--more_to_drop', default=None, type=str, choices=[None, 'by_rate', 'double'])
     
     if script == 'expmgr':
         pass
@@ -96,8 +97,10 @@ def parse_args(script, parse_str=None):
 #         if script == 'test': # can also parse in save_features.py?? i think no effect is ok
         parser.add_argument('--csv_name'       , default=None, type=str, help='extra record csv file name.')
         parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
+        # CustomDropout parameter
         parser.add_argument('--frac_ensemble', default=None, type=float, help='the final fraction of dropout subnets ensemble. (default only 1 subnet, no ensemble)')
-        parser.add_argument('--candidate_metric', default='acc', choices=['acc', 'loss'], type=str, help='evaluating on sub-validation set with which metric to choose the ensemble subnets. (if None then "acc")')
+        parser.add_argument('--candidate_metric', default='acc', choices=['acc', 'loss'], type=str, help='To choose the ensemble subnets, according to  which metric of sub-validation set. (if None then "acc")')
+#         parser.add_argument('--ensemble_strategy', default='vote', choices=['vote', 'avg_prob'], type=str, help='How to get the prediction of networks ensemble.')
         
         
     elif script == 'draw_features':
