@@ -165,10 +165,15 @@ def del_features(params):
         else:
             all_feature_files = [feature_file]
         
-        files_tqdm = tqdm(all_feature_files)
-        for filename in files_tqdm:
-            files_tqdm.set_description('Deleting feature file:', filename)
+        print('Deleting feature file(s): %s'%(feature_file))
+        for filename in all_feature_files:
             os.remove(filename)
+        print('Finished deleting.')
+        
+#         files_tqdm = tqdm(all_feature_files)
+#         for filename in files_tqdm:
+#             files_tqdm.set_description('Deleting feature file:', filename)
+#             os.remove(filename)
 
 
 def record_to_csv(params, extra_record, csv_path):
