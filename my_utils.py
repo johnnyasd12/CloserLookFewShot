@@ -12,6 +12,7 @@ from methods.meta_template import MetaTemplate
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
 # global_datasets = [] # for multi-processsing
+import logging
 
 def describe(obj, obj_str): # support ndarray, tf.Tensor, dict, iterable
     # exec('global '+obj_str)
@@ -221,6 +222,26 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         z_all = np.array(z_all)
         return z_all
     
+    def get_scores(model, z_all):
+        ''' get query set scores
+        Args:
+            z_all (torch.Tensor): z_support & z_query
+        Return:
+            scores (torch.Tensor): query set scores (not probs)
+        '''
+        adaptation = params.adaptation
+        if isinstance(model, MetaTemplate):
+            if adaptation:
+                scores  = model.set_forward_adaptation(z_all, is_feature = True)
+            else:
+                scores  = model.set_forward(z_all, is_feature = True)
+        elif isinstance(model, BaselineTrain) or isinstance(model, BaselineFinetune):
+            raise ValueError('not support Baseline yet. ')
+            scores = model.forward() # only support original data (not feature)
+        else:
+            raise ValueError('Unsupported method.')
+        return scores
+    
     def get_pred(model, z_all):
         '''
         Args:
@@ -228,18 +249,21 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         Return:
             pred (ndarray): query set prediction
         '''
-        if isinstance(model, MetaTemplate):
-            if adaptation:
-                scores  = model.set_forward_adaptation(z_all, is_feature = True)
-            else:
-                scores  = model.set_forward(z_all, is_feature = True)
-        else:
-            raise ValueError('Unsupported method.')
+#         if isinstance(model, MetaTemplate):
+#             if adaptation:
+#                 scores  = model.set_forward_adaptation(z_all, is_feature = True)
+#             else:
+#                 scores  = model.set_forward(z_all, is_feature = True)
+#         else:
+#             raise ValueError('Unsupported method.')
+        scores = get_scores(model, z_all)
         scores = scores.data.cpu().numpy()
         pred = scores.argmax(axis = 1)
         return pred
     
     def get_result(model, z_all, n_way, n_support, n_query, metric):
+        # TODO: should this care about adaptation??
+        
         # make model can parse feature correctly
         model.n_support = n_support
         model.n_query = n_query
@@ -249,13 +273,14 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             y = np.repeat(range( n_way ), model.n_query )
             result = np.mean(pred == y)*100
         elif metric == 'loss':
-            if isinstance(model, MetaTemplate):
-                scores = model.set_forward(z_all, is_feature=True)
-            elif isinstance(model, BaselineTrain) or isinstance(model, BaselineFinetune):
-                raise ValueError('not support Baseline yet. ')
-                scores = model.forward() # only support original data (not feature)
-            else:
-                raise ValueError('Unsupported method.')
+#             if isinstance(model, MetaTemplate):
+#                 scores = model.set_forward(z_all, is_feature=True)
+#             elif isinstance(model, BaselineTrain) or isinstance(model, BaselineFinetune):
+#                 raise ValueError('not support Baseline yet. ')
+#                 scores = model.forward() # only support original data (not feature)
+#             else:
+#                 raise ValueError('Unsupported method.')
+            scores = get_scores(model, z_all)
             result = model.scores2loss(scores)
         else:
             raise ValueError('Unknown metric: %s'%(metric))
