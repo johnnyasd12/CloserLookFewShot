@@ -18,6 +18,8 @@ class ProtoNet(MetaTemplate):
 
     def set_forward(self,x,is_feature = False):
         ''' get the last output (scores of query set) from image or embedding
+        Returns:
+            shape: (n_way*n_query, n_way)
         '''
         z_support, z_query  = self.parse_feature(x,is_feature)
         z_support   = z_support.contiguous()
@@ -39,7 +41,11 @@ class ProtoNet(MetaTemplate):
         return self.loss_fn(scores, y_query )
     
     def forwardout2prob(self, forward_outputs):
-        probs = nn.Softmax()(forward_outputs)
+        '''
+        Args:
+            forward_outputs: shape=(n_way*n_query, n_way)
+        '''
+        probs = nn.Softmax(dim=1)(forward_outputs)
         return probs
     
     def total_loss(self, x):
@@ -119,8 +125,8 @@ def euclidean_dist( x, y):
     # y: M x D
     n = x.size(0)
     m = y.size(0)
+    assert x.size(1) == y.size(1)
     d = x.size(1)
-    assert d == y.size(1)
 
     x = x.unsqueeze(1).expand(n, m, d)
     y = y.unsqueeze(0).expand(n, m, d)
