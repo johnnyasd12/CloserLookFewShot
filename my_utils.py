@@ -9,6 +9,7 @@ import os
 import tensorflow as tf
 
 from methods.meta_template import MetaTemplate
+from methods.protonet import ProtoNet
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
 # global_datasets = [] # for multi-processsing
@@ -222,27 +223,27 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         z_all = np.array(z_all)
         return z_all
     
-    def get_scores(model, z_all):
-        ''' get query set scores
+    def get_forward_outputs(model, z_all):
+        ''' get query set forward_outputs
         Args:
             z_all (torch.Tensor): z_support & z_query
         Return:
-            scores (torch.Tensor): query set scores (not probs)
+            forward_outputs (torch.Tensor): query set forward_outputs (not probs)
         '''
         adaptation = params.adaptation
-        if isinstance(model, MetaTemplate):
+        if isinstance(model, ProtoNet):
             if adaptation:
-                scores  = model.set_forward_adaptation(z_all, is_feature = True)
+                forward_outputs  = model.set_forward_adaptation(z_all, is_feature = True)
             else:
-                scores  = model.set_forward(z_all, is_feature = True)
+                forward_outputs  = model.set_forward(z_all, is_feature = True)
         elif isinstance(model, BaselineTrain) or isinstance(model, BaselineFinetune):
-            raise ValueError('not support Baseline yet. ')
-            scores = model.forward() # only support original data (not feature)
+            raise ValueError('not support Baseline. ')
+            forward_outputs = model.forward() # only support original data (not feature)
         else:
             raise ValueError('Unsupported method.')
-        return scores
+        return forward_outputs
     
-    def get_pred(model, z_all):
+    def get_pred(model, z_all, prob=False):
         '''
         Args:
             z_all (torch.Tensor): z_support & z_query
@@ -251,14 +252,18 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         '''
 #         if isinstance(model, MetaTemplate):
 #             if adaptation:
-#                 scores  = model.set_forward_adaptation(z_all, is_feature = True)
+#                 forward_outputs  = model.set_forward_adaptation(z_all, is_feature = True)
 #             else:
-#                 scores  = model.set_forward(z_all, is_feature = True)
+#                 forward_outputs  = model.set_forward(z_all, is_feature = True)
 #         else:
 #             raise ValueError('Unsupported method.')
-        scores = get_scores(model, z_all)
-        scores = scores.data.cpu().numpy()
-        pred = scores.argmax(axis = 1)
+        forward_outputs = get_forward_outputs(model, z_all)
+        if prob:
+            pred = model.forwardout2prob(forward_outputs)
+            pred = pred.data.cpu().numpy()
+        else:
+            forward_outputs = forward_outputs.data.cpu().numpy()
+            pred = forward_outputs.argmax(axis = 1)
         return pred
     
     def get_result(model, z_all, n_way, n_support, n_query, metric):
@@ -274,14 +279,14 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             result = np.mean(pred == y)*100
         elif metric == 'loss':
 #             if isinstance(model, MetaTemplate):
-#                 scores = model.set_forward(z_all, is_feature=True)
+#                 forward_outputs = model.set_forward(z_all, is_feature=True)
 #             elif isinstance(model, BaselineTrain) or isinstance(model, BaselineFinetune):
 #                 raise ValueError('not support Baseline yet. ')
-#                 scores = model.forward() # only support original data (not feature)
+#                 forward_outputs = model.forward() # only support original data (not feature)
 #             else:
 #                 raise ValueError('Unsupported method.')
-            scores = get_scores(model, z_all)
-            result = model.scores2loss(scores)
+            forward_outputs = get_forward_outputs(model, z_all)
+            result = model.forwardout2loss(forward_outputs)
         else:
             raise ValueError('Unknown metric: %s'%(metric))
         return result
@@ -334,7 +339,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         return sum(result_cv)/k_fold
     
     
-    adaptation = params.adaptation
+#     adaptation = params.adaptation
     
     if params.n_test_candidates is None: # common setting
         class_list = cl_feature_each_candidate[0].keys()
@@ -401,7 +406,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             if loopccv_the_one is not None:
                 sub_result = get_result_loocv(model=model, z_all=z_support, 
                                         n_way=n_way, the_one=loopccv_the_one, metric=params.candidate_metric)
-            else: # common testing
+            else: # testing without loopccv
                 n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
                 n_sub_query = n_support - n_sub_support # those who are rest
                 sub_result = get_result(
@@ -432,7 +437,13 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             cl_feature_dict = cl_feature_each_candidate[elected_id]
             z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
             z_all = torch.from_numpy(z_all) # z_support & z_query
-            pred = get_pred(model, z_all)
+            
+            if params.ensemble_strategy=='avg_prob':
+                pred = get_pred(model, z_all, prob=True)
+            elif params.ensemble_strategy=='vote':
+                pred = get_pred(model, z_all)
+            else:
+                raise ValueError('Invalid ensemble_strategy: %s'%(params.ensemble_strategy))
             all_preds.append(pred)
         
         all_preds = np.array(all_preds).T # shape:(n_query*n_way, n_ensemble)
