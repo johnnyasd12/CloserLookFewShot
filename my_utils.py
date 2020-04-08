@@ -249,6 +249,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             z_all (torch.Tensor): z_support & z_query
         Return:
             pred (ndarray): query set prediction
+                shape=(n_query*n_way, n_way) if prob
+                shape=(n_query*n_way, ) if not prob
         '''
 #         if isinstance(model, MetaTemplate):
 #             if adaptation:
@@ -267,7 +269,6 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         return pred
     
     def get_result(model, z_all, n_way, n_support, n_query, metric):
-        # TODO: should this care about adaptation??
         
         # make model can parse feature correctly
         model.n_support = n_support
@@ -446,9 +447,19 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 raise ValueError('Invalid ensemble_strategy: %s'%(params.ensemble_strategy))
             all_preds.append(pred)
         
-        all_preds = np.array(all_preds).T # shape:(n_query*n_way, n_ensemble)
-        ensemble_preds = [np.argmax(np.bincount(preds)) for preds in all_preds]
-        ensemble_preds = np.array(ensemble_preds)
+        # all_preds shape=(n_ensemble, n_query*n_way) for 'vote'
+        # all_preds shape=(n_ensemble, n_query*n_way, n_way) for 'avg_prob'
+        all_preds = np.array(all_preds)
+        
+        if params.ensemble_strategy=='vote':
+            all_preds = all_preds.T # shape:(n_query*n_way, n_ensemble) for 'vote'
+            ensemble_preds = [np.argmax(np.bincount(preds)) for preds in all_preds]
+            ensemble_preds = np.array(ensemble_preds)
+        elif params.ensemble_strategy=='avg_prob':
+            ensemble_preds = all_preds.mean(axis=0) # shape=(n_query*n_way, n_way)
+#             print('avg_prob/ensemble_preds.shape (after mean)', ensemble_preds.shape)
+            ensemble_preds = np.argmax(ensemble_preds, axis=1) # shape=(n_query*n_way)
+#             print('avg_prob/ensemble_preds.shape (after argmax)', ensemble_preds.shape)
         
         y = np.repeat(range( n_way ), n_query )
         acc = np.mean(ensemble_preds == y)*100

@@ -58,14 +58,14 @@ def get_matched_df(params, df, possible_params={}):
     base_cond = None
     for k,v in params.items():
         if k in list(df.columns):
-            ###################### DEBUG ######################
+            ###################### DEBUG (not solved yet) ######################
 #             try:
             cond = df[k]==v if (v!=None and v==v) else df[k]!=df[k]
 #             except TypeError:
 #                 logging.error('TypeError: invalid type comparison.')
 #                 logging.debug('k: %s'%k)
 #                 logging.debug('v: %s'%v)
-#                 logging.debug('df[%s] = %s'%(k,df[k]))
+#                 logging.debug('df[%s]: \n%s'%(k,df[k]))
             ###################### DEBUG ######################
             base_cond = base_cond&cond if base_cond is not None else cond
         else:
