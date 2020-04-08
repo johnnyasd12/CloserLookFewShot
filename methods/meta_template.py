@@ -42,7 +42,7 @@ class MetaTemplate(nn.Module):
         '''
         pass
 
-    def scores2loss(self, scores):
+    def forwardout2loss(self, scores):
         y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
         y_query = Variable(y_query.cuda())
         loss = self.loss_fn(scores, y_query )

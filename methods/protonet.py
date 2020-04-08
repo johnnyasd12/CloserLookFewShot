@@ -38,6 +38,10 @@ class ProtoNet(MetaTemplate):
         scores = self.set_forward(x)
         return self.loss_fn(scores, y_query )
     
+    def forwardout2prob(self, forward_outputs):
+        probs = nn.Softmax()(forward_outputs)
+        return probs
+    
     def total_loss(self, x):
         return self.set_forward_loss(x)
 
