@@ -480,7 +480,7 @@ class BottleneckBlock(nn.Module): # utilized by ResNet50, ResNet101
         return out
 
 
-class ConvNet(nn.Module):
+class ConvNet(nn.Module, CustomDropoutNet):
     def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3): # CUB/miniImgnet Conv input = 84*84*3
         super(ConvNet,self).__init__()
         trunk = []
@@ -506,31 +506,32 @@ class ConvNet(nn.Module):
         self.trunk = nn.Sequential(*trunk)
         self.final_feat_dim = 1600 # output = 64*5*5
         
+        # for CustomDropout
+        self.record_active_dropout()
         # CustomDropout
-        self.dropout_p = dropout_p
-        
-        self.active_dropout_ls = []
-        for module in self.modules():
-            if isinstance(module, CustomDropout):
-                if module.p != 0: # becuz not all of CustomDropout module are active
-                    self.active_dropout_ls.append(module)
+# #         self.dropout_p = dropout_p
+#         self.active_dropout_ls = []
+#         for module in self.modules():
+#             if isinstance(module, CustomDropout):
+#                 if module.p != 0: # becuz not all of CustomDropout module are active
+#                     self.active_dropout_ls.append(module)
 
     def forward(self,x):
         out = self.trunk(x)
         return out
     
-    def sample_random_subnet(self):
-        # traverse all over the nn.Modules to get CustomDropout
-        has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
-        assert has_custom_dropout, "there should be CustomDropout module to sample random subnet"
-        assert not self.training, "should be in eval() mode when calling function"
-        for module in self.active_dropout_ls:
-            module.set_random_eval_mask()
+#     def sample_random_subnet(self):
+#         # traverse all over the nn.Modules to get CustomDropout
+#         has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
+#         assert has_custom_dropout, "there should be CustomDropout module to sample random subnet"
+#         assert not self.training, "should be in eval() mode when calling function"
+#         for module in self.active_dropout_ls:
+#             module.set_random_eval_mask()
         
     
-    def reset_dropout(self):
-        for module in self.active_dropout_ls:
-            module.eval_mask = None
+#     def reset_dropout(self):
+#         for module in self.active_dropout_ls:
+#             module.eval_mask = None
 
 
 class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in only first two layers, else no pooling
@@ -551,7 +552,7 @@ class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in
         return out
 
 
-class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
+class ConvNetS(nn.Module, CustomDropoutNet): #For omniglot, only 1 input channel, output dim is 64
     def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3):
         super(ConvNetS,self).__init__()
         trunk = []
@@ -580,31 +581,33 @@ class ConvNetS(nn.Module): #For omniglot, only 1 input channel, output dim is 64
         self.trunk = nn.Sequential(*trunk)
         self.final_feat_dim = 64
         
+        # for CustomDropout
+        self.record_active_dropout()
         # CustomDropout
-        self.dropout_p = dropout_p
-        self.active_dropout_ls = []
-        for module in self.modules():
-            if isinstance(module, CustomDropout):
-                if module.p != 0: # becuz not all of CustomDropout module are active
-                    self.active_dropout_ls.append(module)
+# #         self.dropout_p = dropout_p
+#         self.active_dropout_ls = []
+#         for module in self.modules():
+#             if isinstance(module, CustomDropout):
+#                 if module.p != 0: # becuz not all of CustomDropout module are active
+#                     self.active_dropout_ls.append(module)
 
     def forward(self,x):
         out = x[:,0:1,:,:] #only use the first dimension (OOOOOMMMMMGGGG finally i see this NOW
         out = self.trunk(out)
         return out
     
-    def sample_random_subnet(self):
-        # traverse all over the nn.Modules to get CustomDropout
-        has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
-        assert has_custom_dropout, "there should be CustomDropout module to sample random subnet"
-        assert not self.training, "should be in eval() mode when calling function"
-        for module in self.active_dropout_ls:
-            module.set_random_eval_mask()
+#     def sample_random_subnet(self):
+#         # traverse all over the nn.Modules to get CustomDropout
+#         has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
+#         assert has_custom_dropout, "there should be CustomDropout module to sample random subnet"
+#         assert not self.training, "should be in eval() mode when calling function"
+#         for module in self.active_dropout_ls:
+#             module.set_random_eval_mask()
         
     
-    def reset_dropout(self):
-        for module in self.active_dropout_ls:
-            module.eval_mask = None
+#     def reset_dropout(self):
+#         for module in self.active_dropout_ls:
+#             module.eval_mask = None
         
 
 
