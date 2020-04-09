@@ -570,16 +570,20 @@ class ConvNetS(nn.Module, CustomDropoutNet): #For omniglot, only 1 input channel
             -> [64*7*7 -> 64*3*3]
             -> [64*3*3 -> 64*1*1]
             '''
-            indim = 1 if i == 0 else indim
+            # BUGFIX for more_to_drop
+            indim = 1 if i == 0 else outdim
             outdim = 64
             # CustomDropout
             dropout_cond = i==dropout_block_id # whether this layer should dropout
             block_dropout_p = dropout_p if dropout_cond else 0.
+            # more_to_drop
             if more_to_drop=='double' and dropout_cond:
                 outdim = outdim*2
-            B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) #only pooling for first 4 layers
+            #only pooling for first 4 layers
+            B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) 
             trunk.append(B)
-            indim = outdim
+#             # BUGFIX for more_to_drop
+#             indim = outdim
 
         if flatten:
             trunk.append(Flatten())
