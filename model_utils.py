@@ -44,14 +44,19 @@ def get_backbone_func(params):
         elif params.model == 'Conv4S': 
             backbone_func = backbone.Conv4SNP
         else:
-            backbone_func = lambda: model_dict[params.model]( flatten = False )
+            backbone_func = lambda: model_dict[params.model](
+                flatten = False, 
+                dropout_p=params.dropout_p, dropout_block_id=params.dropout_block_id
+                , more_to_drop=params.more_to_drop)
 
     else: # not RelationNet
         backbone_func = model_dict[params.model]
-        if params.dropout_p==0:
-            backbone_func = model_dict[params.model] 
-        else:
-            backbone_func = lambda: model_dict[params.model](dropout_p=params.dropout_p, dropout_block_id=params.dropout_block_id)
+#         if params.dropout_p==0:
+#             backbone_func = model_dict[params.model] 
+#         else:
+        backbone_func = lambda: model_dict[params.model](
+            dropout_p=params.dropout_p, dropout_block_id=params.dropout_block_id
+            , more_to_drop=params.more_to_drop)
 
     return backbone_func
 

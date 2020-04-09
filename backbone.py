@@ -553,7 +553,12 @@ class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in
 
 
 class ConvNetS(nn.Module, CustomDropoutNet): #For omniglot, only 1 input channel, output dim is 64
-    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3):
+    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None):
+        '''
+        Args:
+            dropout_block_id: could be {0|1|2|3}
+            more_to_drop: could be {None|'double'}
+        '''
         super(ConvNetS,self).__init__()
         trunk = []
         # TODO: trunk.append only select 1 channel
@@ -565,21 +570,22 @@ class ConvNetS(nn.Module, CustomDropoutNet): #For omniglot, only 1 input channel
             -> [64*7*7 -> 64*3*3]
             -> [64*3*3 -> 64*1*1]
             '''
-            indim = 1 if i == 0 else 64
+            indim = 1 if i == 0 else indim
             outdim = 64
-            
             # CustomDropout
             dropout_cond = i==dropout_block_id # whether this layer should dropout
             block_dropout_p = dropout_p if dropout_cond else 0.
-            
+            if more_to_drop=='double' and dropout_cond:
+                outdim = outdim*2
             B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) #only pooling for first 4 layers
             trunk.append(B)
+            indim = outdim
 
         if flatten:
             trunk.append(Flatten())
 
         self.trunk = nn.Sequential(*trunk)
-        self.final_feat_dim = 64
+        self.final_feat_dim = outdim
         
         # for CustomDropout
         self.record_active_dropout()
@@ -912,8 +918,8 @@ def Conv6NP():
 # def Conv4SDrop(dropout_p=0.):
 #     return ConvNetS(4,dropout_p=dropout_p)
 
-def Conv4S(dropout_p=0., dropout_block_id=3):
-    return ConvNetS(4, dropout_p=dropout_p, dropout_block_id=dropout_block_id)
+def Conv4S(dropout_p=0., dropout_block_id=3, more_to_drop=None):
+    return ConvNetS(4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, more_to_drop=more_to_drop)
 
 def Conv4SNP():
     return ConvNetSNopool(4)

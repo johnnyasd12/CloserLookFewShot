@@ -68,7 +68,7 @@ def parse_args(script, parse_str=None):
     # domain CustomDropout
     parser.add_argument('--dropout_p', default=0, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
     parser.add_argument('--dropout_block_id', default=3, type=int, help='the domain CustomDropout block id. Useless if dropout_p is 0.')
-#     parser.add_argument('--more_to_drop', default=None, type=str, choices=[None, 'by_rate', 'double'])
+    parser.add_argument('--more_to_drop', default=None, type=str, choices=[None, 'double']) # None, 'double', 'by_rate'
     
     if script == 'expmgr':
         pass
