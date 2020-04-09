@@ -411,7 +411,13 @@ class SimpleBlock(nn.Module):
         out = self.C2(out)
         out = self.BN2(out)
         short_out = x if self.shortcut_type == 'identity' else self.BNshortcut(self.shortcut(x))
+        ################## DEBUG ##################
+#         try:
         out = out + short_out
+#         except RuntimeError:
+#             print('out:', out.size())
+#             print('short_out:', short_out.size())
+        ################## DEBUG ##################
         out = self.relu2(out)
         if self.dropout != None:
             out = self.dropout(out)
@@ -816,7 +822,7 @@ class ResNet(nn.Module, CustomDropoutNet):
                 block_dropout_p = dropout_p if dropout_cond else 0.
                 # more_to_drop
                 if more_to_drop=='double' and dropout_cond:
-                    list_of_out_dims[i] = list_of_out_dims[i]*2
+                    list_of_out_dims[i] = list_of_out_dims[i]*2 +1 # BUGFIX: +1 to avoid indim==outdim then affect 'half_res' 
                 B = block(indim, list_of_out_dims[i], half_res, dropout_p=block_dropout_p)
 #                 B = block(indim, list_of_out_dims[i], half_res)
                 trunk.append(B)
