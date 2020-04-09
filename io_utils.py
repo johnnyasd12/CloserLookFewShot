@@ -162,6 +162,11 @@ def get_checkpoint_dir(params):
     # custom dropout experiments
     if params.dropout_p != 0:
         checkpoint_dir += '_dropout%s_block%s' % (params.dropout_p, params.dropout_block_id)
+        if params.more_to_drop == 'double':
+            checkpoint_dir += 'double-dim'
+    else: # dropout_p == 0
+        if params.more_to_drop == 'double':
+            checkpoint_dir += '_block%sdouble-dim'%(params.dropout_block_id)
     
     return checkpoint_dir
 

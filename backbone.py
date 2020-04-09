@@ -481,7 +481,7 @@ class BottleneckBlock(nn.Module): # utilized by ResNet50, ResNet101
 
 
 class ConvNet(nn.Module, CustomDropoutNet):
-    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3): # CUB/miniImgnet Conv input = 84*84*3
+    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None): # CUB/miniImgnet Conv input = 84*84*3
         super(ConvNet,self).__init__()
         trunk = []
         for i in range(depth): 
@@ -491,20 +491,28 @@ class ConvNet(nn.Module, CustomDropoutNet):
             -> [64*21*21 -> 64*10*10]
             -> [64*10*10 -> 64*5*5]
             '''
-            indim = 3 if i == 0 else 64 # if the 1st block then input is image, otherwise 64 from pre-block
+#             indim = 3 if i == 0 else 64 # if the 1st block then input is image, otherwise 64 from pre-block
+            # BUGFIX for more_to_drop
+            indim = 3 if i == 0 else outdim
             outdim = 64
             
             dropout_cond = i==dropout_block_id # whether this layer should dropout
             block_dropout_p = dropout_p if dropout_cond else 0.
-            
-            B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) #only pooling for first 4 layers
+            # more_to_drop
+            if more_to_drop=='double' and dropout_cond:
+                outdim = outdim*2
+            #only pooling for first 4 layers
+            B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) 
             trunk.append(B)
 
         if flatten:
             trunk.append(Flatten())
 
         self.trunk = nn.Sequential(*trunk)
-        self.final_feat_dim = 1600 # output = 64*5*5
+        
+        # BUGFIX for more_to_drop
+        self.final_feat_dim = outdim*5*5
+#         self.final_feat_dim = 1600 # output = 64*5*5
         
         # for CustomDropout
         self.record_active_dropout()
@@ -589,6 +597,8 @@ class ConvNetS(nn.Module, CustomDropoutNet): #For omniglot, only 1 input channel
             trunk.append(Flatten())
 
         self.trunk = nn.Sequential(*trunk)
+        
+        # BUGFIX for more_to_drop
         self.final_feat_dim = outdim
         
         # for CustomDropout
@@ -750,7 +760,7 @@ class DeResNet(nn.Module):
 class ResNet(nn.Module, CustomDropoutNet):
     maml = False #Default
     def __init__(self,block,list_of_num_blocks, list_of_out_dims, flatten = True, 
-                dropout_p=0, dropout_block_id=3): # not flatten only RelationNet?
+                dropout_p=0, dropout_block_id=3, more_to_drop=None): # not flatten only RelationNet?
         # list_of_num_blocks specifies number of blocks in each stage
         # list_of_out_dims specifies number of output channel for each stage
         super(ResNet,self).__init__() # input 224*224
@@ -804,7 +814,9 @@ class ResNet(nn.Module, CustomDropoutNet):
                 
                 dropout_cond = i==dropout_block_id # whether this layer should dropout
                 block_dropout_p = dropout_p if dropout_cond else 0.
-                
+                # more_to_drop
+                if more_to_drop=='double' and dropout_cond:
+                    list_of_out_dims[i] = list_of_out_dims[i]*2
                 B = block(indim, list_of_out_dims[i], half_res, dropout_p=block_dropout_p)
 #                 B = block(indim, list_of_out_dims[i], half_res)
                 trunk.append(B)
@@ -904,8 +916,8 @@ class DeConvNet2(nn.Module):
 # def Conv4Drop(dropout_p=0.):
 #     return ConvNet(4,dropout_p=dropout_p)
 
-def Conv4(dropout_p=0., dropout_block_id=3):
-    return ConvNet(4,dropout_p=dropout_p, dropout_block_id=dropout_block_id)
+def Conv4(dropout_p=0., dropout_block_id=3, more_to_drop=None):
+    return ConvNet(4,dropout_p=dropout_p, dropout_block_id=dropout_block_id, more_to_drop=more_to_drop)
 
 def Conv6():
     return ConvNet(6)
@@ -928,10 +940,10 @@ def Conv4S(dropout_p=0., dropout_block_id=3, more_to_drop=None):
 def Conv4SNP():
     return ConvNetSNopool(4)
 
-def ResNet10(flatten=True, dropout_p=0, dropout_block_id=10):
+def ResNet10(flatten=True, dropout_p=0, dropout_block_id=10, more_to_drop=None):
     # WTF i dunno why SimpleBlock cost less memory
     return ResNet(SimpleBlock, [1,1,1,1],[64,128,256,512], flatten, 
-                 dropout_p=dropout_p, dropout_block_id=dropout_block_id)
+                 dropout_p=dropout_p, dropout_block_id=dropout_block_id, more_to_drop=more_to_drop)
 #     return ResNet(BottleneckBlock, [1,1,1,1],[64,128,256,512], flatten)
 
 def DeResNet10(flatten=True):
