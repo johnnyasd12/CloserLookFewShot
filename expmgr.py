@@ -18,7 +18,7 @@ class ExpManager:
             test_fixed_params (dict): e.g. {'record_csv':'program_time.csv', 'gpu_id':0}
             general_possible_params (dict): dictionary of list of tunable parameters, different param would train different model. e.g. {'dropout_p':[0.25, 0.5]}
         '''
-        self.base_params = base_params # general fixed params
+        self.base_params = base_params # comparison is based on this setting.
         self.possible_params = {'general':general_possible_params, 'test':test_possible_params} # general means generalize to train/save_features/test
         self.fixed_params = {'train':train_fixed_params, 'test':test_fixed_params}
         self.negligible_vars = ['gpu_id', 'csv_name',] # can be ignored when comparing results but in ArgParser
