@@ -109,10 +109,6 @@ def save_features(feature_net, data_loader, outfile, params):
     if (outfile_candidate)^(params.n_test_candidates != None):
         raise ValueError('outfile & params.n_test_candidates mismatch.')
     
-    ########### for Sanity Check ###########
-#     cl_candidates_n_data = {}
-    ########### for Sanity Check ###########
-    
     for n in range(n_candidates):
 
         if 'candidate' in outfile: # then dropout
