@@ -206,6 +206,24 @@ class CustomDropout(MyDropout):
         random_mask = self.get_random_mask(n_samples=1)
         self.eval_mask = random_mask
     
+    def get_mask_comb(self):
+        # dropout_p generally equals to self.p
+        mask_comb = []
+        n_comb = int(1//self.p) # e.g. 1//0.33 = 3
+        n_drop_features = int(self.n_features*self.p) # e.g. 20*0.33 = 6
+        remain_feature_ids = list(range(self.n_features))
+        for i in range(n_comb):
+            sampled_feature_ids = np.random.choice(remain_feature_ids, size=n_drop_features, replace=False)
+#             print('sampled_feature_ids:', sampled_feature_ids)
+            mask_np = np.ones((1, self.n_features))
+            mask_np[0][sampled_feature_ids] = 0
+#             print('mask_np:', mask_np)
+            mask = torch.Tensor(mask_np)
+#             print('mask:', mask)
+            for idx in sampled_feature_ids:
+                remain_feature_ids.remove(idx)
+        
+    
     def reset_eval():
         self.eval_mask = None
         self.eval()
@@ -264,17 +282,7 @@ class CustomDropoutNet:
             if isinstance(module, CustomDropout):
                 if module.p != 0: # becuz not all of CustomDropout module are active
                     self.active_dropout_ls.append(module)
-        
-        
-        self.active_dropout_ls = []
-        for module in self.modules():
-            if isinstance(module, CustomDropout):
-                if module.p != 0: # becuz not all of CustomDropout module are active
-                    self.active_dropout_ls.append(module)
-                    ######################## BUGFIX??? ########################
-#                     self.modules().active_dropout_ls.append(module)
-                    ######################## BUGFIX??? ########################
-                    
+    
     def sample_random_subnet(self):
         # traverse all over the nn.Modules to get CustomDropout
         has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
