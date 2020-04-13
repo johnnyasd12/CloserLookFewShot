@@ -85,9 +85,6 @@ def get_matched_df(params, df, possible_params={}):
     
     df = df[base_cond]
     
-#     logging.debug('get_matched_df()/df after params:\n%s'%(df))
-    
-#     logging.debug('possible_params: %s'%(possible_params))
     if len(possible_params)!=0:
         for k, possible_values in possible_params.items():
             if k in list(df.columns):
