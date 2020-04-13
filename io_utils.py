@@ -253,7 +253,13 @@ def get_save_feature_filepath(params, checkpoint_dir, split):
     # CustomDropout
     # checkpoint_dir already has dropout_p information
     # should save_feature several times on different candidates
-    dropout_candidates_str = '' if params.n_test_candidates == None else '_candidate' 
+    if params.n_test_candidates == None:
+        dropout_candidates_str = ''
+    elif params.sample_strategy == 'none':
+        dropout_candidates_str = '_candidate'
+    elif params.sample_strategy == 'complement':
+        dropout_candidates_str = '_complement'
+#     dropout_candidates_str = '' if params.n_test_candidates == None else '_candidate' 
     # should add candidate number in save_features.py
     
     extra_str = target_bn_str + dropout_candidates_str

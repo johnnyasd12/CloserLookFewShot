@@ -219,10 +219,12 @@ class CustomDropout(MyDropout):
             mask_np[0][sampled_feature_ids] = 0
 #             print('mask_np:', mask_np)
             mask = torch.Tensor(mask_np)
+            mask = Variable(mask.type(torch.cuda.FloatTensor), requires_grad=False)
 #             print('mask:', mask)
+            mask_comb.append(mask)
             for idx in sampled_feature_ids:
                 remain_feature_ids.remove(idx)
-        
+        return mask_comb
     
     def reset_eval():
         self.eval_mask = None

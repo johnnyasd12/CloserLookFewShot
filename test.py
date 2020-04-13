@@ -95,15 +95,22 @@ def exp_test(params, iter_num, should_del_features=False):
 
     else: # not MAML
         # directly use extracted features
-        feature_file = get_save_feature_filepath(params, checkpoint_dir, params.split)
+        all_feature_files = get_all_feature_files(params)
+#         feature_file = get_save_feature_filepath(params, checkpoint_dir, params.split)
         
-        if 'candidate' in feature_file:
-            feature_files = []
+#         if 'candidate' in feature_file or 'complement' in feature_file:
+        if params.n_test_candidates != None:
+#             if 'candidate' in feature_file:
+#                 keyword = 'candidate'
+#             elif 'complement' in feature_file:
+#                 keyword = 'complement'
+#             feature_files = []
             candidate_cl_feature = [] # features of each class of each candidates
             print('Loading features of %s candidates into dictionaries...' %(params.n_test_candidates))
             for n in tqdm(range(params.n_test_candidates)):
-                nth_feature_file = feature_file.replace('candidate','candidate'+str(n+1))
-                feature_files.append(nth_feature_file)
+#                 nth_feature_file = feature_file.replace(keyword, keyword+str(n+1))
+                nth_feature_file = all_feature_files[n]
+#                 feature_files.append(nth_feature_file)
                 cl_feature = feat_loader.init_loader(nth_feature_file)
                 candidate_cl_feature.append(cl_feature)
             
@@ -150,20 +157,42 @@ def exp_test(params, iter_num, should_del_features=False):
     
     return extra_record
 
-def del_features(params):
-    
+def get_all_feature_files(params):
     if params.method in ['maml', 'maml_approx']: #maml do not support testing with feature
         pass
     else:
         checkpoint_dir = get_checkpoint_dir(params)
         feature_file = get_save_feature_filepath(params, checkpoint_dir, params.split)
+        keyword = None
         if 'candidate' in feature_file:
+            keyword = 'candidate'
+        elif 'complement' in feature_file:
+            keyword = 'complement'
+        
+        if keyword == None:
+            all_feature_files = [feature_file]
+        else:
             all_feature_files = []
             for n in tqdm(range(params.n_test_candidates)):
-                nth_feature_file = feature_file.replace('candidate','candidate'+str(n+1))
+                nth_feature_file = feature_file.replace(keyword, keyword+str(n+1))
                 all_feature_files.append(nth_feature_file)
-        else:
-            all_feature_files = [feature_file]
+        
+        return all_feature_files
+
+def del_features(params):
+    all_feature_files = get_all_feature_files(params)
+    if params.method in ['maml', 'maml_approx']: #maml do not support testing with feature
+        pass
+    else:
+        checkpoint_dir = get_checkpoint_dir(params)
+        feature_file = get_save_feature_filepath(params, checkpoint_dir, params.split)
+#         if 'candidate' in feature_file:
+#             all_feature_files = []
+#             for n in tqdm(range(params.n_test_candidates)):
+#                 nth_feature_file = feature_file.replace('candidate','candidate'+str(n+1))
+#                 all_feature_files.append(nth_feature_file)
+#         else:
+#             all_feature_files = [feature_file]
         
         print('Deleting feature file(s): %s'%(feature_file))
         for filename in all_feature_files:

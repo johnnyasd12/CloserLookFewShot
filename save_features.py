@@ -104,7 +104,7 @@ def save_features(feature_net, data_loader, outfile, params):
     set_random_seed(0)
     
     n_candidates = 1 if params.n_test_candidates == None else params.n_test_candidates
-    outfile_candidate = 'candidate' in outfile
+    outfile_candidate = 'candidate' in outfile or 'complement' in outfile
     print('Whether candidate in outfile:', outfile_candidate)
     if (outfile_candidate)^(params.n_test_candidates != None):
         raise ValueError('outfile & params.n_test_candidates mismatch.')
@@ -121,7 +121,7 @@ def save_features(feature_net, data_loader, outfile, params):
             assert params.dropout_p <= 0.5
             outfile_n = outfile.replace('complement', 'complement'+str(n+1))
             print(outfile_n, ': procedure start...')
-            n_combinations = 1//params.dropout_p # e.g. 1//0.33 = 3
+            n_combinations = int(1//params.dropout_p) # e.g. 1//0.33 = 3
             complement_id = n//n_combinations # e.g. 13//3 = 4
             complement_remainder = n%n_combinations # e.g. 13%3 = 1
             if complement_remainder == 0:
@@ -133,7 +133,8 @@ def save_features(feature_net, data_loader, outfile, params):
                     mask_combs.append(mask_comb)
             for d_layer, mask_comb in list(zip(dropout_layers, mask_combs)):
                 mask = mask_comb[complement_remainder]
-                d_layer.set_eval_mask(mask)
+#                 d_layer.set_eval_mask(mask)
+                d_layer.eval_mask = mask
         else:
             outfile_n = outfile
         
