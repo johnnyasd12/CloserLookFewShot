@@ -125,10 +125,15 @@ def save_features(feature_net, data_loader, outfile, params):
             complement_id = n//n_combinations # e.g. 13//3 = 4
             complement_remainder = n%n_combinations # e.g. 13%3 = 1
             if complement_remainder == 0:
-                mask_combs = feature_net.get_mask_combs() # len(mask_combs) = n_combinations
-            mask = mask_combs[complement_remainder]
-            layer = feature_net.get_dropped_layer()
-            layer.set_eval_mask(mask)
+                dropout_layers = feature_net.active_dropout_ls
+                assert len(dropout_layers)==1
+                mask_combs = []
+                for d_layer in dropout_layers:
+                    mask_comb = d_layer.get_mask_comb() # len(mask_combs) = n_combinations
+                    mask_combs.append(mask_comb)
+            for d_layer, mask_comb in list(zip(dropout_layers, mask_combs)):
+                mask = mask_comb[complement_remainder]
+                d_layer.set_eval_mask(mask)
         else:
             outfile_n = outfile
         
