@@ -58,14 +58,26 @@ def get_matched_df(params, df, possible_params={}):
     base_cond = None
     for k,v in params.items():
         if k in list(df.columns):
+            if v==None or v!=v: # v is None or nan
+                cond = df[k]!=df[k]
+            else: # v is not None or nan
+                contains_nan = df[k].isnull().values.any()
+                if contains_nan and isinstance(v, str):
+                    # BUGFIX: if there is nan in col and v is str, then would ERROR: Invalid Comparison. 
+                    df_k_fillna = df[k].fillna('nan', inplace=False)
+                    cond = df_k_fillna==v
+                else:
+                    cond = df[k]==v
             ###################### DEBUG (not solved yet) ######################
 #             try:
-            cond = df[k]==v if (v!=None and v==v) else df[k]!=df[k]
+#                 cond = df[k]==v if (v!=None and v==v) else df[k]!=df[k]
 #             except TypeError:
 #                 logging.error('TypeError: invalid type comparison.')
 #                 logging.debug('k: %s'%k)
 #                 logging.debug('v: %s'%v)
 #                 logging.debug('df[%s]: \n%s'%(k,df[k]))
+#                 # there is nan in df[k], and v is str
+#                 yeee
             ###################### DEBUG ######################
             base_cond = base_cond&cond if base_cond is not None else cond
         else:
