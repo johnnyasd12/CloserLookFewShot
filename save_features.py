@@ -112,17 +112,29 @@ def save_features(feature_net, data_loader, outfile, params):
     for n in range(n_candidates):
 
         if 'candidate' in outfile: # then dropout
-            print('candidate',n+1,'start...')
+            assert params.sample_strategy == 'none'
             outfile_n = outfile.replace('candidate', 'candidate'+str(n+1))
+            print(outfile_n, ': procedure start...')
             feature_net.sample_random_subnet()
+        elif 'complement' in outfile: # then use complementary-sample strategy
+            assert params.sample_strategy == 'complement'
+            assert params.dropout_p <= 0.5
+            outfile_n = outfile.replace('complement', 'complement'+str(n+1))
+            print(outfile_n, ': procedure start...')
+            n_combinations = 1//params.dropout_p # e.g. 1//0.33 = 3
+            complement_id = n//n_combinations # e.g. 13//3 = 4
+            complement_remainder = n%n_combinations # e.g. 13%3 = 1
+            if complement_remainder == 0:
+                mask_combs = feature_net.get_mask_combs() # len(mask_combs) = n_combinations
+            mask = mask_combs[complement_remainder]
+            layer = feature_net.get_dropped_layer()
+            layer.set_eval_mask(mask)
         else:
             outfile_n = outfile
         
         f = h5py.File(outfile_n, 'w')
-#         max_count_ori = len(data_loader)*data_loader.batch_size # SHOULD be calculated by dataset not dataloader
         max_count = len(data_loader.dataset)
-#         print('max_count_ori:', max_count_ori)
-#         print('max_count:', max_count)
+#         max_count_ori = len(data_loader)*data_loader.batch_size # SHOULD be calculated by dataset not dataloader
         all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
         all_feats=None
         count=0

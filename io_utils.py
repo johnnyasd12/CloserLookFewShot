@@ -92,6 +92,7 @@ def parse_args(script, parse_str=None):
         parser.add_argument('--target_bn', action='store_true', help='use target domain statistics to do batch normalization.')
         # CustomDropout
         parser.add_argument('--n_test_candidates', default=None, type=int, help='the number of dropout subnet candidates.')
+        parser.add_argument('--sample_strategy', default='none', type=str, choices=['none', 'complement'])
         
         ############ test.py ########## but i think save_features.py is okay
 #         if script == 'test': # can also parse in save_features.py?? i think no effect is ok
