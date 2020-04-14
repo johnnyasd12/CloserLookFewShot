@@ -123,6 +123,7 @@ def exp_test(params, iter_num, should_del_features=False):
                 acc_all.append(acc)
                 
         else: # common setting (no candidate)
+            feature_file = all_feature_files[0]
             cl_feature = feat_loader.init_loader(feature_file)
             cl_feature_single = [cl_feature]
             for i in tqdm(range(iter_num)):
