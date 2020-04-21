@@ -152,7 +152,7 @@ class ExpManager:
             top_k = None
             self.sum_up_results(choose_by, top_k)
         
-    def sum_up_results(self, choose_by, top_k): # choose the best according to dataset & split
+    def sum_up_results(self, choose_by, top_k, show_same_params=True): # choose the best according to dataset & split
         
         def select_cols_if_exists(df, cols: list):
             for col in cols.copy(): # BUGFIX: some of col not removed
