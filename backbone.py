@@ -298,6 +298,11 @@ class CustomDropoutNet:
             module.eval_mask = None
 
 
+class MinGramDropoutNet(CustomDropoutNet):
+    pass
+    
+
+
 # Simple Conv Block
 class ConvBlock(nn.Module):
     maml = False #Default
@@ -313,11 +318,14 @@ class ConvBlock(nn.Module):
             self.BN     = nn.BatchNorm2d(outdim)
         self.relu   = nn.ReLU(inplace=True)
         
-        if dropout_p == 0:
-            self.parametrized_layers = [self.C, self.BN, self.relu]
-        else: # dropout
+        self.parametrized_layers = [self.C, self.BN, self.relu]
+#         if dropout_p == 0:
+#             self.parametrized_layers = [self.C, self.BN, self.relu]
+#         else: # dropout
+        if dropout_p != 0:
             self.dropout = CustomDropout2D(n_features=outdim, p=dropout_p)
-            self.parametrized_layers = [self.C, self.BN, self.relu, self.dropout]
+            self.parametrized_layers.append(self.dropout)
+#             self.parametrized_layers = [self.C, self.BN, self.relu, self.dropout]
         
         if pool:
             self.pool   = nn.MaxPool2d(2)

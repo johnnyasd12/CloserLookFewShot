@@ -51,6 +51,30 @@ class ProtoNet(MetaTemplate):
     def total_loss(self, x):
         return self.set_forward_loss(x)
 
+class ProtoNetMinGram(ProtoNet):
+    def __init__(self, model_func,  n_way, n_support, min_gram, lambda_gram):
+        '''
+        Args:
+            min_gram: what to minimize? 'l2', 'l1' norm of Gram Matrix
+            lambda_gram: coefficient of Gram Matrix loss
+        '''
+        if min_gram not in ['l1', 'l2']:
+            raise ValueError('Invalid min_gram: %s'%(min_gram))
+        
+        super(ProtoNetMinGram, self).__init__( model_func,  n_way, n_support)
+        self.min_gram = min_gram
+        self.lambda_gram = lambda_gram
+        
+    
+    def total_loss(self, x):
+        loss = self.set_forward_loss(x) + self.lambda_gram*self.min_gram_loss(x)
+        
+    def min_gram_loss(self, x):
+        gram_matrix = self.feature.get_hidden_gram(x)
+        if self.min_gram == 'l2':
+            pass
+        elif self.min_gram == 'l1':
+            raise ValueError("haven't implement min_gram: l1")
 
 class ProtoNetAE(ProtoNet): # TODO: self.recons_func = recons_func()
     def __init__(self, model_func,  n_way, n_support, recons_func = None, lambda_d = 1):

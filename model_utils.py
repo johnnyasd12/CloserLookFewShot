@@ -113,14 +113,23 @@ def get_model(params, mode):
             model           = BaselineFinetune( backbone_func, loss_type = 'dist', **few_shot_params )
 
     if params.method == 'protonet':
-        if recons_decoder is None:
+        # default ProtoNet
+        if recons_decoder is None and params.min_gram is None:
+            model = ProtoNet( backbone_func, **few_shot_params )
 #             if params.dropout_p==0:
 #                 feature_model_func = model_dict[params.model] 
 #             else:
 #                 print('params.dropout_p =',params.dropout_p)
 #                 feature_model_func = lambda: model_dict[params.model](dropout_p=params.dropout_p)
-            model = ProtoNet( backbone_func, **few_shot_params )
-        elif 'Hidden' in params.recons_decoder:
+            
+        if params.min_gram is not None:
+            min_gram_params = {
+                'min_gram':params.min_gram, 
+                'lambda_gram':params.lambda_gram, 
+            }
+            model = ProtoNetMinGram(backbone_func, **few_shot_params, **min_gram_params)
+            
+        if 'Hidden' in params.recons_decoder:
             if params.recons_decoder == 'HiddenConv': # 'HiddenConv', 'HiddenConvS'
                 model = ProtoNetAE2(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2)
             elif params.recons_decoder == 'HiddenConvS': # 'HiddenConv', 'HiddenConvS'

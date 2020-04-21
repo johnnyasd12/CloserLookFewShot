@@ -69,7 +69,9 @@ def parse_args(script, parse_str=None):
     parser.add_argument('--dropout_p', default=0, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
     parser.add_argument('--dropout_block_id', default=3, type=int, help='the domain CustomDropout block id. Useless if dropout_p is 0.')
     parser.add_argument('--more_to_drop', default=None, type=str, choices=[None, 'double']) # None, 'double', 'by_rate'
-    parser.add_argument('--min_gram', default=None, choices=[None, 'l2', 'l1'], help='whether minimize the norm of Gram Matrix')
+    # minimize Gram Matrix
+    parser.add_argument('--min_gram', default=None, type=str, choices=[None, 'l2', 'l1'], help='whether minimize the norm of Gram Matrix')
+    parser.add_argument('--lambda_gram', default=None, type=int, help='the coefficient of Gram Matrix loss.')
     
     if script == 'expmgr':
         pass
@@ -161,11 +163,14 @@ def get_checkpoint_dir(params):
         checkpoint_dir += is_train_str
     # target_bn_stats??? NONONONO should not here, becuz will affect get model file
     
-    # custom dropout experiments
+    # custom dropout experiments & more_to_drop settings
     if params.dropout_p != 0:
-        checkpoint_dir += '_dropout%s_block%s' % (params.dropout_p, params.dropout_block_id)
+        checkpoint_dir += '_dropout%s' % (params.dropout_p)
+        checkpoint_dir += '_block%s' % (params.dropout_block_id)
         if params.more_to_drop == 'double':
             checkpoint_dir += 'double-dim'
+        if params.min_gram != None:
+            checkpoint_dir += '_min-gram-%s' % (params.min_gram) # min-gram-l2, min-gram-l1
     else: # dropout_p == 0
         if params.more_to_drop == 'double':
             checkpoint_dir += '_block%sdouble-dim'%(params.dropout_block_id)
