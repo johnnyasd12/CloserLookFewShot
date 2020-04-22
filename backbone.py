@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from torch.nn.utils.weight_norm import WeightNorm
 
 from my_utils import *
+import logging
 
 # to reconstruct image back
 torch.autograd.set_detect_anomaly(True)
@@ -312,29 +313,55 @@ class CustomDropoutBlock:
             outputs = self.dropout(inputs)
         return outputs
 
+def feat2gram(feat):
+    print('feat2gram/feat:', feat.size())
+    yaaaaaaaaaaaaaaaaaaaaa
 
-class MinGramDropoutNet(CustomDropoutNet):
+class MinGramDropoutNet:
     '''
     should implement:
         self.gram_blocks (list|None)
+        self.trunk_to_gram_block (nn.Sequential): the trunk that outputs feature map
     '''
-    pass
+    def min_gram_init(self, gram_bid):
+        self.gram_bid = gram_bid
+    
+    def get_feature_map(self, x, dropout=True):
+        N, K, C, H, W = x.size() # N-way, K-shot
+        x = x.view(N*K, C, H, W)
+        if self.indim == 1:
+            x = x[:,0:1,:,:]
+        if dropout:
+            return self.trunk_to_gram_block.forward(x)
+        else:
+            # TODO: remove dropout from block
+            raise ValueError("Haven't implement get_feature_map() for dropout=False.")
+    
+    def get_hidden_gram(self, x):
+        print('self.gram_bid:', self.gram_bid)
+        if self.gram_bid is None:
+            return None
+        else:
+            feat = self.get_feature_map(x, dropout=True)
+            gram = feat2gram(feat)
+            return gram
 
 
 class GramBlock:
     '''
     Attributes:
         self.should_out_gram (bool)
+        
     '''
     def after_standard_init(self, should_out_gram):
         self.should_out_gram = should_out_gram
     
-    
-        
-    
-    def after_standard_forward(self, x):
-        if self.should_out_gram:
-            pass
+#     def additional_forward(self, inputs):
+#         if self.should_out_gram:
+#             pass
+#         else:
+#             outputs = inputs
+#         return outputs
 
 # Simple Conv Block
 class ConvBlock(nn.Module):
@@ -538,10 +565,10 @@ class BottleneckBlock(nn.Module): # utilized by ResNet50, ResNet101
 
 
 class ConvNet(nn.Module, CustomDropoutNet):
-    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid = 'dropout'): # CUB/miniImgnet Conv input = 84*84*3
+    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None): # CUB/miniImgnet Conv input = 84*84*3
         '''
         Args:
-            gram_bid (str|int): which block (index) should output Gram Matrix, follows dropout_bid if 'dropout'
+            
         '''
         super(ConvNet,self).__init__()
         trunk = []
@@ -558,18 +585,28 @@ class ConvNet(nn.Module, CustomDropoutNet):
             indim = 3 if i == 0 else outdim
             outdim = 64
             
+            # CustomDropout
             dropout_cond = i==dropout_block_id # whether this layer should dropout
             block_dropout_p = dropout_p if dropout_cond else 0.
             # more_to_drop
             if more_to_drop=='double' and dropout_cond:
                 outdim = outdim*2
-            # for Gram Matrix
-            gram_bid = dropout_block_id if gram_bid == 'dropout' else gram_bid
-            gram_cond = i==gram_bid # whether this block should output Gram Matrix
+#             # for Gram Matrix
+#             if gram_bid is None:
+#                 gram_cond = False
+#             else:
+#                 gram_bid = dropout_block_id if gram_bid == 'dropout' else gram_bid
+#                 gram_cond = i==gram_bid # whether this block should output Gram Matrix
+            
             #only pooling for first 4 layers
             B = ConvBlock(indim, outdim, pool = ( i <4 ), 
                           dropout_p=block_dropout_p, should_out_gram=gram_cond)
             trunk.append(B)
+            
+#             # for Gram Matrix
+#             if gram_cond: # currently assume only 1 block should output Gram matrix
+#                 gram_trunk = trunk.copy()
+#                 self.trunk_to_gram_block = nn.Sequential(*gram_trunk)
 
         if flatten:
             trunk.append(Flatten())
@@ -606,12 +643,13 @@ class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in
         return out
 
 
-class ConvNetS(nn.Module, CustomDropoutNet): #For omniglot, only 1 input channel, output dim is 64
-    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None):
+class ConvNetS(nn.Module, CustomDropoutNet, MinGramDropoutNet): #For omniglot, only 1 input channel, output dim is 64
+    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid = None):
         '''
         Args:
             dropout_block_id: could be {0|1|2|3}
             more_to_drop: could be {None|'double'}
+            gram_bid (str|int): which block (index) should output Gram Matrix, follows dropout_bid if 'dropout'
         '''
         super(ConvNetS,self).__init__()
         trunk = []
@@ -633,11 +671,22 @@ class ConvNetS(nn.Module, CustomDropoutNet): #For omniglot, only 1 input channel
             # more_to_drop
             if more_to_drop=='double' and dropout_cond:
                 outdim = outdim*2
+            # for Gram Matrix
+            if gram_bid is None:
+                gram_cond = False
+            else:
+                gram_bid = dropout_block_id if gram_bid == 'dropout' else gram_bid
+                gram_cond = i==gram_bid # whether this block should output Gram Matrix
             #only pooling for first 4 layers
             B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) 
             trunk.append(B)
-#             # BUGFIX for more_to_drop
-#             indim = outdim
+            
+            # for Gram Matrix
+            if gram_cond: # currently assume only 1 block should output Gram matrix
+                gram_trunk = trunk.copy()
+                self.trunk_to_gram_block = nn.Sequential(*gram_trunk)
+                # TODO: remove the dropout from last block so Gram matrix is not computed after dropout
+
 
         if flatten:
             trunk.append(Flatten())
@@ -649,13 +698,9 @@ class ConvNetS(nn.Module, CustomDropoutNet): #For omniglot, only 1 input channel
         
         # for CustomDropout
         self.record_active_dropout()
-        # CustomDropout
-# #         self.dropout_p = dropout_p
-#         self.active_dropout_ls = []
-#         for module in self.modules():
-#             if isinstance(module, CustomDropout):
-#                 if module.p != 0: # becuz not all of CustomDropout module are active
-#                     self.active_dropout_ls.append(module)
+        # Gram matrix
+        self.indim = 1 # BUGFIX for get_feature_map
+        self.min_gram_init(gram_bid)
 
     def forward(self,x):
         out = x[:,0:1,:,:] #only use the first dimension (OOOOOMMMMMGGGG finally i see this NOW
@@ -980,8 +1025,11 @@ def Conv6NP():
 # def Conv4SDrop(dropout_p=0.):
 #     return ConvNetS(4,dropout_p=dropout_p)
 
-def Conv4S(dropout_p=0., dropout_block_id=3, more_to_drop=None):
-    return ConvNetS(4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, more_to_drop=more_to_drop)
+def Conv4S(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ConvNetS(
+        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+        more_to_drop=more_to_drop, 
+        gram_bid=gram_bid)
 
 def Conv4SNP():
     return ConvNetSNopool(4)

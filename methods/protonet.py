@@ -67,9 +67,12 @@ class ProtoNetMinGram(ProtoNet):
         
     
     def total_loss(self, x):
-        loss = self.set_forward_loss(x) + self.lambda_gram*self.min_gram_loss(x)
+        standard_loss = self.set_forward_loss(x)
+        min_gram_loss = self.min_gram_loss(x)
+        loss = standard_loss + self.lambda_gram*min_gram_loss
         
     def min_gram_loss(self, x):
+        x = x.cuda()
         gram_matrix = self.feature.get_hidden_gram(x)
         if self.min_gram == 'l2':
             pass
