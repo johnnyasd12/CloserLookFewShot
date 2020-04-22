@@ -52,7 +52,7 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
         if need_train_acc:
             train_acc, train_loss = model.train_loop(epoch, base_loader,  optimizer, compute_acc=need_train_acc)
         else:
-            train_loss = model.train_loop(epoch, base_loader,  optimizer, compute_acc=need_train_acc)
+            train_loss = model.train_loop(epoch, base_loader, optimizer, compute_acc=need_train_acc)
         model.eval()
 
         set_random_seed(42) # validation episodes should be the same for each loop

@@ -299,9 +299,24 @@ class CustomDropoutNet:
 
 
 class MinGramDropoutNet(CustomDropoutNet):
+    '''
+    should implement:
+        self.gram_blocks (list|None)
+    '''
     pass
-    
 
+
+class GramBlock:
+    '''
+    Attributes:
+        self.should_out_gram (bool)
+    '''
+    def __init__(self, should_out_gram, **kwargs):
+        self.should_out_gram = should_out_gram
+    
+    def forward(self, x):
+        if self.should_out_gram:
+            pass
 
 # Simple Conv Block
 class ConvBlock(nn.Module):
@@ -505,7 +520,11 @@ class BottleneckBlock(nn.Module): # utilized by ResNet50, ResNet101
 
 
 class ConvNet(nn.Module, CustomDropoutNet):
-    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None): # CUB/miniImgnet Conv input = 84*84*3
+    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid = 'dropout'): # CUB/miniImgnet Conv input = 84*84*3
+        '''
+        Args:
+            gram_bid (str|int): which block (index) should output Gram Matrix, follows dropout_bid if 'dropout'
+        '''
         super(ConvNet,self).__init__()
         trunk = []
         for i in range(depth): 
@@ -515,7 +534,8 @@ class ConvNet(nn.Module, CustomDropoutNet):
             -> [64*21*21 -> 64*10*10]
             -> [64*10*10 -> 64*5*5]
             '''
-#             indim = 3 if i == 0 else 64 # if the 1st block then input is image, otherwise 64 from pre-block
+            # if the 1st block then input is image, otherwise 64 from pre-block
+#             indim = 3 if i == 0 else 64 
             # BUGFIX for more_to_drop
             indim = 3 if i == 0 else outdim
             outdim = 64
@@ -525,8 +545,12 @@ class ConvNet(nn.Module, CustomDropoutNet):
             # more_to_drop
             if more_to_drop=='double' and dropout_cond:
                 outdim = outdim*2
+            # for Gram Matrix
+            gram_bid = dropout_block_id if gram_bid == 'dropout' else gram_bid
+            gram_cond = i==gram_bid # whether this block should output Gram Matrix
             #only pooling for first 4 layers
-            B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) 
+            B = ConvBlock(indim, outdim, pool = ( i <4 ), 
+                          dropout_p=block_dropout_p, should_out_gram=gram_cond)
             trunk.append(B)
 
         if flatten:
@@ -540,30 +564,10 @@ class ConvNet(nn.Module, CustomDropoutNet):
         
         # for CustomDropout
         self.record_active_dropout()
-        # CustomDropout
-# #         self.dropout_p = dropout_p
-#         self.active_dropout_ls = []
-#         for module in self.modules():
-#             if isinstance(module, CustomDropout):
-#                 if module.p != 0: # becuz not all of CustomDropout module are active
-#                     self.active_dropout_ls.append(module)
 
     def forward(self,x):
         out = self.trunk(x)
         return out
-    
-#     def sample_random_subnet(self):
-#         # traverse all over the nn.Modules to get CustomDropout
-#         has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
-#         assert has_custom_dropout, "there should be CustomDropout module to sample random subnet"
-#         assert not self.training, "should be in eval() mode when calling function"
-#         for module in self.active_dropout_ls:
-#             module.set_random_eval_mask()
-        
-    
-#     def reset_dropout(self):
-#         for module in self.active_dropout_ls:
-#             module.eval_mask = None
 
 
 class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in only first two layers, else no pooling
