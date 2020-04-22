@@ -121,23 +121,23 @@ def get_model(params, mode):
 #             else:
 #                 print('params.dropout_p =',params.dropout_p)
 #                 feature_model_func = lambda: model_dict[params.model](dropout_p=params.dropout_p)
-            
-        if params.min_gram is not None:
-            min_gram_params = {
-                'min_gram':params.min_gram, 
-                'lambda_gram':params.lambda_gram, 
-            }
-            model = ProtoNetMinGram(backbone_func, **few_shot_params, **min_gram_params)
-            
-        if 'Hidden' in params.recons_decoder:
-            if params.recons_decoder == 'HiddenConv': # 'HiddenConv', 'HiddenConvS'
-                model = ProtoNetAE2(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2)
-            elif params.recons_decoder == 'HiddenConvS': # 'HiddenConv', 'HiddenConvS'
-                model = ProtoNetAE2(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2, is_color=False)
-            elif params.recons_decoder == 'HiddenRes10':
-                model = ProtoNetAE2(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 6)
-        else:
-            model = ProtoNetAE(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda)
+        else: # other settings
+            if params.min_gram is not None:
+                min_gram_params = {
+                    'min_gram':params.min_gram, 
+                    'lambda_gram':params.lambda_gram, 
+                }
+                model = ProtoNetMinGram(backbone_func, **few_shot_params, **min_gram_params)
+
+            if 'Hidden' in params.recons_decoder:
+                if params.recons_decoder == 'HiddenConv': # 'HiddenConv', 'HiddenConvS'
+                    model = ProtoNetAE2(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2)
+                elif params.recons_decoder == 'HiddenConvS': # 'HiddenConv', 'HiddenConvS'
+                    model = ProtoNetAE2(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 2, is_color=False)
+                elif params.recons_decoder == 'HiddenRes10':
+                    model = ProtoNetAE2(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 6)
+            else:
+                model = ProtoNetAE(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda)
     elif params.method == 'matchingnet':
         model           = MatchingNet( backbone_func, **few_shot_params )
     elif params.method in ['relationnet', 'relationnet_softmax']:
