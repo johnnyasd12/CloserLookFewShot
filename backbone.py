@@ -298,6 +298,21 @@ class CustomDropoutNet:
             module.eval_mask = None
 
 
+class CustomDropoutBlock:
+    def after_standard_init(self, n_features, dropout_p):
+        if dropout_p == 0:
+            self.dropout = None
+        else:
+            self.dropout = CustomDropout2D(n_features=n_features, p=dropout_p)
+    
+    def after_standard_forward(self, inputs):
+        if self.dropout is None:
+            outputs = inputs
+        else:
+            outputs = self.dropout(inputs)
+        return outputs
+
+
 class MinGramDropoutNet(CustomDropoutNet):
     '''
     should implement:
@@ -311,10 +326,13 @@ class GramBlock:
     Attributes:
         self.should_out_gram (bool)
     '''
-    def __init__(self, should_out_gram, **kwargs):
+    def after_standard_init(self, should_out_gram):
         self.should_out_gram = should_out_gram
     
-    def forward(self, x):
+    
+        
+    
+    def after_standard_forward(self, x):
         if self.should_out_gram:
             pass
 
@@ -334,26 +352,26 @@ class ConvBlock(nn.Module):
         self.relu   = nn.ReLU(inplace=True)
         
         self.parametrized_layers = [self.C, self.BN, self.relu]
-#         if dropout_p == 0:
-#             self.parametrized_layers = [self.C, self.BN, self.relu]
-#         else: # dropout
-        if dropout_p != 0:
-            self.dropout = CustomDropout2D(n_features=outdim, p=dropout_p)
-            self.parametrized_layers.append(self.dropout)
-#             self.parametrized_layers = [self.C, self.BN, self.relu, self.dropout]
         
         if pool:
             self.pool   = nn.MaxPool2d(2)
             self.parametrized_layers.append(self.pool)
 
+#         if dropout_p != 0:
+#             self.dropout = CustomDropout2D(n_features=outdim, p=dropout_p)
+#             self.parametrized_layers.append(self.dropout)
+        
         for layer in self.parametrized_layers:
             init_layer(layer)
 
         self.trunk = nn.Sequential(*self.parametrized_layers)
+        
+        CustomDropoutBlock.after_standard_init(self, n_features=outdim, dropout_p=dropout_p)
 
 
     def forward(self,x):
         out = self.trunk(x)
+        out = CustomDropoutBlock.after_standard_forward(self, out)
         return out
 
 # Simple Block for Decoder of ResAE18
