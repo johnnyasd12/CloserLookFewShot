@@ -313,9 +313,19 @@ class CustomDropoutBlock:
             outputs = self.dropout(inputs)
         return outputs
 
-def feat2gram(feat):
-    print('feat2gram/feat:', feat.size())
-    yaaaaaaaaaaaaaaaaaaaaa
+def feat2gram(feat, normalize=True):
+    '''
+    feat shape: (N,C,H,W)
+    gram shape: (N,C,C)
+    '''
+    # input shape: (N,C,H,W)
+    N,C,H,W = feat.size()
+    feat = feat.view(N,C,H*W) # N,C,H*W
+    feat_t = feat.transpose(1,2) # N,H*W,C
+    feat_gram = torch.bmm(feat, feat_t) # batch-wise matmul -> N,C,C
+    if normalize:
+        feat_gram = feat_gram / (2*C*H*W) # would be squared in loss
+    return feat_gram
 
 class MinGramDropoutNet:
     '''

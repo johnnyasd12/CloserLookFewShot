@@ -73,11 +73,18 @@ class ProtoNetMinGram(ProtoNet):
         
     def min_gram_loss(self, x):
         x = x.cuda()
-        gram_matrix = self.feature.get_hidden_gram(x)
+        N,C = x.size()[0:1]
         if self.min_gram == 'l2':
-            pass
+            p = 2
         elif self.min_gram == 'l1':
-            raise ValueError("haven't implement min_gram: l1")
+            p = 1
+        gram_matrix = self.feature.get_hidden_gram(x) # shape = (N,C,C)
+        gram_reshape = gram_matrix.view(N,-1) # N,C*C
+        gram_norm = torch.norm(gram_reshape, p=p, dim=1) # N, 
+        gram_norm_square = gram_norm**2
+        loss = 1/N * torch.sum(gram_norm_square)
+        return loss
+        
 
 class ProtoNetAE(ProtoNet): # TODO: self.recons_func = recons_func()
     def __init__(self, model_func,  n_way, n_support, recons_func = None, lambda_d = 1):
