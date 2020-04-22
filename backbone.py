@@ -348,7 +348,7 @@ class MinGramDropoutNet:
             raise ValueError("Haven't implement get_feature_map() for dropout=False.")
     
     def get_hidden_gram(self, x):
-        print('self.gram_bid:', self.gram_bid)
+#         print('self.gram_bid:', self.gram_bid)
         if self.gram_bid is None:
             return None
         else:
