@@ -327,6 +327,7 @@ def feat2gram(feat, normalize=True):
         feat_gram = feat_gram / (2*C*H*W) # would be squared in loss
     return feat_gram
 
+
 class MinGramDropoutNet:
     '''
     should implement:
@@ -335,37 +336,38 @@ class MinGramDropoutNet:
     def min_gram_init(self, gram_bid):
         self.gram_bid = gram_bid
     
-    def get_feature_map_b4_gram(self, x, dropout=True):
+    def get_feature_map_for_gram(self, x, dropout=True):
+        # TODO: dropout argument can be removed becuz already handled in self.trunk_to_gram_block
         N, K, C, H, W = x.size() # N-way, K-shot
         x = x.view(N*K, C, H, W)
         if self.indim == 1:
             x = x[:,0:1,:,:]
-        if dropout:
-            return self.trunk_to_gram_block.forward(x)
-        else:
-            # TODO: remove dropout from block
-            raise ValueError("Haven't implement get_feature_map_b4_gram() for dropout=False.")
+#         if dropout:
+        return self.trunk_to_gram_block.forward(x)
+#         else:
+#             # TODO: remove dropout from block
+#             raise ValueError("Haven't implement get_feature_map_for_gram() for dropout=False.")
     
     def get_hidden_gram(self, x):
 #         print('self.gram_bid:', self.gram_bid)
         if self.gram_bid is None:
             raise ValueError('should not get_hidden_gram since self.gram_bid is None.')
         elif self.gram_bid == 'after_dropout':
-            feat = self.get_feature_map_b4_gram(x, dropout=True)
+            feat = self.get_feature_map_for_gram(x, dropout=True)
         elif self.gram_bid == 'before_dropout':
-            feat = self.get_feature_map_b4_gram(x, dropout=False)
+            feat = self.get_feature_map_for_gram(x, dropout=False)
         gram = feat2gram(feat)
         return gram
 
 
-class GramBlock:
-    '''
-    Attributes:
-        self.should_out_gram (bool)
+# class GramBlock:
+#     '''
+#     Attributes:
+#         self.should_out_gram (bool)
         
-    '''
-    def after_standard_init(self, should_out_gram):
-        self.should_out_gram = should_out_gram
+#     '''
+#     def after_standard_init(self, should_out_gram):
+#         self.should_out_gram = should_out_gram
     
 #     def additional_forward(self, inputs):
 #         if self.should_out_gram:
@@ -577,10 +579,6 @@ class BottleneckBlock(nn.Module): # utilized by ResNet50, ResNet101
 
 class ConvNet(nn.Module, CustomDropoutNet):
     def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None): # CUB/miniImgnet Conv input = 84*84*3
-        '''
-        Args:
-            
-        '''
         super(ConvNet,self).__init__()
         trunk = []
         for i in range(depth): 
@@ -602,22 +600,11 @@ class ConvNet(nn.Module, CustomDropoutNet):
             # more_to_drop
             if more_to_drop=='double' and dropout_cond:
                 outdim = outdim*2
-#             # for Gram Matrix
-#             if gram_bid is None:
-#                 gram_cond = False
-#             else:
-#                 gram_bid = dropout_block_id if gram_bid == 'dropout' else gram_bid
-#                 gram_cond = i==gram_bid # whether this block should output Gram Matrix
             
             #only pooling for first 4 layers
             B = ConvBlock(indim, outdim, pool = ( i <4 ), 
-                          dropout_p=block_dropout_p, should_out_gram=gram_cond)
+                          dropout_p=block_dropout_p)
             trunk.append(B)
-            
-#             # for Gram Matrix
-#             if gram_cond: # currently assume only 1 block should output Gram matrix
-#                 gram_trunk = trunk.copy()
-#                 self.trunk_to_gram_block = nn.Sequential(*gram_trunk)
 
         if flatten:
             trunk.append(Flatten())
@@ -695,9 +682,10 @@ class ConvNetS(nn.Module, CustomDropoutNet, MinGramDropoutNet): #For omniglot, o
             # for Gram Matrix
             if gram_cond: # currently assume only 1 block should output Gram matrix
                 gram_trunk = trunk.copy()
+                target_block = gram_trunk.pop() # remove & get last one
+                target_block_new = target_block.trunk
+                gram_trunk.append(target_block_new)
                 self.trunk_to_gram_block = nn.Sequential(*gram_trunk)
-                # TODO: remove the dropout from last block so Gram matrix is not computed after dropout
-
 
         if flatten:
             trunk.append(Flatten())
@@ -710,27 +698,13 @@ class ConvNetS(nn.Module, CustomDropoutNet, MinGramDropoutNet): #For omniglot, o
         # for CustomDropout
         self.record_active_dropout()
         # Gram matrix
-        self.indim = 1 # BUGFIX for get_feature_map_b4_gram
+        self.indim = 1 # BUGFIX for get_feature_map_for_gram
         self.min_gram_init(gram_bid)
 
     def forward(self,x):
         out = x[:,0:1,:,:] #only use the first dimension (OOOOOMMMMMGGGG finally i see this NOW
         out = self.trunk(out)
         return out
-    
-#     def sample_random_subnet(self):
-#         # traverse all over the nn.Modules to get CustomDropout
-#         has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
-#         assert has_custom_dropout, "there should be CustomDropout module to sample random subnet"
-#         assert not self.training, "should be in eval() mode when calling function"
-#         for module in self.active_dropout_ls:
-#             module.set_random_eval_mask()
-        
-    
-#     def reset_dropout(self):
-#         for module in self.active_dropout_ls:
-#             module.eval_mask = None
-        
 
 
 class DeConvNetS(nn.Module): # for AE, input: flattened 64*1*1
