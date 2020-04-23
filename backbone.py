@@ -376,6 +376,7 @@ class MinGramDropoutNet:
 #             outputs = inputs
 #         return outputs
 
+
 # Simple Conv Block
 class ConvBlock(nn.Module):
     maml = False #Default
@@ -406,6 +407,7 @@ class ConvBlock(nn.Module):
 
         self.trunk = nn.Sequential(*self.parametrized_layers)
         
+        # for CustomDropout
         CustomDropoutBlock.after_standard_init(self, n_features=outdim, dropout_p=dropout_p)
 
 
@@ -448,6 +450,14 @@ class DeSimpleBlock(nn.Module):
         out = self.relu2(out)
         return out
 
+class LambdaLayer(nn.Module):
+    # to do some hack in ResNet
+    def __init__(self, lambd):
+        super(LambdaLayer, self).__init__()
+        self.lambd = lambd
+    def forward(self, x):
+        return self.lambd(x)
+
 # Simple ResNet Block
 class SimpleBlock(nn.Module):
     maml = False #Default
@@ -469,6 +479,12 @@ class SimpleBlock(nn.Module):
         self.relu2 = nn.ReLU(inplace=True)
 
         self.parametrized_layers = [self.C1, self.C2, self.BN1, self.BN2]
+        # to do the trunk for min_gram, should be in true order
+        self.layers_wo_shortcut = [ # no shortcut, no activation
+            self.C1, self.BN1, self.relu1, 
+            self.C2, self.BN2
+        ]
+        self.trunk_wo_shortcut = nn.Sequential(*self.layers_wo_shortcut)
 
         self.half_res = half_res # half_res means output size would be half
 
@@ -487,31 +503,45 @@ class SimpleBlock(nn.Module):
         else:
             self.shortcut_type = 'identity'
 
-        self.dropout = None
-        if dropout_p != 0:
-            self.dropout = CustomDropout2D(n_features=outdim, p=dropout_p)
-            self.parametrized_layers.append(self.dropout)
+#         self.dropout = None
+#         if dropout_p != 0:
+#             self.dropout = CustomDropout2D(n_features=outdim, p=dropout_p)
+# #             self.parametrized_layers.append(self.dropout)
         
         for layer in self.parametrized_layers:
             init_layer(layer)
+        
+        # for CustomDropout
+        CustomDropoutBlock.after_standard_init(self, n_features=outdim, dropout_p=dropout_p)
+        # for minimizing Gram
+        self.trunk = LambdaLayer(self.trunk_forward) # hack to simulate original block (without dropout)
 
-    def forward(self, x):
-        out = self.C1(x)
-        out = self.BN1(out)
-        out = self.relu1(out)
-        out = self.C2(out)
-        out = self.BN2(out)
+    def trunk_forward(self, x): 
+        # a hack to simulate trunk behavior in ConvNetS
+        out = self.trunk_wo_shortcut(x)
         short_out = x if self.shortcut_type == 'identity' else self.BNshortcut(self.shortcut(x))
-        ################## DEBUG ##################
-#         try:
+        
         out = out + short_out
-#         except RuntimeError:
-#             print('out:', out.size())
-#             print('short_out:', short_out.size())
-        ################## DEBUG ##################
         out = self.relu2(out)
-        if self.dropout != None:
-            out = self.dropout(out)
+        return out
+        
+    def forward(self, x):
+#         out = self.C1(x)
+#         out = self.BN1(out)
+#         out = self.relu1(out)
+#         out = self.C2(out)
+#         out = self.BN2(out)
+
+#         out = self.trunk_wo_shortcut(x)
+#         short_out = x if self.shortcut_type == 'identity' else self.BNshortcut(self.shortcut(x))
+        
+#         out = out + short_out
+#         out = self.relu2(out)
+        out = self.trunk(x)
+        
+        out = CustomDropoutBlock.after_standard_forward(self, out)
+#         if self.dropout != None:
+#             out = self.dropout(out)
         return out
 
 
@@ -669,7 +699,7 @@ class ConvNetS(nn.Module, CustomDropoutNet, MinGramDropoutNet): #For omniglot, o
             # more_to_drop
             if more_to_drop=='double' and dropout_cond:
                 outdim = outdim*2
-            # for Gram Matrix
+            # for Gram Matrix block
             if gram_bid is None:
                 gram_cond = False
             else:
@@ -679,12 +709,12 @@ class ConvNetS(nn.Module, CustomDropoutNet, MinGramDropoutNet): #For omniglot, o
             B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) 
             trunk.append(B)
             
-            # for Gram Matrix
+            # for Gram Matrix block
             if gram_cond: # currently assume only 1 block should output Gram matrix
                 gram_trunk = trunk.copy()
                 target_block = gram_trunk.pop() # remove & get last one
-                target_block_new = target_block.trunk
-                gram_trunk.append(target_block_new)
+                target_block_b4_dropout = target_block.trunk
+                gram_trunk.append(target_block_b4_dropout)
                 self.trunk_to_gram_block = nn.Sequential(*gram_trunk)
 
         if flatten:
@@ -836,7 +866,10 @@ class DeResNet(nn.Module):
 class ResNet(nn.Module, CustomDropoutNet):
     maml = False #Default
     def __init__(self,block,list_of_num_blocks, list_of_out_dims, flatten = True, 
-                dropout_p=0, dropout_block_id=3, more_to_drop=None): # not flatten only RelationNet?
+                dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_sid=None): # not flatten only RelationNet?
+        '''
+        gram_sid is actually "gram_stage_id" in ResNet
+        '''
         # list_of_num_blocks specifies number of blocks in each stage
         # list_of_out_dims specifies number of output channel for each stage
         super(ResNet,self).__init__() # input 224*224
@@ -887,16 +920,32 @@ class ResNet(nn.Module, CustomDropoutNet):
                 block 3-1: half_res=False, 512*7*7
                 '''
                 half_res = (i>=1) and (j==0) # only stage 2 and 3's first block?
-                
+                # for CustomDropout
                 dropout_cond = i==dropout_block_id # whether this layer should dropout
                 block_dropout_p = dropout_p if dropout_cond else 0.
                 # more_to_drop
                 if more_to_drop=='double' and dropout_cond:
                     list_of_out_dims[i] = list_of_out_dims[i]*2 +1 # BUGFIX: +1 to avoid indim==outdim then affect 'half_res' 
+                # for Gram Matrix
+                if gram_sid is None:
+                    gram_cond = False
+                else:
+                    gm_sid = dropout_block_id if 'dropout' in gram_sid else gram_sid
+                    gram_cond = i==gm_sid # whether this block should output Gram Matrix
+                
                 B = block(indim, list_of_out_dims[i], half_res, dropout_p=block_dropout_p)
 #                 B = block(indim, list_of_out_dims[i], half_res)
                 trunk.append(B)
                 indim = list_of_out_dims[i]
+                
+                # for Gram Matrix block
+                is_last_block_of_stage = j==list_of_num_blocks[i]
+                if gram_cond and is_last_block_of_stage: 
+                    gram_trunk = trunk.copy()
+                    target_block = gram_trunk.pop() # remove & get last one
+                    target_block_b4_dropout = target_block.trunk
+                    gram_trunk.append(target_block_b4_dropout)
+                    self.trunk_to_gram_block = nn.Sequential(*gram_trunk)
 
         if flatten:
             avgpool = nn.AvgPool2d(7) # 512*1*1
@@ -914,18 +963,6 @@ class ResNet(nn.Module, CustomDropoutNet):
     def forward(self,x):
         out = self.trunk(x)
         return out
-    
-#     def sample_random_subnet(self):
-#         # traverse all over the nn.Modules to get CustomDropout
-#         has_custom_dropout = False if len(self.active_dropout_ls)==0 else True
-#         assert has_custom_dropout, "there should be CustomDropout module to sample random subnet"
-#         assert not self.training, "should be in eval() mode when calling function"
-#         for module in self.active_dropout_ls:
-#             module.set_random_eval_mask()
-    
-#     def reset_dropout(self):
-#         for module in self.active_dropout_ls:
-#             module.eval_mask = None
 
 
 class DeConvNet(nn.Module): # for AE, input: flattened 64*5*5
