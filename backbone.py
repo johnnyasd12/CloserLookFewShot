@@ -863,7 +863,7 @@ class DeResNet(nn.Module):
 #         print('out2.min = %s, out2.max = %s' % (out[:,2,:,:].min(),out[:,2,:,:].max()))
         return out
 
-class ResNet(nn.Module, CustomDropoutNet):
+class ResNet(nn.Module, CustomDropoutNet, MinGramDropoutNet):
     maml = False #Default
     def __init__(self,block,list_of_num_blocks, list_of_out_dims, flatten = True, 
                 dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_sid=None): # not flatten only RelationNet?
@@ -939,7 +939,7 @@ class ResNet(nn.Module, CustomDropoutNet):
                 indim = list_of_out_dims[i]
                 
                 # for Gram Matrix block
-                is_last_block_of_stage = j==list_of_num_blocks[i]
+                is_last_block_of_stage = j==list_of_num_blocks[i]-1
                 if gram_cond and is_last_block_of_stage: 
                     gram_trunk = trunk.copy()
                     target_block = gram_trunk.pop() # remove & get last one
@@ -959,6 +959,9 @@ class ResNet(nn.Module, CustomDropoutNet):
         
         # for CustomDropout
         self.record_active_dropout()
+        # Gram matrix
+        self.indim = 3 # BUGFIX for get_feature_map_for_gram
+        self.min_gram_init(gram_sid)
 
     def forward(self,x):
         out = self.trunk(x)
