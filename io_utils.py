@@ -72,7 +72,7 @@ def parse_args(script, parse_str=None):
     # minimize Gram Matrix
     parser.add_argument('--min_gram', default=None, type=str, choices=[None, 'l2', 'l1'], help='whether minimize the norm of Gram Matrix')
     parser.add_argument('--gram_bid', default=None, type=str, choices=[None, 'before_dropout', 'after_dropout', 0,1,2,3], help='which block to compute feature map Gram matrix. "dropout" to follow dropout_bid.')
-    parser.add_argument('--lambda_gram', default=None, type=int, help='the coefficient of Gram Matrix loss.')
+    parser.add_argument('--lambda_gram', default=None, type=float, help='the coefficient of Gram Matrix loss.')
     
     if script == 'expmgr':
         pass
