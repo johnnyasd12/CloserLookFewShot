@@ -82,7 +82,7 @@ class ProtoNetMinGram(ProtoNet):
         gram_matrix = self.feature.get_hidden_gram(x) # shape = (N,C,C)
         gram_reshape = gram_matrix.view(N,-1) # N,C*C
         gram_norm = torch.norm(gram_reshape, p=p, dim=1) # N, 
-        gram_norm_square = gram_norm**2
+        gram_norm_square = gram_norm**p
         loss = 1/N * torch.sum(gram_norm_square)
         return loss
         
