@@ -171,7 +171,7 @@ def get_checkpoint_dir(params):
         if params.more_to_drop == 'double':
             checkpoint_dir += 'double-dim'
         if params.min_gram != None:
-            checkpoint_dir += '_min-gram-%s' % (params.min_gram) # min-gram-l2, min-gram-l1
+            checkpoint_dir += '_min-gram-%s-lambda%s' % (params.min_gram, params.lambda_gram) # min-gram-l2, min-gram-l1
     else: # dropout_p == 0
         if params.more_to_drop == 'double':
             checkpoint_dir += '_block%sdouble-dim'%(params.dropout_block_id)
