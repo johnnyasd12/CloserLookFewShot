@@ -79,6 +79,11 @@ def get_matched_df(params, df, possible_params={}):
 #                 # there is nan in df[k], and v is str
 #                 yeee
             ###################### DEBUG ######################
+            
+            ###################### DEBUG ######################
+#             print('get_matched_df/k,v:', k, v)
+#             print('get_matched_df/cond:', cond)
+            ###################### DEBUG ######################
             base_cond = base_cond&cond if base_cond is not None else cond
         else:
             logging.warning('param_utils/get_matched_df/"%s" not in df.columns'%(k))
