@@ -38,7 +38,7 @@ class ExpPlotter:
         '''
         Args:
             choose_by (str) : val_acc_mean, novel_acc_mean
-            top_k (int)     : 
+            top_k (int)     : int or None
         '''
         sorted_df = self.df_drop.sort_values(by=choose_by, ascending=False)
 #         compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
@@ -47,7 +47,10 @@ class ExpPlotter:
         print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
         print()
         print('='*20,'Top %s results sorted by: %s of all %s experiments'%(top_k, choose_by, len(sorted_df)), '='*20)
-        print(sorted_df.head(top_k))
+        if top_k is None:
+            print(sorted_df)
+        else:
+            print(sorted_df.head(top_k))
     
     def plot_exps(self, independent_var, dependent_var, specific=True):
         
