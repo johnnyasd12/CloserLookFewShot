@@ -171,7 +171,11 @@ def get_checkpoint_dir(params):
         if params.more_to_drop == 'double':
             checkpoint_dir += 'double-dim'
         if params.min_gram != None:
-            checkpoint_dir += '_min-gram-%s-lambda%s' % (params.min_gram, params.lambda_gram) # min-gram-l2, min-gram-l1
+#             checkpoint_dir += '_min-gram-%s-lambda%s' % (params.min_gram, params.lambda_gram) # min-gram-l2, min-gram-l1
+            gram_bid = params.gram_bid
+            if isinstance(gram_id, str):
+                gram_bid = gram_bid.replace('_', '-') # before_dropout -> before-dropout
+            checkpoint_dir += '_min-gram-%s-lambda%s%s' % (params.min_gram, params.lambda_gram, gram_bid) # min-gram-l2, min-gram-l1
     else: # dropout_p == 0
         if params.more_to_drop == 'double':
             checkpoint_dir += '_block%sdouble-dim'%(params.dropout_block_id)
