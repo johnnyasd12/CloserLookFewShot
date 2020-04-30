@@ -173,7 +173,7 @@ def get_checkpoint_dir(params):
         if params.min_gram != None:
 #             checkpoint_dir += '_min-gram-%s-lambda%s' % (params.min_gram, params.lambda_gram) # min-gram-l2, min-gram-l1
             gram_bid = params.gram_bid
-            if isinstance(gram_id, str):
+            if isinstance(gram_bid, str):
                 gram_bid = gram_bid.replace('_', '-') # before_dropout -> before-dropout
             checkpoint_dir += '_min-gram-%s-lambda%s%s' % (params.min_gram, params.lambda_gram, gram_bid) # min-gram-l2, min-gram-l1
     else: # dropout_p == 0
