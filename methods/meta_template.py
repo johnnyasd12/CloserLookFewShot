@@ -115,7 +115,9 @@ class MetaTemplate(nn.Module):
         print_freq = 10
 
         sum_loss=0
-        acc_all = []
+        # for compute_acc
+        if compute_acc:
+            acc_all = []
         
         tt = tqdm(train_loader)
         for i, (x,_ ) in enumerate(tt):
@@ -144,7 +146,7 @@ class MetaTemplate(nn.Module):
                 if compute_acc:
                     avg_acc = np.asarray(acc_all)
                     avg_acc = np.mean(avg_acc)
-                    description_str += ' , avg Acc = %.2f'%(avg_acc)
+                    description_str += ' , avg Acc = %.2f%%'%(avg_acc)
                 tt.set_description(description_str)
         
         avg_loss = sum_loss/float(i+1)

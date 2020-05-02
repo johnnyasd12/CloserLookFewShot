@@ -35,6 +35,7 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     best_epoch = 0
     
     need_train_acc = True
+#     need_train_acc = False
     
     if params.patience is not None:
         stop_delta = 0.
@@ -90,11 +91,13 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     result['best_epoch'] = best_epoch
     
     result['train_loss_his'] = record['train_loss'].copy()
-    result['train_acc_his'] = record['train_acc'].copy()
+    if need_train_acc:
+        result['train_acc_his'] = record['train_acc'].copy()
     result['val_acc_his'] = record['val_acc'].copy()
     
     result['train_loss'] = record['train_loss'][best_epoch]# avg train_acc of best epoch
-    result['train_acc'] = record['train_acc'][best_epoch] # avg train_acc of best epoch
+    if need_train_acc:
+        result['train_acc'] = record['train_acc'][best_epoch] # avg train_acc of best epoch
     result['val_acc'] = max_acc
     
     return model, result

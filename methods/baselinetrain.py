@@ -26,21 +26,42 @@ class BaselineTrain(nn.Module):
         self.DBval = False; #only set True for CUB dataset, see issue #31
 
     def forward(self,x):
-#         x    = Variable(x.cuda())
-        x    = Variable(to_device(x))
+        x    = Variable(x.cuda())
+#         x    = Variable(to_device(x))
         out  = self.feature.forward(x)
         scores  = self.classifier.forward(out)
         return scores
 
     def forward_loss(self, x, y):
         scores = self.forward(x)
-#         y = Variable(y.cuda())
-        y = Variable(to_device(y))
+        y = Variable(y.cuda())
+#         y = Variable(to_device(y))
         return self.loss_fn(scores, y )
     
-    def train_loop(self, epoch, train_loader, optimizer):
+    
+    def pred(self, x):
+        scores = self.forward(x) # (batch_size, num_classes)
+        preds = torch.argmax(scores, dim=1)
+        return preds
+    
+    def correct(self, x, y):
+        preds = self.pred(x)
+        y = y.cuda()
+        n_data = y.size(0)
+        n_correct = (preds==y).sum().cpu().numpy()
+#         print('preds:', preds)
+#         print('y:', y)
+#         print('n_correct:', n_correct)
+#         print('n_data:', n_data)
+        return n_correct, n_data
+        
+    
+    def train_loop(self, epoch, train_loader, optimizer, compute_acc=True):
         print_freq = 10
         avg_loss=0
+        # for compute_acc
+        if compute_acc:
+            acc_all = []
 
         tt = tqdm(train_loader)
         for i, (x,y) in enumerate(tt):
@@ -54,15 +75,30 @@ class BaselineTrain(nn.Module):
 #             else:
             cur_loss = loss.item()
             avg_loss = avg_loss+cur_loss
+            # compute acc
+            if compute_acc:
+                correct_this, count_this = self.correct(x, y)
+                acc = correct_this/count_this * 100
+                acc_all.append(acc)
 
 
             if i % print_freq==0:
                 #print(optimizer.state_dict()['param_groups'][0]['lr'])
 #                 print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader), avg_loss/float(i+1)  ))
-                tt.set_description('Epoch %d: avg Loss = %.2f'%(epoch, avg_loss/float(i+1)))
+                description_str = 'Epoch %d: avg Loss = %.2f'%(epoch, avg_loss/float(i+1))
+                if compute_acc:
+                    avg_acc = np.asarray(acc_all)
+                    avg_acc = np.mean(avg_acc)
+                    description_str += ' , avg Acc = %.2f%%'%(avg_acc)
+                tt.set_description(description_str)
         
         avg_loss = avg_loss/float(i+1)
-        return avg_loss
+        
+        if compute_acc:
+            avg_acc = np.mean(acc_all)
+            return avg_acc, avg_loss
+        else:
+            return avg_loss
                      
     def test_loop(self, val_loader):
         if self.DBval:

@@ -68,20 +68,12 @@ def get_model(params, mode):
         params: argparse params
         mode: (str), 'train', 'test'
     '''
-#     few_shot_params = {}
-#     few_shot_params['train']    = get_few_shot_params(params, 'train')
-#     few_shot_params['test']     = get_few_shot_params(params, 'test')
     few_shot_params_d = get_few_shot_params(params, None)
     few_shot_params = few_shot_params_d[mode]
-#     model_params_d = {
-#         'train':dict(dropout_p=params.dropout_p),
-#         'test':dict(dropout_p=params.dropout_p),
-#     }
-#     model_params = model_params_d[mode]
     
     if params.dataset in ['omniglot', 'cross_char']:
 #         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
-        assert 'Conv4' in params.model and not params.train_aug ,'omniglot only support Conv4 without augmentation'
+        assert 'Conv4' in params.model and not params.train_aug ,'omniglot/cross_char only support Conv4 without augmentation'
         params.model = params.model.replace('Conv4', 'Conv4S') # because Conv4Drop should also be Conv4SDrop
         if params.recons_decoder is not None:
             if 'ConvS' not in params.recons_decoder:
@@ -114,15 +106,20 @@ def get_model(params, mode):
         elif params.method == 'baseline++':
             model           = BaselineFinetune( backbone_func, loss_type = 'dist', **few_shot_params )
 
-    if params.method == 'protonet':
+    if params.method == 'baseline':
+        if mode == 'train':
+            model           = BaselineTrain( backbone_func, params.num_classes)
+        elif mode == 'test':
+            model           = BaselineFinetune( backbone_func, **few_shot_params )
+    elif params.method == 'baseline++':
+        if mode == 'train':
+            model           = BaselineTrain( backbone_func, params.num_classes, loss_type = 'dist')
+        elif mode == 'test':
+            model           = BaselineFinetune( backbone_func, loss_type = 'dist', **few_shot_params )
+    elif params.method == 'protonet':
         # default ProtoNet
         if recons_decoder is None and params.min_gram is None:
             model = ProtoNet( backbone_func, **few_shot_params )
-#             if params.dropout_p==0:
-#                 feature_model_func = model_dict[params.model] 
-#             else:
-#                 print('params.dropout_p =',params.dropout_p)
-#                 feature_model_func = lambda: model_dict[params.model](dropout_p=params.dropout_p)
         else: # other settings
             if params.min_gram is not None:
                 min_gram_params = {
