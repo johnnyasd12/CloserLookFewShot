@@ -66,4 +66,11 @@ class BaselineFinetune(MetaTemplate):
     def set_forward_loss(self,x):
         raise ValueError('Baseline predict on pretrained feature and do not support finetune backbone')
         
+    def forwardout2prob(self, forward_outputs):
+        '''
+        Args:
+            forward_outputs: shape=(n_way*n_query, n_way)
+        '''
+        probs = nn.Softmax(dim=1)(forward_outputs)
+        return probs
 
