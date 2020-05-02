@@ -138,7 +138,8 @@ class ExpManager:
                     print(params)
                     print(test_params)
                     print('data split:', split)
-                    record = exp_test(copy_args(split_final_test_args), iter_num=600, should_del_features=True)
+                    iter_num = 30 if split_final_test_args.debug else 600
+                    record = exp_test(copy_args(split_final_test_args), iter_num=iter_num, should_del_features=True)
                     write_record['epoch'] = record['epoch']
                     write_record[split+'_acc_mean'] = record['acc_mean']
                 
