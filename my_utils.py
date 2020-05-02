@@ -236,7 +236,9 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 forward_outputs  = model.set_forward_adaptation(z_all, is_feature = True)
             else:
                 forward_outputs  = model.set_forward(z_all, is_feature = True)
-        elif isinstance(model, BaselineTrain) or isinstance(model, BaselineFinetune):
+        elif isinstance(model, BaselineFinetune):
+            forward_outputs = model.set_forward(z_all, is_feature = True)
+        elif isinstance(model, BaselineTrain):# or isinstance(model, BaselineFinetune):
             raise ValueError('not support Baseline. ')
             forward_outputs = model.forward() # only support original data (not feature)
         else:
