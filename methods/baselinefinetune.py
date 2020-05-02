@@ -12,6 +12,8 @@ class BaselineFinetune(MetaTemplate):
     def __init__(self, model_func,  n_way, n_support, loss_type = "softmax"):
         super(BaselineFinetune, self).__init__( model_func,  n_way, n_support)
         self.loss_type = loss_type
+        # BUGFIX: BaselinFinetune has no attribute 'loss_fn'
+        self.loss_fn = nn.CrossEntropyLoss().cuda()
 
     def set_forward(self,x,is_feature = True):
         return self.set_forward_adaptation(x,is_feature); #Baseline always do adaptation
@@ -37,8 +39,10 @@ class BaselineFinetune(MetaTemplate):
 
         set_optimizer = torch.optim.SGD(linear_clf.parameters(), lr = 0.01, momentum=0.9, dampening=0.9, weight_decay=0.001)
 
-        loss_function = nn.CrossEntropyLoss()
-        loss_function = loss_function.cuda()
+        # BUGFIX: BaselinFinetune has no attribute 'loss_fn'
+        loss_function = self.loss_fn
+#         loss_function = nn.CrossEntropyLoss()
+#         loss_function = loss_function.cuda()
 #         loss_function = to_device(loss_function)
         
         batch_size = 4
