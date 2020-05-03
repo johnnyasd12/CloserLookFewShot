@@ -58,7 +58,7 @@ class ProtoNetMinGram(ProtoNet):
             min_gram: what to minimize? 'l2', 'l1' norm of Gram Matrix
             lambda_gram: coefficient of Gram Matrix loss
         '''
-        if min_gram not in ['l1', 'l2']:
+        if min_gram not in ['l1', 'l2', 'inf']:
             raise ValueError('Invalid min_gram: %s'%(min_gram))
         
         super(ProtoNetMinGram, self).__init__( model_func,  n_way, n_support)
@@ -75,14 +75,20 @@ class ProtoNetMinGram(ProtoNet):
     def min_gram_loss(self, x):
         x = x.cuda()
         N,C = x.size(0), x.size(1)
+#         print('self.min_gram:', self.min_gram)
         if self.min_gram == 'l2':
             p = 2
         elif self.min_gram == 'l1':
             p = 1
+        elif self.min_gram == 'inf':
+            p = float('inf')
         gram_matrix = self.feature.get_hidden_gram(x) # shape = (N,C,C)
         gram_reshape = gram_matrix.view(N,-1) # N,C*C
         gram_norm = torch.norm(gram_reshape, p=p, dim=1) # N, 
-        gram_norm_square = gram_norm**p
+        if p == float('inf'):
+            gram_norm_square = gram_norm
+        else:
+            gram_norm_square = gram_norm**p
         loss = 1/N * torch.sum(gram_norm_square)
         return loss
         
