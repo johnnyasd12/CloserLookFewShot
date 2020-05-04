@@ -1,5 +1,5 @@
 import backbone
-from methods.baselinetrain import BaselineTrain
+from methods.baselinetrain import BaselineTrain, BaselineTrainMinGram
 from methods.baselinefinetune import BaselineFinetune
 from methods.protonet import ProtoNet, ProtoNetAE, ProtoNetAE2, ProtoNetMinGram
 from methods.matchingnet import MatchingNet
@@ -95,27 +95,54 @@ def get_model(params, mode):
     backbone_func = get_backbone_func(params)
     
     # not sure
-    if mode == 'train':
-        if params.method == 'baseline':
-            model           = BaselineTrain( backbone_func, params.num_classes)
-        elif params.method == 'baseline++':
-            model           = BaselineTrain( backbone_func, params.num_classes, loss_type = 'dist')
-    elif mode == 'test':
-        if params.method == 'baseline':
-            model           = BaselineFinetune( backbone_func, **few_shot_params )
-        elif params.method == 'baseline++':
-            model           = BaselineFinetune( backbone_func, loss_type = 'dist', **few_shot_params )
+#     if mode == 'train':
+#         if params.method == 'baseline':
+#             model           = BaselineTrain( backbone_func, params.num_classes)
+#         elif params.method == 'baseline++':
+#             model           = BaselineTrain( backbone_func, params.num_classes, loss_type = 'dist')
+#     elif mode == 'test':
+#         if params.method == 'baseline':
+#             model           = BaselineFinetune( backbone_func, **few_shot_params )
+#         elif params.method == 'baseline++':
+#             model           = BaselineFinetune( backbone_func, loss_type = 'dist', **few_shot_params )
 
-    if params.method == 'baseline':
-        if mode == 'train':
-            model           = BaselineTrain( backbone_func, params.num_classes)
-        elif mode == 'test':
-            model           = BaselineFinetune( backbone_func, **few_shot_params )
-    elif params.method == 'baseline++':
-        if mode == 'train':
-            model           = BaselineTrain( backbone_func, params.num_classes, loss_type = 'dist')
-        elif mode == 'test':
-            model           = BaselineFinetune( backbone_func, loss_type = 'dist', **few_shot_params )
+#     if params.method == 'baseline':
+#         if mode == 'train':
+#             model           = BaselineTrain( backbone_func, params.num_classes, loss_type = 'softmax')
+#         elif mode == 'test':
+#             model           = BaselineFinetune( backbone_func, **few_shot_params, loss_type = 'softmax' )
+#     elif params.method == 'baseline++':
+#         if mode == 'train':
+#             model           = BaselineTrain( backbone_func, params.num_classes, loss_type = 'dist')
+#         elif mode == 'test':
+#             model           = BaselineFinetune( backbone_func, loss_type = 'dist', **few_shot_params )
+    if 'baseline' in params.method:
+        loss_types = {
+            'baseline':'softmax', 
+            'baseline++':'dist', 
+        }
+        loss_type = loss_types[params.method]
+        
+#         baseline_methods = {'train':BaselineTrain, 'test':BaselineFinetune}
+#         BaselineMethod = baseline_methods[mode]
+        if recons_decoder is None and params.min_gram is None: # default baseline/baseline++
+            if mode == 'train':
+                model = BaselineTrain(backbone_func, params.num_classes, loss_type = loss_type)
+            elif mode == 'test':
+                model = BaselineFinetune(backbone_func, loss_type = loss_type, **few_shot_params)
+        else: # other settings for baseline
+            if params.min_gram is not None:
+                min_gram_params = {
+                    'min_gram':params.min_gram, 
+                    'lambda_gram':params.lambda_gram, 
+                }
+                if mode == 'train':
+                    model = BaselineTrainMinGram(backbone_func, params.num_classes, loss_type = loss_type, **min_gram_params)
+                elif mode == 'test':
+                    model = BaselineFinetune(backbone_func, loss_type = loss_type, **few_shot_params)
+#                     model = BaselineFinetuneMinGram(backbone_func, loss_type = loss_type, **few_shot_params, **min_gram_params)
+            
+    
     elif params.method == 'protonet':
         # default ProtoNet
         if recons_decoder is None and params.min_gram is None:

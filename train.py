@@ -215,10 +215,10 @@ def exp_train_val(params):
 
     base_loader, val_loader = get_train_val_loader(params)
 
-    if params.gpu_id:
-        model = model.cuda()
-    else:
-        model = to_device(model)
+#     if params.gpu_id:
+    model = model.cuda()
+#     else:
+#         model = to_device(model)
 
     params.checkpoint_dir = get_checkpoint_dir(params)
     

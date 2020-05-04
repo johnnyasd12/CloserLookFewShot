@@ -338,8 +338,14 @@ class MinGramDropoutNet:
     
     def get_feature_map_for_gram(self, x, dropout=True):
         # TODO: dropout argument can be removed becuz already handled in self.trunk_to_gram_block
-        N, K, C, H, W = x.size() # N-way, K-shot
-        x = x.view(N*K, C, H, W)
+        if len(x.size())==5:
+            # meta learning dims
+            N, K, C, H, W = x.size() # N-way, K-shot
+            x = x.view(N*K, C, H, W)
+        elif len(x.size())==4:
+            # baseline dims
+            N, C, H, W = x.size()
+        
         if self.indim == 1:
             x = x[:,0:1,:,:]
 #         if dropout:

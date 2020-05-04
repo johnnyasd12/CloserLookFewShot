@@ -73,6 +73,7 @@ class ProtoNetMinGram(ProtoNet):
         return loss
         
     def min_gram_loss(self, x):
+        # also in BaselineTrainMinGram
         x = x.cuda()
         N,C = x.size(0), x.size(1)
 #         print('self.min_gram:', self.min_gram)

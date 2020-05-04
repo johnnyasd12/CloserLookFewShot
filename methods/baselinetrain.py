@@ -39,6 +39,9 @@ class BaselineTrain(nn.Module):
 #         y = Variable(to_device(y))
         return self.loss_fn(scores, y )
     
+    def total_loss(self, x, y):
+        loss = self.forward_loss(x, y)
+        return loss
     
     def pred(self, x):
         scores = self.forward(x) # (batch_size, num_classes)
@@ -67,7 +70,8 @@ class BaselineTrain(nn.Module):
         tt = tqdm(train_loader)
         for i, (x,y) in enumerate(tt):
             optimizer.zero_grad()
-            loss = self.forward_loss(x, y)
+#             loss = self.forward_loss(x, y) # TODO: 
+            loss = self.total_loss(x, y)
             loss.backward()
             optimizer.step()
             
@@ -125,6 +129,43 @@ class BaselineTrain(nn.Module):
         DB = DBindex(class_file)
         print('DB index = %4.2f' %(DB))
         return 1/DB #DB index: the lower the better
+
+class BaselineTrainMinGram(BaselineTrain):
+    def __init__(self, model_func, num_class, loss_type, min_gram, lambda_gram):
+        if min_gram not in ['l1', 'l2', 'inf']:
+            raise ValueError('Invalid min_gram: %s'%(min_gram))
+        super(BaselineTrainMinGram, self).__init__(
+            model_func=model_func, 
+            num_class=num_class, loss_type=loss_type)
+        self.min_gram = min_gram
+        self.lambda_gram = lambda_gram
+    
+    def total_loss(self, x, y):
+        standard_loss = self.forward_loss(x, y)
+        min_gram_loss = self.min_gram_loss(x)
+        loss = standard_loss + self.lambda_gram*min_gram_loss
+        return loss
+    
+    def min_gram_loss(self, x):
+        # also in ProtoNetMinGram
+        x = x.cuda()
+        N,C = x.size(0), x.size(1)
+#         print('self.min_gram:', self.min_gram)
+        if self.min_gram == 'l2':
+            p = 2
+        elif self.min_gram == 'l1':
+            p = 1
+        elif self.min_gram == 'inf':
+            p = float('inf')
+        gram_matrix = self.feature.get_hidden_gram(x) # shape = (N,C,C)
+        gram_reshape = gram_matrix.view(N,-1) # N,C*C
+        gram_norm = torch.norm(gram_reshape, p=p, dim=1) # N, 
+        if p == float('inf'):
+            gram_norm_square = gram_norm
+        else:
+            gram_norm_square = gram_norm**p
+        loss = 1/N * torch.sum(gram_norm_square)
+        return loss
 
 def DBindex(cl_data_file):
     #For the definition Davis Bouldin index (DBindex), see https://en.wikipedia.org/wiki/Davies%E2%80%93Bouldin_index
