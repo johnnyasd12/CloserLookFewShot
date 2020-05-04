@@ -59,25 +59,47 @@ def exp_test(params, iter_num, should_del_features=False):
     #modelfile   = get_resume_file(checkpoint_dir)
     # load model
     print('loading from:',checkpoint_dir)
-    if not params.method in ['baseline', 'baseline++'] : 
-        if params.save_iter != -1:
-            modelfile   = get_assigned_file(checkpoint_dir, params.save_iter)
-        else:
-            modelfile   = get_best_file(checkpoint_dir)
-        if modelfile is not None:
-            if params.gpu_id is None:
-                tmp = torch.load(modelfile)
-            else: # TODO: figure out WTF is going on here
-                map_location = 'cuda:0'
+    
+#     if not params.method in ['baseline', 'baseline++'] : 
+#         if params.save_iter != -1:
+#             modelfile   = get_assigned_file(checkpoint_dir, params.save_iter)
+#         else:
+#             modelfile   = get_best_file(checkpoint_dir)
+#         if modelfile is not None:
+#             if params.gpu_id is None:
+#                 tmp = torch.load(modelfile)
+#             else: # TODO: figure out WTF is going on here
+#                 print('params.gpu_id =', params.gpu_id)
+#                 map_location = 'cuda:0'
+# #                 gpu_str = 'cuda:' + '0'#str(params.gpu_id)
+# #                 map_location = {'cuda:1':gpu_str, 'cuda:0':gpu_str} # see here: https://hackmd.io/koKAo6kURn2YBqjoXXDhaw#RuntimeError-CUDA-error-invalid-device-ordinal
+#                 tmp = torch.load(modelfile, map_location=map_location)
+# #                 tmp = torch.load(modelfile)
+#             model.load_state_dict(tmp['state'])
+#             load_epoch = int(tmp['epoch'])
+#     else: # if 'baseline' or 'baseline++' then NO NEED to load model !!!
+#         load_epoch = -1 # TODO: get load_epoch, first save 'epoch' in train.py
+
+    
+    if params.save_iter != -1:
+        modelfile   = get_assigned_file(checkpoint_dir, params.save_iter)
+    else:
+        modelfile   = get_best_file(checkpoint_dir)
+    if modelfile is not None:
+        if params.gpu_id is None:
+            tmp = torch.load(modelfile)
+        else: # TODO: figure out WTF is going on here
+            print('params.gpu_id =', params.gpu_id)
+            map_location = 'cuda:0'
 #                 gpu_str = 'cuda:' + '0'#str(params.gpu_id)
 #                 map_location = {'cuda:1':gpu_str, 'cuda:0':gpu_str} # see here: https://hackmd.io/koKAo6kURn2YBqjoXXDhaw#RuntimeError-CUDA-error-invalid-device-ordinal
-                tmp = torch.load(modelfile, map_location=map_location)
+            tmp = torch.load(modelfile, map_location=map_location)
 #                 tmp = torch.load(modelfile)
+        if not params.method in ['baseline', 'baseline++'] : 
+            # if 'baseline' or 'baseline++' then NO NEED to load model !!!
             model.load_state_dict(tmp['state'])
-            load_epoch = int(tmp['epoch'])
-    else: # if 'baseline' or 'baseline++'
-        load_epoch = -1 # TODO: get load_epoch, first save 'epoch' in train.py
-
+        load_epoch = int(tmp['epoch'])
+    
     # train/val/novel
 #     split = params.split
     
@@ -100,11 +122,6 @@ def exp_test(params, iter_num, should_del_features=False):
         
 #         if 'candidate' in feature_file or 'complement' in feature_file:
         if params.n_test_candidates != None:
-#             if 'candidate' in feature_file:
-#                 keyword = 'candidate'
-#             elif 'complement' in feature_file:
-#                 keyword = 'complement'
-#             feature_files = []
             candidate_cl_feature = [] # features of each class of each candidates
             print('Loading features of %s candidates into dictionaries...' %(params.n_test_candidates))
             for n in tqdm(range(params.n_test_candidates)):
