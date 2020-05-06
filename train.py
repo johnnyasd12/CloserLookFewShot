@@ -67,16 +67,24 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
             record['train_acc'].append(train_acc)
             
         if acc > max_acc : #for baseline and baseline++, we don't use validation in default and we let acc = -1, but we allow options to validate with DB index
-#             print("best model! save...")
             max_acc = acc
             best_epoch = epoch
             outfile = os.path.join(params.checkpoint_dir, 'best_model.tar')
             print("best model! save at:", outfile)
             torch.save({'record':record, 'epoch':epoch, 'state':model.state_dict()}, outfile)
-
-        if params.save_freq != None:
-            if (epoch % params.save_freq==0) or (epoch==stop_epoch-1):
+        if epoch==stop_epoch-1:
+            outfile = os.path.join(params.checkpoint_dir, '{:d}.tar'.format(epoch))
+            print("last epoch! save at: %s"%(outfile))
+            torch.save({'record':record, 'epoch':epoch, 'state':model.state_dict()}, outfile)
+        elif params.save_freq != None:
+            num_for_save_freq = 3 # how many model saved by save_freq
+            quotient = stop_epoch // params.save_freq # e.g. 10//2 = 5
+            min_quotient = quotient - num_for_save_freq # e.g. 5-3 = 2
+            curr_quotient = epoch // params.save_freq # e.g. epoch 0~9 -> quotient 0~4
+            is_enough_quotient = curr_quotient >= min_quotient# e.g. 2,3,4
+            if epoch % params.save_freq==0 and is_enough_quotient: # e.g. 4,6,8
                 outfile = os.path.join(params.checkpoint_dir, '{:d}.tar'.format(epoch))
+                print("epoch %s is geq than %s, and encounter save_freq: %s, \nsave at: %s"%(epoch, min_quotient*params.save_freq, params.save_freq, outfile))
                 torch.save({'record':record, 'epoch':epoch, 'state':model.state_dict()}, outfile)
         
         if early_stopping is not None:

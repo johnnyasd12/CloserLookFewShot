@@ -23,8 +23,8 @@ class BaselineTrain(nn.Module):
         self.loss_type = loss_type  #'softmax' #'dist'
         self.num_class = num_class
         self.loss_fn = nn.CrossEntropyLoss()
-#         self.DBval = False; #only set True for CUB dataset, see issue #31
-        self.DBval = True; #only set True for CUB dataset, see issue #31
+        self.DBval = False; #only set True for CUB dataset, see issue #31
+#         self.DBval = True; #only set True for CUB dataset, see issue #31
 
     def forward(self,x):
         x    = Variable(x.cuda())
@@ -53,16 +53,12 @@ class BaselineTrain(nn.Module):
         y = y.cuda()
         n_data = y.size(0)
         n_correct = (preds==y).sum().cpu().numpy()
-#         print('preds:', preds)
-#         print('y:', y)
-#         print('n_correct:', n_correct)
-#         print('n_data:', n_data)
         return n_correct, n_data
         
     
     def train_loop(self, epoch, train_loader, optimizer, compute_acc=True):
         print_freq = 10
-        avg_loss=0
+        sum_loss=0
         # for compute_acc
         if compute_acc:
             acc_all = []
@@ -76,10 +72,10 @@ class BaselineTrain(nn.Module):
             optimizer.step()
             
 #             if version.parse(torch.__version__) < version.parse("0.4.0"):
-#                 avg_loss = avg_loss+loss.data[0]
+#                 sum_loss = sum_loss+loss.data[0]
 #             else:
             cur_loss = loss.item()
-            avg_loss = avg_loss+cur_loss
+            sum_loss = sum_loss+cur_loss
             # compute acc
             if compute_acc:
                 correct_this, count_this = self.correct(x, y)
@@ -90,10 +86,15 @@ class BaselineTrain(nn.Module):
             if i % print_freq==0:
                 #print(optimizer.state_dict()['param_groups'][0]['lr'])
 #                 print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader), avg_loss/float(i+1)  ))
-                description_str = 'Epoch %d: avg Loss = %.2f'%(epoch, avg_loss/float(i+1))
+                avg_loss = sum_loss/float(i+1)
+                description_str = 'Epoch %d: avg Loss = %.2f'%(epoch, avg_loss)
                 if compute_acc:
                     avg_acc = np.asarray(acc_all)
-                    avg_acc = np.mean(avg_acc)
+                    n_avg = 100
+                    if i > n_avg:
+                        avg_acc = np.mean(avg_acc[-n_avg:])
+                    else:
+                        avg_acc = np.mean(avg_acc)
                     description_str += ' , avg Acc = %.2f%%'%(avg_acc)
                 tt.set_description(description_str)
         
@@ -110,7 +111,31 @@ class BaselineTrain(nn.Module):
             return self.analysis_loop(val_loader)
         else:
             return -1   #no validation, just save model during iteration
+#             return self.finetune_loop(val_loader)
 
+#     def finetune_correct(self, x):
+#         pass
+
+#     def finetune_loop(self, val_loader):
+#         acc_all = []
+#         iter_num = len(val_loader) 
+#         tt = tqdm(val_loader, desc='Validation')
+#         for i, (x,_) in enumerate(tt): # for each episode
+#             # x.shape = (N,K,C,H,W), N-way, K-shot
+#             self.n_query = x.size(1) - self.n_support
+#             if self.change_way:
+#                 self.n_way  = x.size(0)
+#             correct_this, count_this = self.finetune_correct(x)
+#             acc_all.append(correct_this/count_this * 100)
+
+#         acc_all  = np.asarray(acc_all)
+#         acc_mean = np.mean(acc_all)
+#         acc_std  = np.std(acc_all)
+# #         print('%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num,  acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
+#         print('Val Acc = %4.2f%% +- %4.2f%% with %d episodes.' %(acc_mean, 1.96* acc_std/np.sqrt(iter_num), iter_num))
+
+#         return acc_mean
+    
     def analysis_loop(self, val_loader, record = None):
         class_file  = {}
         for i, (x,y) in enumerate(val_loader):

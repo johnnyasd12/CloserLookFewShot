@@ -387,49 +387,58 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             perm_ids = np.random.permutation(len(img_feat)).tolist()
             perm_ids_dict[cl] = perm_ids
         
-        # here seems took most of the time cost
-        for n in range(params.n_test_candidates): # for each candidate
-            cl_feature_dict = cl_feature_each_candidate[n] # features of the candidate
+        ################### choose those subnets to ensemble ###################
+        if params.frac_ensemble == 1:
+            # no need to compute sub-performanc, just use all the candidates
+            elected_ids = np.array(range(params.n_test_candidates))
+        else: 
+            # should validate the performance
+            # here seems took most of the time cost
+            for n in range(params.n_test_candidates): # for each candidate
+                cl_feature_dict = cl_feature_each_candidate[n] # features of the candidate
 
-            z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
-            z_all = torch.from_numpy(z_all) # z_support & z_query
-                        
-            # reset back
-            model.n_support = n_support
-            model.n_query = n_query
-            z_support, z_query  = model.parse_feature(z_all,is_feature=True)# shape:(n_way, n_data, *feature_dims)
-            z_support   = z_support.contiguous() # TODO: what this means???
-#             z_support_cpu = z_support.data.cpu().numpy()
-            
-            if model.change_way:
-                model.n_way  = z_support.size(0)
-            # TODO: tunable n_sub_support
-            # leave-one-out (per-class) cross validation
-            loopccv_the_one = 'val' # None, 'train', 'val'
-            if loopccv_the_one is not None:
-                sub_result = get_result_loocv(model=model, z_all=z_support, 
-                                        n_way=n_way, the_one=loopccv_the_one, metric=params.candidate_metric)
-            else: # testing without loopccv
-                n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
-                n_sub_query = n_support - n_sub_support # those who are rest
-                sub_result = get_result(
-                    model=model, z_all=z_support, 
-                    n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
-                    metric=params.candidate_metric)
-            
-            sub_result_each_candidate.append(sub_result)
-            
-        n_ensemble = 1 if params.frac_ensemble == None else int(params.frac_ensemble*params.n_test_candidates)
+                z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
+                z_all = torch.from_numpy(z_all) # z_support & z_query
+
+                # reset back
+                model.n_support = n_support
+                model.n_query = n_query
+                z_support, z_query  = model.parse_feature(z_all,is_feature=True)# shape:(n_way, n_data, *feature_dims)
+                z_support   = z_support.contiguous() # TODO: what this means???
+    #             z_support_cpu = z_support.data.cpu().numpy()
+
+                if model.change_way:
+                    model.n_way  = z_support.size(0)
+                # TODO: tunable n_sub_support
+                # leave-one-out (per-class) cross validation
+                loopccv_the_one = 'val' # None, 'train', 'val'
+                if loopccv_the_one is not None:
+                    sub_result = get_result_loocv(model=model, z_all=z_support, 
+                                            n_way=n_way, the_one=loopccv_the_one, metric=params.candidate_metric)
+                else: # testing without loopccv
+                    n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
+                    n_sub_query = n_support - n_sub_support # those who are rest
+                    sub_result = get_result(
+                        model=model, z_all=z_support, 
+                        n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
+                        metric=params.candidate_metric)
+
+                sub_result_each_candidate.append(sub_result)
+
+            n_ensemble = 1 if params.frac_ensemble == None else int(params.frac_ensemble*params.n_test_candidates)
+
+            # get ensemble ids
+            sub_result_each_candidate = np.array(sub_result_each_candidate)
+            if params.candidate_metric == 'acc':
+                sorted_candidate_ids = np.argsort(-sub_result_each_candidate) # in descent order
+            elif params.candidate_metric == 'loss':
+                sorted_candidate_ids = np.argsort(sub_result_each_candidate) # in ascent order
+            else:
+                raise ValueError('Unknown candidate_metric: %s'%(metric))
+            elected_ids = sorted_candidate_ids[:n_ensemble] # TODO: rename elected_candidate to winners/superiors
         
-        # get ensemble ids
-        sub_result_each_candidate = np.array(sub_result_each_candidate)
-        if params.candidate_metric == 'acc':
-            sorted_candidate_ids = np.argsort(-sub_result_each_candidate) # in descent order
-        elif params.candidate_metric == 'loss':
-            sorted_candidate_ids = np.argsort(sub_result_each_candidate) # in ascent order
-        else:
-            raise ValueError('Unknown candidate_metric: %s'%(metric))
-        elected_ids = sorted_candidate_ids[:n_ensemble] # TODO: rename elected_candidate to winners/superiors
+        
+        ################### do the ensemble ###################
         all_preds = []
         
         # reset back
