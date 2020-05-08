@@ -59,7 +59,7 @@ def exp_save_features(params):
     else:
         datamgr         = AugSimpleDataManager(image_size, batch_size = 64, 
                                                aug_type=params.aug_type, aug_target='test-sample') # aug_target= 'all' or 'test-sample', NO 'test-batch'
-    data_loader      = datamgr.get_data_loader(loadfile, aug = False, shuffle=False)
+    data_loader      = datamgr.get_data_loader(loadfile, aug = False, shuffle=False, return_path=True)
 
     backbone_func = get_backbone_func(params)
     backbone_net = backbone_func()
@@ -143,9 +143,11 @@ def save_features(feature_net, data_loader, outfile, params):
 #         max_count_ori = len(data_loader)*data_loader.batch_size # SHOULD be calculated by dataset not dataloader
         all_labels = f.create_dataset('all_labels',(max_count,), dtype='i')
         all_feats=None
+        all_paths=None
         count=0
         
-        for i, (x,y) in enumerate(tqdm(data_loader)):
+        for i, datas in enumerate(tqdm(data_loader)):
+            paths, x, y = datas
             if params.gpu_id:
                 x = x.cuda()
             else:
@@ -155,8 +157,10 @@ def save_features(feature_net, data_loader, outfile, params):
             feats = feature_net(x_var)
             if all_feats is None:
                 all_feats = f.create_dataset('all_feats', [max_count] + list( feats.size()[1:]) , dtype='f')
+                all_paths = f.create_dataset('all_paths', [max_count,], dtype='S10')
             all_feats[count:count+feats.size(0)] = feats.data.cpu().numpy()
             all_labels[count:count+feats.size(0)] = y.cpu().numpy()
+            all_paths[count:count+feats.size(0)] = np.string_(paths) # BUGFIX: No conversion path for dtype: dtype('<U81')
             count = count + feats.size(0)
 
         count_var = f.create_dataset('count', (1,), dtype='i')

@@ -325,10 +325,13 @@ class SimpleDataManager(DataManager):
         self.batch_size = batch_size
         self.trans_loader = TransformLoader(image_size)
 
-    def get_data_loader(self, data_file, aug, shuffle=True): #parameters that would change on train/val set
+    def get_data_loader(self, data_file, aug, shuffle=True, num_workers=12, return_path=False): #parameters that would change on train/val set
         transform = self.trans_loader.get_composed_transform(aug)
-        dataset = SimpleDataset(data_file, transform)
-        data_loader_params = dict(batch_size = self.batch_size, shuffle = shuffle, num_workers = 12, pin_memory = True)       
+        dataset = SimpleDataset(data_file, transform, return_path=return_path)
+        data_loader_params = dict(batch_size = self.batch_size, shuffle = shuffle, num_workers = num_workers, pin_memory = True)
+        ########### DEBUG ###########
+#         data_loader_params['num_workers'] = 0 # set to 0 when debugging
+        ########### DEBUG ###########
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
 
         return data_loader

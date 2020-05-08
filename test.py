@@ -34,7 +34,7 @@ from tqdm import tqdm
 from model_utils import get_few_shot_params, get_model
 import datetime
 
-def exp_test(params, iter_num, should_del_features=False):
+def exp_test(params, iter_num, should_del_features=False, show_data=False):
     start_time = datetime.datetime.now()
     print('exp_test() started at',start_time)
     
@@ -120,34 +120,48 @@ def exp_test(params, iter_num, should_del_features=False):
         all_feature_files = get_all_feature_files(params)
 #         feature_file = get_save_feature_filepath(params, checkpoint_dir, params.split)
         
-#         if 'candidate' in feature_file or 'complement' in feature_file:
-        if params.n_test_candidates != None:
+        if params.n_test_candidates is None: # common setting (no candidate)
+            feature_file = all_feature_files[0]
+            if show_data:
+                cl_feature, cl_filepath = feat_loader.init_loader(nth_feature_file, return_path=True)
+            else:
+                cl_feature = feat_loader.init_loader(feature_file)
+                cl_filepath = None
+            cl_feature_single = [cl_feature]
+            for i in tqdm(range(iter_num)):
+                # TODO: fix data list? can only fix class list?
+                acc = feature_evaluation(
+                    cl_feature_single, model, params=params, n_query=15, **few_shot_params, 
+                    cl_filepath=cl_filepath,
+                )
+                # TODO: draw something here ???
+                acc_all.append(acc)
+        else: # n_test_candidates settings
             candidate_cl_feature = [] # features of each class of each candidates
             print('Loading features of %s candidates into dictionaries...' %(params.n_test_candidates))
             for n in tqdm(range(params.n_test_candidates)):
 #                 nth_feature_file = feature_file.replace(keyword, keyword+str(n+1))
                 nth_feature_file = all_feature_files[n]
 #                 feature_files.append(nth_feature_file)
-                cl_feature = feat_loader.init_loader(nth_feature_file)
+                if show_data:
+                    cl_feature, cl_filepath = feat_loader.init_loader(nth_feature_file, return_path=True)
+                else:
+                    cl_feature = feat_loader.init_loader(nth_feature_file)
+                    cl_filepath = None
                 candidate_cl_feature.append(cl_feature)
             
             print('Evaluating...')
             # TODO: aggregate this and lower part of for loop, only cl_feature are different
             for i in tqdm(range(iter_num)):
                 # TODO: fix data list? can only fix class list?
-                acc = feature_evaluation(candidate_cl_feature, model, params=params, n_query=15, **few_shot_params)
+                acc = feature_evaluation(
+                    candidate_cl_feature, model, params=params, n_query=15, **few_shot_params, 
+                    cl_filepath=cl_filepath,
+                )
                 # TODO: draw something here ???
                 acc_all.append(acc)
                 
-        else: # common setting (no candidate)
-            feature_file = all_feature_files[0]
-            cl_feature = feat_loader.init_loader(feature_file)
-            cl_feature_single = [cl_feature]
-            for i in tqdm(range(iter_num)):
-                # TODO: fix data list? can only fix class list?
-                acc = feature_evaluation(cl_feature_single, model, params=params, n_query=15, **few_shot_params)
-                # TODO: draw something here ???
-                acc_all.append(acc)
+        
 
         acc_all  = np.asarray(acc_all)
         acc_mean = np.mean(acc_all)
@@ -188,7 +202,7 @@ def get_all_feature_files(params):
             keyword = 'complement'
         
         if keyword == None:
-            all_feature_files = [feature_file]
+            all_feature_files = [feature_file] # only 1 model saves features
         else:
             all_feature_files = []
             for n in tqdm(range(params.n_test_candidates)):

@@ -29,8 +29,11 @@ class ExpManager:
         if os.path.exists(self.csv_path):
             self.df = pd.read_csv(self.csv_path)
     
-    def exp_grid(self, choose_by='val_acc_mean', resume=False):
-        
+    def exp_grid(self, choose_by='val_acc_mean', mode='from_scratch'):
+        '''
+        Args:
+            mode (str): 'from_scratch'|'resume'|'draw_tasks'
+        '''
         print('exp_grid() start.')
         print(self.base_params)
         default_args = {} # the raw default args of the code
@@ -45,24 +48,25 @@ class ExpManager:
         
         csv_path = os.path.join(self.record_folder, self.fixed_params['test']['csv_name'])
         
-        # TODO: refactor 成許多 function，有 argument: resume (boolean)
+        # TODO: refactor 成許多 function，有 argument: mode
         is_csv_exists = os.path.exists(csv_path)
         if is_csv_exists:
             loaded_df = pd.read_csv(csv_path)
             is_csv_new = len(loaded_df)==0
         else:
             is_csv_new = True
-#         if resume:
+#         if mode == 'resume':
 #             assert not is_csv_new, "csv file should exist and be filled with some content."
 #         else: # new experiments
 #             assert is_csv_new, "csv file shouldn't exist or should be empty."
         
         for params in all_general_params:
             
-            if resume:
+            if mode == 'resume' or mode == 'draw_tasks':
                 print()
                 print('='*20, 'Checking if already trained in:', csv_path, '='*20)
-                print(params)
+                print('base_params:', self.base_params)
+                print('general_params:', params)
                 # read csv
                 loaded_df = pd.read_csv(csv_path)
 
@@ -71,34 +75,34 @@ class ExpManager:
                 check_param = {**self.base_params, **params}
                 check_df = get_matched_df(check_param, check_df)
                 num_experiments = len(check_df)
-                if num_experiments!=0:
-                    should_train = False
-                else:
-                    should_train = True
+                should_train = num_experiments == 0
                 
-                if should_train:
-                    # train model
-                    print()
-                    print('='*20, 'Training', '='*20)
-                    print(params)
-                    modified_train_args = get_modified_args(train_args, params)
-                    train_result = exp_train_val(modified_train_args)
-                else:
-                    print('NO need to train since already trained in record:', csv_path)
+            elif mode == 'from_scratch':
+                should_train = True
             
-            else: # not resume
+            if should_train:
                 # train model
                 print()
                 print('='*20, 'Training', '='*20)
                 print(params)
                 modified_train_args = get_modified_args(train_args, params)
                 train_result = exp_train_val(modified_train_args)
+            else:
+                print('NO need to train since already trained in record:', csv_path)
+            
+#             elif mode == 'from_scratch': # not resume
+#                 # train model
+#                 print()
+#                 print('='*20, 'Training', '='*20)
+#                 print(params)
+#                 modified_train_args = get_modified_args(train_args, params)
+#                 train_result = exp_train_val(modified_train_args)
             
             modified_test_args = get_modified_args(test_args, params)
             
             # loop over testing settings under each general setting
             for test_params in all_test_params:
-                if resume:
+                if mode == 'resume':
                     print('\n', '='*20, 'Checking if already did experiments', '='*20)
                     print(params)
                     print(test_params)
@@ -114,7 +118,7 @@ class ExpManager:
                 
                 splits = ['val', 'novel'] # temporary no 'train'
                 write_record = {**params, **test_params}
-                if resume:
+                if mode == 'resume' or mode == 'draw_tasks':
                     if should_train:
                         write_record['train_acc_mean'] = train_result['train_acc']
                     else:
@@ -122,7 +126,7 @@ class ExpManager:
                         check_df = loaded_df.copy()
                         check_df = get_matched_df({**self.base_params, **params}, check_df)
                         write_record['train_acc_mean'] = check_df['train_acc_mean'].iloc[0]
-                else:
+                elif mode == 'from_scratch':
                     write_record['train_acc_mean'] = train_result['train_acc']
                 
                 for split in splits:
@@ -138,8 +142,9 @@ class ExpManager:
                     print(params)
                     print(test_params)
                     print('data split:', split)
-                    iter_num = 30 if split_final_test_args.debug else 600
-                    record = exp_test(copy_args(split_final_test_args), iter_num=iter_num, should_del_features=True)
+                    iter_num = 10 if split_final_test_args.debug or mode=='draw_tasks' else 600
+                    show_data = mode == 'draw_tasks'
+                    record = exp_test(copy_args(split_final_test_args), iter_num=iter_num, should_del_features=True, show_data=show_data)
                     write_record['epoch'] = record['epoch']
                     write_record[split+'_acc_mean'] = record['acc_mean']
                 

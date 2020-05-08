@@ -15,6 +15,8 @@ from methods.baselinefinetune import BaselineFinetune
 # global_datasets = [] # for multi-processsing
 import logging
 
+import matplotlib.pyplot as plt
+
 def describe(obj, obj_str): # support ndarray, tf.Tensor, dict, iterable
     # exec('global '+obj_str)
     # exec('obj = '+obj_str)
@@ -182,10 +184,9 @@ def plot_PIL(img):
 # def most_frequent(List): 
 #     return max(set(List), key = List.count)
 
-def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_support = 5, n_query = 15, recons_func = None):
+def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_support = 5, n_query = 15, cl_filepath = None):
     ''' (for test.py) sample ONE episode to do evaluation
     :param cl_feature_each_candidate: list of dictionary (len=1 if n_test_candidates is None), keys=label_idx, values = all extracted features
-    :param recons_func: temporary no use
     :return: accuracy (%)
     '''
 #     def select_class_with_sanity(class_list, cl_feature_each_candidate): # no need this after BUGFIX
@@ -210,18 +211,27 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             z_all (ndarray): shape=(n_way, n_support+n_query, ???)
         '''
         z_all  = []
+        path_all = []
         for cl in select_class:
             img_feat = cl_feature_dict[cl]
+            paths = cl_filepath[cl]
             
-            n_data = n_support+n_query
-#             n_data = n_support+n_query if n_support+n_query<=len(img_feat) else len(img_feat)
+            n_data_per_class = n_support+n_query
+#             n_data_per_class = n_support+n_query if n_support+n_query<=len(img_feat) else len(img_feat)
+            
             # get shuffled idx inside one-class data
             perm_ids = perm_ids_dict[cl] 
             # stack each batch
-            z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_data) ] )
+            z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_data_per_class) ] )
+            if cl_filepath is not None:
+                path_all.append(np.array([paths[perm_ids[i]] for i in range(n_data_per_class)]))
     
         z_all = np.array(z_all)
-        return z_all
+        if cl_filepath is None:
+            return z_all
+        else:
+            path_all = np.array(path_all)
+            return z_all, path_all
     
     def get_forward_outputs(model, z_all):
         ''' get query set forward_outputs
@@ -254,13 +264,6 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 shape=(n_query*n_way, n_way) if prob
                 shape=(n_query*n_way, ) if not prob
         '''
-#         if isinstance(model, MetaTemplate):
-#             if adaptation:
-#                 forward_outputs  = model.set_forward_adaptation(z_all, is_feature = True)
-#             else:
-#                 forward_outputs  = model.set_forward(z_all, is_feature = True)
-#         else:
-#             raise ValueError('Unsupported method.')
         forward_outputs = get_forward_outputs(model, z_all)
         if prob:
             pred = model.forwardout2prob(forward_outputs)
@@ -268,6 +271,36 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         else:
             forward_outputs = forward_outputs.data.cpu().numpy()
             pred = forward_outputs.argmax(axis = 1)
+        return pred
+    
+    def show_acc_w_data(model, z_all, path_all, n_way, n_support, n_query):
+        
+        # make model can parse feature correctly
+        model.n_support = n_support
+        model.n_query = n_query
+        # get predictions and local labels
+        prob = get_pred(model, z_all, prob=True)
+        pred = prob.argmax(axis = 1)
+        y = np.repeat(range(n_way), model.n_query)
+        # which preds are correct
+        correct = pred == y
+        acc = np.mean(correct)*100
+        
+        ##### drawing #####
+        n_col = n_way
+        n_row = n_support + n_query
+        _, axarr = plt.subplots(n_row, n_col)
+        
+        for row in range(n_row): # for each data per class
+            for col in range(n_col): # for each class
+                idx = col*n_way + row
+                path = path_all[idx]
+                print(path)
+                img = plt.imread(path)
+                axarr[col, row].imshow(img)
+            print('='*20)
+        
+        
         return pred
     
     def get_result(model, z_all, n_way, n_support, n_query, metric):
@@ -281,13 +314,6 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             y = np.repeat(range( n_way ), model.n_query )
             result = np.mean(pred == y)*100
         elif metric == 'loss':
-#             if isinstance(model, MetaTemplate):
-#                 forward_outputs = model.set_forward(z_all, is_feature=True)
-#             elif isinstance(model, BaselineTrain) or isinstance(model, BaselineFinetune):
-#                 raise ValueError('not support Baseline yet. ')
-#                 forward_outputs = model.forward() # only support original data (not feature)
-#             else:
-#                 raise ValueError('Unsupported method.')
             forward_outputs = get_forward_outputs(model, z_all)
             result = model.forwardout2loss(forward_outputs)
         else:
@@ -326,12 +352,6 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             z_swapped = torch.index_select(z_all, 1, torch.LongTensor(swapped_ids).cuda())
 #             z_swapped = z_swapped.contiguous() # try to fix bug but failed
         
-#             if metric == 'acc':
-#                 pred = get_pred(model, z_swapped)
-#                 y = np.repeat(range( n_way ), n_query_cv )
-#                 acc = np.mean(pred == y)*100
-#                 result_cv[k] = acc
-#             elif metric == 'loss':
             result = get_result(
                 model=model, z_all=z_swapped, 
                 n_way=n_way, n_support=n_support_cv, n_query=n_query_cv, 
@@ -361,12 +381,21 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             perm_ids_dict[cl] = perm_ids
             
         z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
+        if cl_filepath is not None:
+            z_all, path_all = z_all
         z_all = torch.from_numpy(z_all) # z_support & z_query
         
         # here should be acc
-        acc = get_result(
-            model=model, z_all=z_all, 
-            n_way=n_way, n_support=n_support, n_query=n_query, metric='acc')
+        # TODO: 5/7 
+        if cl_filepath is None:
+            acc = get_result(
+                model=model, z_all=z_all, 
+                n_way=n_way, n_support=n_support, n_query=n_query, metric='acc')
+        else:
+            acc = show_acc_w_data(
+                model=model, path_all=path_all, z_all=z_all, 
+                n_way=n_way, n_support=n_support, n_query=n_query, 
+            )
     
     else: # n_test_candidates setting
         assert params.n_test_candidates == len(cl_feature_each_candidate), "features & params mismatch."
@@ -389,10 +418,10 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         ################### choose those subnets to ensemble ###################
         if params.frac_ensemble == 1:
-            # no need to compute sub-performanc, just use all the candidates
+            # just use all the candidates, so no need to compute sub-performance
             elected_ids = np.array(range(params.n_test_candidates))
         else: 
-            # should validate the performance
+            # validate sub-performance to choose from candidates
             # here seems took most of the time cost
             for n in range(params.n_test_candidates): # for each candidate
                 cl_feature_dict = cl_feature_each_candidate[n] # features of the candidate
@@ -435,7 +464,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 sorted_candidate_ids = np.argsort(sub_result_each_candidate) # in ascent order
             else:
                 raise ValueError('Unknown candidate_metric: %s'%(metric))
-            elected_ids = sorted_candidate_ids[:n_ensemble] # TODO: rename elected_candidate to winners/superiors
+            elected_ids = sorted_candidate_ids[:n_ensemble]
         
         
         ################### do the ensemble ###################

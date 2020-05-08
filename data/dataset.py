@@ -347,16 +347,11 @@ class SimpleDataset:
         self.return_path = return_path
 
     def __getitem__(self,i):
-        image_path = os.path.join(self.meta['image_names'][i])
-#         timer = Timer('open to RGB')
+        image_path = self.meta['image_names'][i]
+#         image_path = os.path.join(???, image_path)
         img = Image.open(image_path).convert('RGB')
-#         timer()
-#         timer = Timer('transform')
         img = self.transform(img)
-#         timer()
-#         timer = Timer('target_transform')
         target = self.target_transform(self.meta['image_labels'][i])
-#         timer()
         if self.return_path:
             return image_path, img, target
         else:
