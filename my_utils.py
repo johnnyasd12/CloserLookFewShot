@@ -289,19 +289,18 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         ##### drawing #####
         n_col = n_way
         n_row = n_support + n_query
-        _, axarr = plt.subplots(n_row, n_col)
-        
+        unit_size = 50
+        fig, axarr = plt.subplots(n_row, n_col, figsize=(unit_size, unit_size))
+#         fig.tight_layout()
         for row in range(n_row): # for each data per class
             for col in range(n_col): # for each class
                 idx = col*n_way + row
-                path = path_all[idx]
-                print(path)
+                path = path_all[col][row]
                 img = plt.imread(path)
-                axarr[col, row].imshow(img)
-            print('='*20)
+                axarr[row, col].imshow(img, aspect=1) # set aspect to avoid showing with actual size
+        plt.show()
         
-        
-        return pred
+        return acc
     
     def get_result(model, z_all, n_way, n_support, n_query, metric):
         

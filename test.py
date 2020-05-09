@@ -123,7 +123,7 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
         if params.n_test_candidates is None: # common setting (no candidate)
             feature_file = all_feature_files[0]
             if show_data:
-                cl_feature, cl_filepath = feat_loader.init_loader(nth_feature_file, return_path=True)
+                cl_feature, cl_filepath = feat_loader.init_loader(feature_file, return_path=True)
             else:
                 cl_feature = feat_loader.init_loader(feature_file)
                 cl_filepath = None

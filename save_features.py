@@ -157,10 +157,13 @@ def save_features(feature_net, data_loader, outfile, params):
             feats = feature_net(x_var)
             if all_feats is None:
                 all_feats = f.create_dataset('all_feats', [max_count] + list( feats.size()[1:]) , dtype='f')
-                all_paths = f.create_dataset('all_paths', [max_count,], dtype='S10')
+                # BUGFIX: dirty way becuz 1024 might not be enough to store the path
+                all_paths = f.create_dataset('all_paths', [max_count,], dtype='S1024')
+            paths = np.string_(paths) # BUGFIX: No conversion path for dtype: dtype('<U81')
+
             all_feats[count:count+feats.size(0)] = feats.data.cpu().numpy()
             all_labels[count:count+feats.size(0)] = y.cpu().numpy()
-            all_paths[count:count+feats.size(0)] = np.string_(paths) # BUGFIX: No conversion path for dtype: dtype('<U81')
+            all_paths[count:count+feats.size(0)] = paths
             count = count + feats.size(0)
 
         count_var = f.create_dataset('count', (1,), dtype='i')
