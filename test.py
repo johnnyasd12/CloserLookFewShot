@@ -151,7 +151,7 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
                 candidate_cl_feature.append(cl_feature)
             
             print('Evaluating...')
-            # TODO: aggregate this and lower part of for loop, only cl_feature are different
+            # TODO: aggregate this and upper part of for loop, only cl_feature are different
             for i in tqdm(range(iter_num)):
                 # TODO: fix data list? can only fix class list?
                 acc = feature_evaluation(
