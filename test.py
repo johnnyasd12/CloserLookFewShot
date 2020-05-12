@@ -34,7 +34,7 @@ from tqdm import tqdm
 from model_utils import get_few_shot_params, get_model
 import datetime
 
-def exp_test(params, iter_num, should_del_features=False, show_data=False):
+def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
     start_time = datetime.datetime.now()
     print('exp_test() started at',start_time)
     
@@ -107,7 +107,7 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
         image_size = get_img_size(params)
         load_file = get_loadfile_path(params, params.split)
 
-        datamgr         = SetDataManager(image_size, n_episode = iter_num, n_query = 15 , **few_shot_params)
+        datamgr         = SetDataManager(image_size, n_episode = n_episodes, n_query = 15 , **few_shot_params)
         
         novel_loader     = datamgr.get_data_loader( loadfile, aug = False)
         if params.adaptation:
@@ -118,7 +118,7 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
     else: # not MAML
         acc_all = []
         # draw_task: initialize task acc(actually can replace acc_all), img_path, img_is_correct, etc.
-        task_datas = [None]*iter_num # list of dict
+        task_datas = [None]*n_episodes # list of dict
         # directly use extracted features
         all_feature_files = get_all_feature_files(params)
 #         feature_file = get_save_feature_filepath(params, checkpoint_dir, params.split)
@@ -132,7 +132,7 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
 #                 cl_filepath = None
             cl_feature_single = [cl_feature]
             
-            for i in tqdm(range(iter_num)):
+            for i in tqdm(range(n_episodes)):
                 # TODO: fix data list? can only fix class list?
                 task_data = feature_evaluation(
                     cl_feature_single, model, params=params, n_query=15, **few_shot_params, 
@@ -158,7 +158,7 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
             
             print('Evaluating...')
             # TODO: aggregate this and upper part of for loop, only cl_feature are different
-            for i in tqdm(range(iter_num)):
+            for i in tqdm(range(n_episodes)):
                 # TODO: fix data list? can only fix class list?
 #                 acc = feature_evaluation(
 #                     candidate_cl_feature, model, params=params, n_query=15, **few_shot_params, 
@@ -177,7 +177,7 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
         acc_mean = np.mean(acc_all)
         acc_std  = np.std(acc_all)
         print('loaded from %d epoch model.' %(load_epoch))
-        print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
+        print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(n_episodes, acc_mean, 1.96* acc_std/np.sqrt(n_episodes)))
         
         # TODO: 5/10 save task_datas in file
 #         todo
@@ -190,7 +190,7 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
     torch.cuda.empty_cache()
     
     timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-    acc_str = '%4.2f%% +- %4.2f%%' % (acc_mean, 1.96* acc_std/np.sqrt(iter_num))
+    acc_str = '%4.2f%% +- %4.2f%%' % (acc_mean, 1.96* acc_std/np.sqrt(n_episodes))
     
     # writing settings into csv
     acc_mean_str = '%4.2f' % (acc_mean)
@@ -205,7 +205,7 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
     print('exp_test() start at', start_time, ', end at', end_time, '.\n')
     print('exp_test() totally took:', end_time-start_time)
     
-    return extra_record
+    return extra_record, task_datas
 
 def get_all_feature_files(params):
     if params.method in ['maml', 'maml_approx']: #maml do not support testing with feature
@@ -269,6 +269,9 @@ def record_to_csv(params, extra_record, csv_path):
     with open(csv_path, 'w') as f:
         out_df.to_csv(f, header=True, index=False)
 
+def record_task_datas(params, task_datas):
+    pass
+
 if __name__ == '__main__':
     
     print('test.py start')
@@ -278,7 +281,7 @@ if __name__ == '__main__':
     # TODO: modify params.split to change between base/val/novel
     # TODO: test_possible_params
     # get test result
-    extra_record = exp_test(params=params, iter_num=600)
+    extra_record = exp_test(params=params, n_episodes=600)
     
     # TODO: params assign csv_name
     record_to_csv(params, extra_record, csv_path='./record/results.csv')
@@ -286,7 +289,7 @@ if __name__ == '__main__':
     if params.csv_name is not None:
         record_to_csv(params, extra_record, csv_path='./record/'+params.csv_name)
 
-# def record_txt(params, iter_num, acc_str):    
+# def record_txt(params, n_episodes, acc_str):    
 #     # writing settings into txt
 #     if params.save_iter != -1:
 #         split_str = params.split + "_" +str(params.save_iter)
@@ -303,7 +306,7 @@ if __name__ == '__main__':
 #             exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
 #         else:
 #             exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
-#         acc_descr = '%d Test Acc = ' %(iter_num)
+#         acc_descr = '%d Test Acc = ' %(n_episodes)
 #         acc_descr += acc_str
 #         f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_descr)  )
         

@@ -142,15 +142,18 @@ class ExpManager:
                     print(params)
                     print(test_params)
                     print('data split:', split)
-                    iter_num = 10 if split_final_test_args.debug or mode=='draw_tasks' else 600
-                    show_data = mode == 'draw_tasks'
-                    record = exp_test(copy_args(split_final_test_args), iter_num=iter_num, should_del_features=True, show_data=show_data)
+                    n_episodes = 10 if split_final_test_args.debug or mode=='draw_tasks' else 600
+                    
+                    record, task_datas = exp_test(copy_args(split_final_test_args), n_episodes=n_episodes, should_del_features=True)#, show_data=show_data)
                     write_record['epoch'] = record['epoch']
                     write_record[split+'_acc_mean'] = record['acc_mean']
                 
                 self.results.append(write_record)
                 print('Saving record to:', csv_path)
                 record_to_csv(final_test_args, write_record, csv_path=csv_path)
+                
+                if mode == 'draw_tasks':
+                    pass
                 
         # TODO: can also loop dataset
         for choose_by in ['val_acc_mean', 'novel_acc_mean']:
