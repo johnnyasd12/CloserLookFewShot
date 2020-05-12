@@ -43,7 +43,7 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
     if params.gpu_id:
         set_gpu_id(params.gpu_id)
     
-    acc_all = []
+#     acc_all = []
 
     model = get_model(params, 'test')
     
@@ -116,26 +116,31 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
         acc_mean, acc_std = model.test_loop( novel_loader, return_std = True)
 
     else: # not MAML
+        acc_all = []
+        # draw_task: initialize task acc(actually can replace acc_all), img_path, img_is_correct, etc.
+        task_datas = [None]*iter_num # list of dict
         # directly use extracted features
         all_feature_files = get_all_feature_files(params)
 #         feature_file = get_save_feature_filepath(params, checkpoint_dir, params.split)
         
         if params.n_test_candidates is None: # common setting (no candidate)
             feature_file = all_feature_files[0]
-            if show_data:
-                cl_feature, cl_filepath = feat_loader.init_loader(feature_file, return_path=True)
-            else:
-                cl_feature = feat_loader.init_loader(feature_file)
-                cl_filepath = None
+#             if show_data:
+            cl_feature, cl_filepath = feat_loader.init_loader(feature_file, return_path=True)
+#             else:
+#                 cl_feature = feat_loader.init_loader(feature_file)
+#                 cl_filepath = None
             cl_feature_single = [cl_feature]
+            
             for i in tqdm(range(iter_num)):
                 # TODO: fix data list? can only fix class list?
-                acc = feature_evaluation(
+                task_data = feature_evaluation(
                     cl_feature_single, model, params=params, n_query=15, **few_shot_params, 
                     cl_filepath=cl_filepath,
                 )
-                # TODO: draw something here ???
+                acc = task_data['acc']
                 acc_all.append(acc)
+                task_datas[i] = task_data
         else: # n_test_candidates settings
             candidate_cl_feature = [] # features of each class of each candidates
             print('Loading features of %s candidates into dictionaries...' %(params.n_test_candidates))
@@ -143,22 +148,27 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
 #                 nth_feature_file = feature_file.replace(keyword, keyword+str(n+1))
                 nth_feature_file = all_feature_files[n]
 #                 feature_files.append(nth_feature_file)
-                if show_data:
-                    cl_feature, cl_filepath = feat_loader.init_loader(nth_feature_file, return_path=True)
-                else:
-                    cl_feature = feat_loader.init_loader(nth_feature_file)
-                    cl_filepath = None
+
+#                 if show_data:
+                cl_feature, cl_filepath = feat_loader.init_loader(nth_feature_file, return_path=True)
+#                 else:
+#                     cl_feature = feat_loader.init_loader(nth_feature_file)
+#                     cl_filepath = None
                 candidate_cl_feature.append(cl_feature)
             
             print('Evaluating...')
             # TODO: aggregate this and upper part of for loop, only cl_feature are different
             for i in tqdm(range(iter_num)):
                 # TODO: fix data list? can only fix class list?
-                acc = feature_evaluation(
+#                 acc = feature_evaluation(
+#                     candidate_cl_feature, model, params=params, n_query=15, **few_shot_params, 
+#                     cl_filepath=cl_filepath,
+#                 )
+                task_data = feature_evaluation(
                     candidate_cl_feature, model, params=params, n_query=15, **few_shot_params, 
                     cl_filepath=cl_filepath,
                 )
-                # TODO: draw something here ???
+                acc = task_data['acc']
                 acc_all.append(acc)
                 
         
@@ -168,6 +178,14 @@ def exp_test(params, iter_num, should_del_features=False, show_data=False):
         acc_std  = np.std(acc_all)
         print('loaded from %d epoch model.' %(load_epoch))
         print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(iter_num, acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
+        
+        # TODO: 5/10 save task_datas in file
+#         todo
+        # TODO: 5/10 sort task_datas by acc
+#         todo
+        # TODO: 5/10 draw top ?% task imgs
+#         todo
+        
     
     torch.cuda.empty_cache()
     

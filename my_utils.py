@@ -205,33 +205,95 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
 #                 break
 #         return select_class
     
+    def get_task_paths(select_class, cl_feature_dict, perm_ids_dict):
+        '''
+        Return:
+            task_paths (dict): keys = 'cl00_su00'|...|'cl04_qu14'
+        '''
+        task_paths = {}
+        n_data_per_class = n_support + n_query
+        
+        for cl_idx, cl in enumerate(select_class): # for each class
+            task_class_str = 'c'+str(cl_idx).zfill(2) # c00|01|02|03|04
+            paths = cl_filepath[cl]
+            # get shuffled idx inside one-class data
+            perm_ids = perm_ids_dict[cl] # len = n_data_per_class
+            
+            for i in range(n_data_per_class):
+                if i < n_support:
+                    task_split_str = 'su' + str(i).zfill(2) # su00|01|02|03|04
+                else:
+                    task_split_str = 'qu' + str(i-n_support).zfill(2) # qu00|...|14
+                task_str = task_class_str + '_' + task_split_str # c03_su02
+                path = paths[perm_ids[i]]
+                task_paths[task_str] = {'path':path, 'pred':None}
+        
+        return task_paths
+    
+    def record_task_pred(z_all, task_data):
+        # make model can parse feature correctly
+        model.n_support = n_support
+        model.n_query = n_query
+        n_data_per_class = n_support + n_query
+        # get prediction
+        pred_prob = get_pred(model, z_all = z_all, prob = True)
+#         print('pred_prob.shape:', pred_prob.shape) # (n_way*n_query, n_way)
+        pred = pred_prob.argmax(axis = 1)
+        # record paths and preds
+        for cl_idx in range(n_way):
+            task_class_str = 'c'+str(cl_idx).zfill(2) # c00|01|02|03|04
+            for i in range(n_data_per_class):
+                # record prediction (only for query set)
+                if i >= n_support:
+                    task_split_str = 'qu' + str(i - n_support).zfill(2) # qu00|...|14
+                    task_str = task_class_str + '_' + task_split_str # c03_su02
+                    pred_idx = cl_idx * n_query + (i - n_support)
+                    task_data[task_str]['pred'] = pred[pred_idx]
+                    task_data[task_str]['pred_prob'] = pred_prob[pred_idx]
+        
+        # which preds are correct
+        y = np.repeat(range( n_way ), n_query )
+        correct = pred == y
+        acc = np.mean(correct)*100
+        task_data['acc'] = acc
+    
+    def get_all_perm_paths(select_class, perm_ids_dict):
+        path_all = []
+        n_data_per_class = n_support + n_query
+        for cl in select_class:
+            paths = cl_filepath[cl]
+            perm_ids = perm_ids_dict[cl]
+            path_all.append(np.array([paths[perm_ids[i]] for i in range(n_data_per_class)]))
+        path_all = np.array(path_all)
+        return path_all
+    
     def get_all_perm_features(select_class, cl_feature_dict, perm_ids_dict):
         '''
         Return:
             z_all (ndarray): shape=(n_way, n_support+n_query, ???)
         '''
         z_all  = []
-        path_all = []
+#         path_all = []
+        n_data_per_class = n_support + n_query
         for cl in select_class:
             img_feat = cl_feature_dict[cl]
-            paths = cl_filepath[cl]
+#             paths = cl_filepath[cl]
             
-            n_data_per_class = n_support+n_query
 #             n_data_per_class = n_support+n_query if n_support+n_query<=len(img_feat) else len(img_feat)
             
             # get shuffled idx inside one-class data
             perm_ids = perm_ids_dict[cl] 
             # stack each batch
             z_all.append( [ np.squeeze(img_feat[perm_ids[i]]) for i in range(n_data_per_class) ] )
-            if cl_filepath is not None:
-                path_all.append(np.array([paths[perm_ids[i]] for i in range(n_data_per_class)]))
+#             if cl_filepath is not None:
+#                 path_all.append(np.array([paths[perm_ids[i]] for i in range(n_data_per_class)]))
     
         z_all = np.array(z_all)
-        if cl_filepath is None:
-            return z_all
-        else:
-            path_all = np.array(path_all)
-            return z_all, path_all
+#         if cl_filepath is None:
+        return z_all
+#         else:
+#             path_all = np.array(path_all)
+#             return z_all, path_all
     
     def get_forward_outputs(model, z_all):
         ''' get query set forward_outputs
@@ -361,27 +423,45 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         return sum(result_cv)/k_fold
     
     
-#     adaptation = params.adaptation
+#     task_data = {} # stores all info, e.g. acc, img_path, img_is_correct, etc.
+    
+    class_list = cl_feature_each_candidate[0].keys()
+    select_class = random.sample(class_list,n_way)
+    
+    # get shuffled data idx in each class (of all features?)
+    perm_ids_dict = {} # store the permutation indices of each class
+    tmp_cl_feature_dict = cl_feature_each_candidate[0] # i think all candidates have the same n_data
+    for cl in select_class:
+        img_feats = tmp_cl_feature_dict[cl]
+        # I think len(img_feats) is always n_support+n_query so i don't write len(img_feats) NONONO BUGBUGBUG
+        n_data = len(img_feats)
+        perm_ids = np.random.permutation(n_data).tolist()
+        perm_ids_dict[cl] = perm_ids
+
+    # task_paths to draw_task (utilize save_features path)
+    task_paths = get_task_paths(
+        select_class=select_class, cl_feature_dict=tmp_cl_feature_dict, perm_ids_dict=perm_ids_dict)
+    
+    task_data = dict(**task_paths) # stores all info, e.g. acc, img_path, img_is_correct, etc.
     
     if params.n_test_candidates is None: # common setting
-        class_list = cl_feature_each_candidate[0].keys()
+#         class_list = cl_feature_each_candidate[0].keys()
+#         select_class = random.sample(class_list,n_way)
+        
         cl_feature_dict = cl_feature_each_candidate[0] # list only have 1 element
         
-        select_class = random.sample(class_list,n_way)
-
-        
-        perm_ids_dict = {} # permutation indices of each selected class
-        # initialize perm_ids_dict
-        for cl in select_class:
-            # I think len(img_feat) is always n_support+n_query so i don't write len(img_feat) # nonono BUGBUGBUG
-            img_feat = cl_feature_dict[cl]
-            n_data = len(img_feat)
-            perm_ids = np.random.permutation(n_data).tolist() # get shuffled idx inside one-class data
-            perm_ids_dict[cl] = perm_ids
+#         perm_ids_dict = {} # permutation indices of each selected class
+#         # initialize perm_ids_dict
+#         for cl in select_class:
+#             # I think len(img_feat) is always n_support+n_query so i don't write len(img_feat) # nonono BUGBUGBUG
+#             img_feat = cl_feature_dict[cl]
+#             n_data = len(img_feat)
+#             perm_ids = np.random.permutation(n_data).tolist() # get shuffled idx inside one-class data
+#             perm_ids_dict[cl] = perm_ids
             
         z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
-        if cl_filepath is not None:
-            z_all, path_all = z_all
+#         if cl_filepath is not None:
+#             path_all = get_all_perm_paths(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
         z_all = torch.from_numpy(z_all) # z_support & z_query
         
         # here should be acc
@@ -391,29 +471,30 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 model=model, z_all=z_all, 
                 n_way=n_way, n_support=n_support, n_query=n_query, metric='acc')
         else:
-            acc = show_acc_w_data(
-                model=model, path_all=path_all, z_all=z_all, 
-                n_way=n_way, n_support=n_support, n_query=n_query, 
-            )
+#             pred_prob = get_pred(model, z_all = z_all, prob = True)
+            record_task_pred(z_all = z_all, task_data = task_data)
+            acc = task_data['acc']
+#             acc = show_acc_w_data(
+#                 model=model, path_all=path_all, z_all=z_all, 
+#                 n_way=n_way, n_support=n_support, n_query=n_query, 
+#             )
     
     else: # n_test_candidates setting
         assert params.n_test_candidates == len(cl_feature_each_candidate), "features & params mismatch."
         
-        class_list = cl_feature_each_candidate[0].keys()
-        
-        select_class = random.sample(class_list,n_way)
+#         class_list = cl_feature_each_candidate[0].keys()
+#         select_class = random.sample(class_list,n_way)
 #         select_class = select_class_with_sanity(class_list, cl_feature_each_candidate) # no need to fix bug this way now 
         
-        perm_ids_dict = {} # store the permutation indices of each class
-        sub_result_each_candidate = [] # store sub_query set result of each candidate
-        
-        # get shuffled data idx in each class (of all features?)
-        for cl in select_class:
-            tmp_cl_feature_dict = cl_feature_each_candidate[0] # i think all candidates have the same n_data
-            img_feat = tmp_cl_feature_dict[cl]
-            # I think len(img_feat) is always n_support+n_query so i don't write len(img_feat) NONONO BUGBUGBUG
-            perm_ids = np.random.permutation(len(img_feat)).tolist()
-            perm_ids_dict[cl] = perm_ids
+#         # get shuffled data idx in each class (of all features?)
+#         perm_ids_dict = {} # store the permutation indices of each class
+#         tmp_cl_feature_dict = cl_feature_each_candidate[0] # i think all candidates have the same n_data
+#         for cl in select_class:
+#             img_feat = tmp_cl_feature_dict[cl]
+#             # I think len(img_feat) is always n_support+n_query so i don't write len(img_feat) NONONO BUGBUGBUG
+#             n_data = len(img_feat)
+#             perm_ids = np.random.permutation(n_data).tolist()
+#             perm_ids_dict[cl] = perm_ids
         
         ################### choose those subnets to ensemble ###################
         if params.frac_ensemble == 1:
@@ -422,6 +503,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         else: 
             # validate sub-performance to choose from candidates
             # here seems took most of the time cost
+            sub_result_each_candidate = [] # store sub_query set result of each candidate
             for n in range(params.n_test_candidates): # for each candidate
                 cl_feature_dict = cl_feature_each_candidate[n] # features of the candidate
 
@@ -502,7 +584,10 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         y = np.repeat(range( n_way ), n_query )
         acc = np.mean(ensemble_preds == y)*100
-    return acc
+    
+    task_data['acc'] = acc
+#     return acc
+    return task_data
 
 def set_gpu_id(gpu_id):
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
