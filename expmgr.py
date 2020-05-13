@@ -12,7 +12,7 @@ import logging
 import pickle
 
 class ExpManager:
-    def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params):
+    def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params, pkl_postfix):
         '''
         Args:
             base_params (dict): the core settings of the experiment
@@ -28,6 +28,7 @@ class ExpManager:
         self.results = [] # params as well as results restore in the list of dictionaries
         self.record_folder = './record'
         self.csv_path = os.path.join(self.record_folder, test_fixed_params['csv_name'])
+        self.pkl_postfix = pkl_postfix
         if os.path.exists(self.csv_path):
             self.df = pd.read_csv(self.csv_path)
     
@@ -164,7 +165,8 @@ class ExpManager:
         # TODO: 5/12 save task_datas in file
         # directly save self.results in file 'csv_name.pkl'????????????
         # TODO: CANNOT just save to csv_path.pkl since different expmgr might have the same csv_path
-        pkl_path = csv_path.replace('.csv', '.pkl')
+        pkl_postfix_str = '_' + self.pkl_postfix + '.pkl'
+        pkl_path = csv_path.replace('.csv', pkl_postfix_str)
         print('saving self.results into:', pkl_path)
         with open(pkl_path, 'wb') as handle:
             pickle.dump(self.results, handle, protocol=pickle.HIGHEST_PROTOCOL)
