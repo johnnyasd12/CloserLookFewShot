@@ -170,6 +170,7 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
                 )
                 acc = task_data['acc']
                 acc_all.append(acc)
+                task_datas[i] = task_data
                 
         
 

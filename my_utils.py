@@ -230,13 +230,14 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         return task_paths
     
-    def record_task_pred(z_all, task_data):
-        # make model can parse feature correctly
-        model.n_support = n_support
-        model.n_query = n_query
+#     def record_task_pred(z_all, task_data):
+    def record_task_pred(pred_prob, task_data):
+#         # make model can parse feature correctly
+#         model.n_support = n_support
+#         model.n_query = n_query
         n_data_per_class = n_support + n_query
-        # get prediction
-        pred_prob = get_pred(model, z_all = z_all, prob = True)
+#         # get prediction
+#         pred_prob = get_pred(model, z_all = z_all, prob = True)
 #         print('pred_prob.shape:', pred_prob.shape) # (n_way*n_query, n_way)
         pred = pred_prob.argmax(axis = 1)
         # record paths and preds
@@ -471,13 +472,16 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 model=model, z_all=z_all, 
                 n_way=n_way, n_support=n_support, n_query=n_query, metric='acc')
         else:
+            # make model can parse feature correctly
+            model.n_support = n_support
+            model.n_query = n_query
+            n_data_per_class = n_support + n_query
+            # get prediction
+            pred_prob = get_pred(model, z_all = z_all, prob = True)
+            record_task_pred(pred_prob = pred_prob, task_data = task_data)
 #             pred_prob = get_pred(model, z_all = z_all, prob = True)
-            record_task_pred(z_all = z_all, task_data = task_data)
-            acc = task_data['acc']
-#             acc = show_acc_w_data(
-#                 model=model, path_all=path_all, z_all=z_all, 
-#                 n_way=n_way, n_support=n_support, n_query=n_query, 
-#             )
+#             record_task_pred(z_all = z_all, task_data = task_data)
+#             acc = task_data['acc']
     
     else: # n_test_candidates setting
         assert params.n_test_candidates == len(cl_feature_each_candidate), "features & params mismatch."
@@ -563,6 +567,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             if params.ensemble_strategy=='avg_prob':
                 pred = get_pred(model, z_all, prob=True)
             elif params.ensemble_strategy=='vote':
+                raise ValueError('stop using ensemble_strategy: vote.')
                 pred = get_pred(model, z_all)
             else:
                 raise ValueError('Invalid ensemble_strategy: %s'%(params.ensemble_strategy))
@@ -573,19 +578,20 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         all_preds = np.array(all_preds)
         
         if params.ensemble_strategy=='vote':
+            raise ValueError('stop using ensemble_strategy: vote.')
             all_preds = all_preds.T # shape:(n_query*n_way, n_ensemble) for 'vote'
             ensemble_preds = [np.argmax(np.bincount(preds)) for preds in all_preds]
             ensemble_preds = np.array(ensemble_preds)
         elif params.ensemble_strategy=='avg_prob':
-            ensemble_preds = all_preds.mean(axis=0) # shape=(n_query*n_way, n_way)
+            ensemble_probs = all_preds.mean(axis=0) # shape=(n_query*n_way, n_way)
 #             print('avg_prob/ensemble_preds.shape (after mean)', ensemble_preds.shape)
-            ensemble_preds = np.argmax(ensemble_preds, axis=1) # shape=(n_query*n_way)
+            ensemble_preds = np.argmax(ensemble_probs, axis=1) # shape=(n_query*n_way)
 #             print('avg_prob/ensemble_preds.shape (after argmax)', ensemble_preds.shape)
-        
-        y = np.repeat(range( n_way ), n_query )
-        acc = np.mean(ensemble_preds == y)*100
+        record_task_pred(pred_prob = ensemble_probs, task_data = task_data)
+#         y = np.repeat(range( n_way ), n_query )
+#         acc = np.mean(ensemble_preds == y)*100
     
-    task_data['acc'] = acc
+#     task_data['acc'] = acc
 #     return acc
     return task_data
 

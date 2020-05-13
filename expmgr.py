@@ -173,16 +173,21 @@ class ExpManager:
             print('loading self.results from:', pkl_path)
             with open(pkl_path, 'rb') as handle:
                 results = pickle.load(handle)
-            self.sort_and_draw_tasks(results, sorted_by='novel_acc_mean') # utilize self.results, save best task_datas
+            # get best exp task_datas
+            sorted_res = sorted(results, key = lambda i: -float(i['val_acc_mean']))
+            res = sorted_res[0]
+            task_datas = res['novel_task_datas']
+            print('res:', type(res), res)
+            self.sort_and_draw_tasks(task_datas) # utilize self.results, save best task_datas
             
     
-    def sort_and_draw_tasks(results, sorted_by):
+    def sort_and_draw_tasks(self, task_datas):
         # TODO: 5/12 utilize self.results, save best task_datas
         # TODO: 5/12 sort task_datas by acc
-#                     todo
         # TODO: 5/12 draw top ?% task imgs
-#                     todo
-        pass
+        print('len(task_datas):'+str(len(task_datas)))
+        print('task_datas:', type(task_datas), task_datas)
+        print('drawing tasks with worst')
     
     def sum_up_results(self, choose_by, top_k, show_same_params=True): # choose the best according to dataset & split
         
