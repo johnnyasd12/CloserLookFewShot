@@ -63,9 +63,21 @@ class ExpManager:
 #         else: # new experiments
 #             assert is_csv_new, "csv file shouldn't exist or should be empty."
         
+    
+        pkl_postfix_str = '_' + self.pkl_postfix + '.pkl'
+        pkl_path = csv_path.replace('.csv', pkl_postfix_str)
+        if mode == 'resume':
+            print('loading self.results from:', pkl_path)
+            if os.path.exists(pkl_path):
+                with open(pkl_path, 'rb') as handle:
+                    self.results = pickle.load(handle)
+            else:
+                logging.warning('No previous result pickle file, only record self.results from scratch.')
+            print('self.results at begin, len =', len(self.results))
+        
         for params in all_general_params:
             
-            if mode == 'resume' or mode == 'draw_tasks':
+            if mode == 'resume':# or mode == 'draw_tasks':
                 print()
                 print('='*20, 'Checking if already trained in:', csv_path, '='*20)
                 print('base_params:', self.base_params)
@@ -82,6 +94,8 @@ class ExpManager:
                 
             elif mode == 'from_scratch':
                 should_train = True
+            elif mode == 'draw_tasks':
+                should_train = False
             
             if should_train:
                 # train model
@@ -92,14 +106,6 @@ class ExpManager:
                 train_result = exp_train_val(modified_train_args)
             else:
                 print('NO need to train since already trained in record:', csv_path)
-            
-#             elif mode == 'from_scratch': # not resume
-#                 # train model
-#                 print()
-#                 print('='*20, 'Training', '='*20)
-#                 print(params)
-#                 modified_train_args = get_modified_args(train_args, params)
-#                 train_result = exp_train_val(modified_train_args)
             
             modified_test_args = get_modified_args(test_args, params)
             
@@ -119,9 +125,8 @@ class ExpManager:
                     
                 final_test_args = get_modified_args(modified_test_args, test_params)
                 
-                splits = ['val', 'novel'] # temporary no 'train'
                 write_record = {**params, **test_params}
-                if mode == 'resume' or mode == 'draw_tasks':
+                if mode in ['resume', 'draw_tasks']:
                     if should_train:
                         write_record['train_acc_mean'] = train_result['train_acc']
                     else:
@@ -132,29 +137,35 @@ class ExpManager:
                 elif mode == 'from_scratch':
                     write_record['train_acc_mean'] = train_result['train_acc']
                 
-                for split in splits: # val, novel
+                if mode in ['from_scratch', 'resume']:
+                    splits = ['val', 'novel'] # temporary no 'train'
+                    for split in splits: # val, novel
+
+                        split_final_test_args = copy_args(final_test_args)
+                        split_final_test_args.split = split
+                        print('\n', '='*20, 'Saving Features', '='*20)
+                        print('params:', params)
+                        print('test_params:', test_params)
+                        print('data split:', split)
+                        exp_save_features(copy_args(split_final_test_args))
+                        print('\n', '='*20, 'Testing', '='*20)
+                        print('params:', params)
+                        print('test_params:', test_params)
+                        print('data split:', split)
+                        n_episodes = 10 if split_final_test_args.debug or mode=='draw_tasks' else 600
+
+                        exp_record, task_datas = exp_test(copy_args(split_final_test_args), n_episodes=n_episodes, should_del_features=True)#, show_data=show_data)
+                        write_record['epoch'] = exp_record['epoch']
+                        write_record[split+'_acc_mean'] = exp_record['acc_mean']
                     
-                    split_final_test_args = copy_args(final_test_args)
-                    split_final_test_args.split = split
-                    print('\n', '='*20, 'Saving Features', '='*20)
-                    print(params)
-                    print(test_params)
-                    print('data split:', split)
-                    exp_save_features(copy_args(split_final_test_args))
-                    print('\n', '='*20, 'Testing', '='*20)
-                    print(params)
-                    print(test_params)
-                    print('data split:', split)
-                    n_episodes = 10 if split_final_test_args.debug or mode=='draw_tasks' else 600
+                    print('Saving record to:', csv_path)
+                    record_to_csv(final_test_args, write_record, csv_path=csv_path)
+                    write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
+                    self.results.append(write_record)
                     
-                    exp_record, task_datas = exp_test(copy_args(split_final_test_args), n_episodes=n_episodes, should_del_features=True)#, show_data=show_data)
-                    write_record['epoch'] = exp_record['epoch']
-                    write_record[split+'_acc_mean'] = exp_record['acc_mean']
-                    
-                print('Saving record to:', csv_path)
-                record_to_csv(final_test_args, write_record, csv_path=csv_path)
-                write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
-                self.results.append(write_record)
+                    print('Saving self.results into:', pkl_path)
+                    with open(pkl_path, 'wb') as handle:
+                        pickle.dump(self.results, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 
         # TODO: can also loop dataset
         for choose_by in ['val_acc_mean', 'novel_acc_mean']:
@@ -165,11 +176,11 @@ class ExpManager:
         # TODO: 5/12 save task_datas in file
         # directly save self.results in file 'csv_name.pkl'????????????
         # TODO: CANNOT just save to csv_path.pkl since different expmgr might have the same csv_path
-        pkl_postfix_str = '_' + self.pkl_postfix + '.pkl'
-        pkl_path = csv_path.replace('.csv', pkl_postfix_str)
-        print('saving self.results into:', pkl_path)
-        with open(pkl_path, 'wb') as handle:
-            pickle.dump(self.results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        
+#         if mode in ['from_scratch', 'resume']:
+#             print('saving self.results into:', pkl_path)
+#             with open(pkl_path, 'wb') as handle:
+#                 pickle.dump(self.results, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
         if mode == 'draw_tasks':
             print('loading self.results from:', pkl_path)
@@ -177,18 +188,17 @@ class ExpManager:
                 results = pickle.load(handle)
             # get best exp task_datas
             sorted_res = sorted(results, key = lambda i: -float(i['val_acc_mean']))
-            res = sorted_res[0]
-            task_datas = res['novel_task_datas']
-            print('res:', type(res), res)
+            best_res = sorted_res[0]
+            task_datas = best_res['novel_task_datas']
+#             print('best_res:', best_res.keys(), ', len(task_datas):', len(task_datas)) # n_episodes
+            print('best_res_all_tasks[0]["c00_qu00"]:', task_datas[0]["c00_qu00"])
             self.sort_and_draw_tasks(task_datas) # utilize self.results, save best task_datas
             
     
     def sort_and_draw_tasks(self, task_datas):
-        # TODO: 5/12 utilize self.results, save best task_datas
-        # TODO: 5/12 sort task_datas by acc
         # TODO: 5/12 draw top ?% task imgs
-        print('len(task_datas):'+str(len(task_datas)))
-        print('task_datas:', type(task_datas), task_datas)
+#         print('len(task_datas):'+str(len(task_datas)))
+#         print('task_datas:', type(task_datas), task_datas)
         print('drawing tasks with worst')
     
     def sum_up_results(self, choose_by, top_k, show_same_params=True): # choose the best according to dataset & split
@@ -201,7 +211,7 @@ class ExpManager:
             return df[cols]
         
         csv_path = os.path.join(self.record_folder, self.fixed_params['test']['csv_name'])
-        print('Reading file:', csv_path)
+        print('sum_up_results/Reading file:', csv_path)
         record_df = pd.read_csv(csv_path)
         
         default_test_args = parse_args('test', parse_str='')
