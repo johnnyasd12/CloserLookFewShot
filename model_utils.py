@@ -127,9 +127,13 @@ def get_model(params, mode):
 #         BaselineMethod = baseline_methods[mode]
         if recons_decoder is None and params.min_gram is None: # default baseline/baseline++
             if mode == 'train':
-                model = BaselineTrain(backbone_func, params.num_classes, loss_type = loss_type)
+                model = BaselineTrain(
+                    model_func = backbone_func, loss_type = loss_type, 
+                    num_class = params.num_classes, **few_shot_params)
             elif mode == 'test':
-                model = BaselineFinetune(backbone_func, loss_type = loss_type, **few_shot_params)
+                model = BaselineFinetune(
+                    model_func = backbone_func, loss_type = loss_type, 
+                    **few_shot_params)
         else: # other settings for baseline
             if params.min_gram is not None:
                 min_gram_params = {
@@ -137,9 +141,13 @@ def get_model(params, mode):
                     'lambda_gram':params.lambda_gram, 
                 }
                 if mode == 'train':
-                    model = BaselineTrainMinGram(backbone_func, params.num_classes, loss_type = loss_type, **min_gram_params)
+                    model = BaselineTrainMinGram(
+                        model_func = backbone_func, loss_type = loss_type, 
+                        num_class = params.num_classes, **few_shot_params, **min_gram_params)
                 elif mode == 'test':
-                    model = BaselineFinetune(backbone_func, loss_type = loss_type, **few_shot_params)
+                    model = BaselineFinetune(
+                        model_func = backbone_func, loss_type = loss_type, 
+                        **few_shot_params)
 #                     model = BaselineFinetuneMinGram(backbone_func, loss_type = loss_type, **few_shot_params, **min_gram_params)
             
     

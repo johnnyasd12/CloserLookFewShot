@@ -12,7 +12,7 @@ from my_utils import *
 from tqdm import tqdm
 
 class BaselineTrain(nn.Module):
-    def __init__(self, model_func, num_class, loss_type = 'softmax'):
+    def __init__(self, model_func, num_class, n_way, n_support, loss_type = 'softmax', change_way = True):
         super(BaselineTrain, self).__init__()
         self.feature    = model_func()
         if loss_type == 'softmax':
@@ -25,6 +25,13 @@ class BaselineTrain(nn.Module):
         self.loss_fn = nn.CrossEntropyLoss()
         self.DBval = False; #only set True for CUB dataset, see issue #31
 #         self.DBval = True; #only set True for CUB dataset, see issue #31
+        
+        # only for validation fine-tuning
+        self.n_way      = n_way
+        self.n_support  = n_support
+        self.n_query    = -1 #(change depends on input)
+        self.feat_dim   = self.feature.final_feat_dim
+        self.change_way = change_way  #some methods allow different_way classification during training and test
 
     def forward(self,x):
         x    = Variable(x.cuda())
@@ -110,31 +117,112 @@ class BaselineTrain(nn.Module):
         if self.DBval:
             return self.analysis_loop(val_loader)
         else:
-            return -1   #no validation, just save model during iteration
-#             return self.finetune_loop(val_loader)
+#             return -1   #no validation, just save model during iteration
+            return self.finetune_loop(val_loader)
 
-#     def finetune_correct(self, x):
-#         pass
-
-#     def finetune_loop(self, val_loader):
-#         acc_all = []
-#         iter_num = len(val_loader) 
-#         tt = tqdm(val_loader, desc='Validation')
-#         for i, (x,_) in enumerate(tt): # for each episode
-#             # x.shape = (N,K,C,H,W), N-way, K-shot
-#             self.n_query = x.size(1) - self.n_support
+    def finetune_loop(self, val_loader):
+        # almost the same with test_loop in MetaTemplate except self.change_way
+        acc_all = []
+        n_episodes = len(val_loader) 
+        tt = tqdm(val_loader, desc='Validation')
+        for i, (x,_) in enumerate(tt): # for each episode
+            # x.shape = (N,K,C,H,W), N-way, K-shot
+            self.n_query = x.size(1) - self.n_support
 #             if self.change_way:
-#                 self.n_way  = x.size(0)
-#             correct_this, count_this = self.finetune_correct(x)
-#             acc_all.append(correct_this/count_this * 100)
+            self.n_way  = x.size(0)
+            correct_this, count_this = self.finetune_correct(x)
+            acc_all.append(correct_this/count_this * 100)
 
-#         acc_all  = np.asarray(acc_all)
-#         acc_mean = np.mean(acc_all)
-#         acc_std  = np.std(acc_all)
-# #         print('%d Test Acc = %4.2f%% +- %4.2f%%' %(iter_num,  acc_mean, 1.96* acc_std/np.sqrt(iter_num)))
-#         print('Val Acc = %4.2f%% +- %4.2f%% with %d episodes.' %(acc_mean, 1.96* acc_std/np.sqrt(iter_num), iter_num))
+        acc_all  = np.asarray(acc_all)
+        acc_mean = np.mean(acc_all)
+        acc_std  = np.std(acc_all)
+#         print('%d Test Acc = %4.2f%% +- %4.2f%%' %(n_episodes,  acc_mean, 1.96* acc_std/np.sqrt(n_episodes)))
+        print('Val Acc = %4.2f%% +- %4.2f%% with %d episodes.' %(acc_mean, 1.96* acc_std/np.sqrt(n_episodes), n_episodes))
 
-#         return acc_mean
+        return acc_mean
+    
+    def finetune_correct(self, x):
+        scores = self.set_forward_adaptation(x)
+        y_query = np.repeat(range( self.n_way ), self.n_query )
+
+        topk_scores, topk_labels = scores.data.topk(1, 1, True, True)
+        topk_ind = topk_labels.cpu().numpy()
+        top1_correct = np.sum(topk_ind[:,0] == y_query)
+        return float(top1_correct), len(y_query)
+
+    def set_forward_adaptation(self, x, is_feature = False):
+        # just for finetuning
+        # almost the same with MetaTemplate, except linear_clf & loss_function part
+        # exactly the same with BaselineFinetune, except the assertion. 
+        
+        # freeze feature network
+        # reset to trainable
+        for par in self.feature.parameters():
+            par.requires_grad = False
+        
+        z_support, z_query  = self.parse_feature(x,is_feature)
+
+        z_support   = z_support.contiguous().view(self.n_way* self.n_support, -1 )
+        z_query     = z_query.contiguous().view(self.n_way* self.n_query, -1 )
+
+        y_support = torch.from_numpy(np.repeat(range( self.n_way ), self.n_support ))
+        y_support = Variable(y_support.cuda())
+
+        if self.loss_type == 'softmax':
+            linear_clf = nn.Linear(self.feat_dim, self.n_way)
+        elif self.loss_type == 'dist':        
+            linear_clf = backbone.distLinear(self.feat_dim, self.n_way)
+        linear_clf = linear_clf.cuda()
+
+        set_optimizer = torch.optim.SGD(linear_clf.parameters(), lr = 0.01, momentum=0.9, dampening=0.9, weight_decay=0.001)
+
+        # BUGFIX: BaselineFinetune has no attribute 'loss_fn'
+        loss_function = self.loss_fn
+        
+        batch_size = 4
+        support_size = self.n_way* self.n_support
+        # an epoch is just go through support set once
+        n_epoch = 20 #100
+        for epoch in range(n_epoch):
+            rand_id = np.random.permutation(support_size)
+            for i in range(0, support_size , batch_size):
+                set_optimizer.zero_grad()
+                selected_id = torch.from_numpy( rand_id[i: min(i+batch_size, support_size) ]).cuda()
+
+                z_batch = z_support[selected_id]
+                y_batch = y_support[selected_id] 
+                scores = linear_clf(z_batch)
+                loss = loss_function(scores,y_batch)
+                loss.backward()
+                set_optimizer.step()
+                
+        scores = linear_clf(z_query)
+        
+        # reset to trainable
+        for par in self.feature.parameters():
+            par.requires_grad = True
+        
+        return scores
+        
+    def parse_feature(self,x,is_feature): # utilized by set_forward
+        ''' parsing xs or zs to support and query feature embedding
+        Return:
+            z_support: shape=(n_way, n_support,...)
+            z_query: shape=(n_way, batch_size - n_support, ...)
+        '''
+        x = x.cuda()
+        
+        # x.size = n_way, (n_supp + n_que), 3, size, size (even for omniglot channel size is 3
+        if is_feature:
+            z_all = x
+        else:
+            x           = x.contiguous().view( self.n_way * (self.n_support + self.n_query), *x.size()[2:]) 
+            z_all       = self.feature.forward(x)
+            z_all       = z_all.view( self.n_way, self.n_support + self.n_query, -1)
+        z_support   = z_all[:, :self.n_support]
+        z_query     = z_all[:, self.n_support:]
+
+        return z_support, z_query
     
     def analysis_loop(self, val_loader, record = None):
         class_file  = {}
@@ -156,12 +244,15 @@ class BaselineTrain(nn.Module):
         return 1/DB #DB index: the lower the better
 
 class BaselineTrainMinGram(BaselineTrain):
-    def __init__(self, model_func, num_class, loss_type, min_gram, lambda_gram):
+    def __init__(self, model_func, num_class, n_way, n_support, loss_type, min_gram, lambda_gram, change_way = True):
         if min_gram not in ['l1', 'l2', 'inf']:
             raise ValueError('Invalid min_gram: %s'%(min_gram))
         super(BaselineTrainMinGram, self).__init__(
             model_func=model_func, 
-            num_class=num_class, loss_type=loss_type)
+            num_class=num_class, loss_type=loss_type, 
+            n_way=n_way, n_support=n_support, # just for validation fine-tune
+            change_way=change_way
+        )
         self.min_gram = min_gram
         self.lambda_gram = lambda_gram
     

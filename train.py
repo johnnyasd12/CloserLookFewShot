@@ -152,8 +152,14 @@ def get_train_val_loader(params):
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)
         base_loader     = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
-        val_datamgr     = SimpleDataManager(image_size, batch_size = 64)
-        val_loader      = val_datamgr.get_data_loader( val_file, aug = False)
+#         val_datamgr     = SimpleDataManager(image_size, batch_size = 64)
+#         val_loader      = val_datamgr.get_data_loader( val_file, aug = False)
+        
+        # to do fine-tune when validation
+        n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
+        test_few_shot_params     = get_few_shot_params(params, 'test')
+        val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
+        val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
         
     elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
