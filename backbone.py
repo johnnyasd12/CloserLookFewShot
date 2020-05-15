@@ -1065,7 +1065,7 @@ def Conv4S(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
 def Conv4SNP():
     return ConvNetSNopool(4)
 
-def ResNet10(flatten=True, dropout_p=0, dropout_block_id=10, more_to_drop=None, gram_bid=None):
+def ResNet10(flatten=True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
     # WTF i dunno why SimpleBlock cost less memory
     return ResNet(SimpleBlock, [1,1,1,1],[64,128,256,512], flatten, 
                  dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
@@ -1078,9 +1078,12 @@ def DeResNet10(flatten=True):
 def DeResNet10_2(flatten=False):
     return DeResNet(DeSimpleBlock, [1,1], [128,64], flatten, indim=128)
 
-def ResNet18(flatten = True, dropout_p=0, dropout_block_id=10):
-    return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten, flatten, 
-                 dropout_p=dropout_p, dropout_block_id=dropout_block_id)
+def ResNet18(flatten = True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten, 
+                 dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+                  more_to_drop=more_to_drop, gram_sid=gram_bid)
+#     return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten, flatten, 
+#                  dropout_p=dropout_p, dropout_block_id=dropout_block_id)
 #     return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten)
 
 def DeResNet18(flatten=True):

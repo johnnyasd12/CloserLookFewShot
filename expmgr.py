@@ -6,6 +6,11 @@ from test import exp_test, record_to_csv
 from param_utils import get_all_params_comb, get_all_args_ls, get_modified_args, copy_args, get_matched_df
 import pandas as pd
 import os
+
+# for better error message when encounter RuntimeError: CUDA error: device-side assert triggered
+if False:
+    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+
 from my_utils import del_keys
 import logging
 
