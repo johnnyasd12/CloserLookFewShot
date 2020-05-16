@@ -927,7 +927,8 @@ class ResNet(nn.Module, CustomDropoutNet, MinGramDropoutNet):
                 '''
                 half_res = (i>=1) and (j==0) # only stage 2 and 3's first block?
                 # for CustomDropout
-                dropout_cond = i==dropout_block_id # whether this layer should dropout
+                is_last_block_of_stage = j==list_of_num_blocks[i]-1
+                dropout_cond = i==dropout_block_id and is_last_block_of_stage # whether this layer should dropout
                 block_dropout_p = dropout_p if dropout_cond else 0.
                 # more_to_drop
                 if more_to_drop=='double' and dropout_cond:
@@ -945,7 +946,6 @@ class ResNet(nn.Module, CustomDropoutNet, MinGramDropoutNet):
                 indim = list_of_out_dims[i]
                 
                 # for Gram Matrix block
-                is_last_block_of_stage = j==list_of_num_blocks[i]-1
                 if gram_cond and is_last_block_of_stage: 
                     gram_trunk = trunk.copy()
                     target_block = gram_trunk.pop() # remove & get last one
