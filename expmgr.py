@@ -202,80 +202,37 @@ class ExpManager:
         
         if mode == 'draw_tasks':
             print('loading self.results from:', pkl_path)
-            with open(pkl_path, 'rb') as handle:
-                results = pickle.load(handle)
-            # get best exp task_datas
-            sorted_res = sorted(results, key = lambda i: -float(i['val_acc_mean']))
-            best_res = sorted_res[0]
-            task_datas = best_res['novel_task_datas']
-#             print('best_res:', best_res.keys(), ', len(task_datas):', len(task_datas)) # n_episodes
-            print('best_res_all_tasks[0]["c00_qu00"]:', task_datas[0]["c00_qu00"])
-            self.sort_and_draw_tasks(task_datas, n_tasks = 3) # utilize self.results, save best task_datas
+            best_model_all_tasks = get_best_all_tasks(pkl_path = pkl_path)
+#             with open(pkl_path, 'rb') as handle:
+#                 results = pickle.load(handle)
+#             # get best exp task_datas
+#             sorted_res = sorted(results, key = lambda i: -float(i['val_acc_mean']))
+#             best_res = sorted_res[0]
+#             best_model_all_tasks = best_res['novel_task_datas']
+#             print('best_model_all_tasks[0]["c00_qu00"]:', best_model_all_tasks[0]["c00_qu00"])
+            
+            print('sorting tasks...')
+            sorted_tasks = sorted(best_model_all_tasks, key = lambda i: float(i['acc'])) # in ascending order
+            print('Draw Worst Tasks...')
+            self.draw_tasks(sorted_tasks, n_tasks = 3) # utilize self.results, save all_tasks of best res
+#             self.draw_tasks(best_model_all_tasks, n_tasks = 3) # utilize self.results, save all_tasks of best res
             
     
-    def sort_and_draw_tasks(self, task_datas, n_tasks):
-        # TODO: 5/12 draw top ?% task imgs
-#         print('len(task_datas):'+str(len(task_datas)))
-#         print('task_datas:', type(task_datas), len(task_datas)) # n_episodes
-#         print('task_datas[0]:', task_datas[0].keys(), type(task_datas[0]['acc'])) # 'acc'(float), 'c00_qu14'
-        print('sorting tasks...')
-        sorted_tasks = sorted(task_datas, key = lambda i: float(i['acc'])) # in ascending order
-        print('drawing with worst', n_tasks, 'tasks...')
-        for i in range(n_tasks):
-            print('the worst', i + 1, 'task')
-            task = sorted_tasks[i]
-            self.draw_single_task(task)
-        print('drawing with best', n_tasks, 'tasks...')
     
-    def draw_single_task(self, task):
-        n_way = 5
-        n_support = 5
-        n_query = 15
-        
-        n_col = n_way
-        n_row = n_support + n_query
-        unit_size = 50
-        plt.figure()
-        img = plt.imread(task['c00_qu00']['path'])
-        plt.imshow(img)
-        plt.show()
-        
-        fig, axarr = plt.subplots(n_row, n_col, figsize=(unit_size, unit_size))
-#         plt.figure()
-#         fig.tight_layout()
-        for n in range(n_row): # for each data per class
-            if n < n_support:
-                data_str = 'su' + str(n).zfill(2)
-            else:
-                data_str = 'qu' + str(n-n_support).zfill(2)
-            for cl in range(n_col): # for each class
-                cl_str = 'c' + str(cl).zfill(2)
-                key = cl_str + '_' + data_str
-                path = task[key]['path']
-#                 print(task[key].keys())
-#                 print('key:', key)
-#                 print('path:', path)
-                if 'qu' in key:
-                    pred = task[key]['pred']
-                    pred_prob = task[key]['pred_prob']
-                    is_correct = pred == cl
-#                     print('pred:', pred)
-#                     print('pred_prob:', pred_prob)
-                
-                img = plt.imread(path)
-                if len(img.shape) == 2:
-                    axarr[n, cl].imshow(img, cmap=cm.gray, aspect=1) # set aspect to avoid showing with actual size
-                else:
-                    axarr[n, cl].imshow(img, aspect=1) # set aspect to avoid showing with actual size
-        
-        plt.show()
-        save_img_folder = os.path.join(self.record_folder, 'img')
-        if not os.path.exists(save_img_folder):
-            os.mkdir(save_img_folder)
-        filename = 'tmp.png'
-        save_path = os.path.join(save_img_folder, filename)
-        fig.savefig(save_path)#, bbox_inches='tight')
-#         yooo
+    def draw_tasks(self, all_tasks, n_tasks):
+        # TODO: 5/12 draw top ?% task imgs
+#         print('len(all_tasks):'+str(len(all_tasks)))
+#         print('all_tasks:', type(all_tasks), len(all_tasks)) # n_episodes
+#         print('all_tasks[0]:', all_tasks[0].keys(), type(all_tasks[0]['acc'])) # 'acc'(float), 'c00_qu14'
+        print('drawing with', n_tasks, 'tasks...')
+        for i in range(n_tasks):
+            print('the', i + 1, 'task')
+            task = all_tasks[i]
+            save_filename = 'task_' + str(i + 1) + '_' + self.pkl_postfix + '.png'
+            save_img_folder = os.path.join(self.record_folder, 'imgs')
+            draw_single_task(task = task, save_filename = save_filename, save_img_folder = save_img_folder)
+    
+
         
     
     def sum_up_results(self, choose_by, top_k, show_same_params=True): # choose the best according to dataset & split
@@ -335,6 +292,72 @@ class ExpManager:
         '''
         pass
 
+
+def draw_most_differ_tasks(pkl_path1, pkl_path2):
+    pass
+
+def draw_single_task(task, save_filename = None, save_img_folder = None):
+    n_way = 5
+    n_support = 5
+    n_query = 15
+
+    n_col = n_way
+    n_row = n_support + n_query
+    unit_size = 50
+    plt.figure()
+    img = plt.imread(task['c00_qu00']['path'])
+    plt.imshow(img)
+    plt.show()
+
+    fig, axarr = plt.subplots(n_row, n_col, figsize=(unit_size, unit_size))
+#         plt.figure()
+#         fig.tight_layout()
+    for n in range(n_row): # for each data per class
+        if n < n_support:
+            data_str = 'su' + str(n).zfill(2)
+        else:
+            data_str = 'qu' + str(n-n_support).zfill(2)
+        for cl in range(n_col): # for each class
+            cl_str = 'c' + str(cl).zfill(2)
+            key = cl_str + '_' + data_str
+            path = task[key]['path']
+#                 print(task[key].keys())
+#                 print('key:', key)
+#                 print('path:', path)
+            if 'qu' in key:
+                pred = task[key]['pred']
+                pred_prob = task[key]['pred_prob']
+                is_correct = pred == cl
+#                     print('pred:', pred)
+#                     print('pred_prob:', pred_prob)
+
+            img = plt.imread(path)
+            if len(img.shape) == 2:
+                axarr[n, cl].imshow(img, cmap=cm.gray, aspect=1) # set aspect to avoid showing with actual size
+            else:
+                axarr[n, cl].imshow(img, aspect=1) # set aspect to avoid showing with actual size
+
+    plt.show()
+#         save_img_folder = os.path.join(self.record_folder, 'imgs')
+    if not os.path.exists(save_img_folder):
+        os.mkdir(save_img_folder)
+#         filename = 'tmp.png'
+    if save_filename is not None:
+        save_path = os.path.join(save_img_folder, save_filename)
+        print('Saving image to:', save_path)
+        fig.savefig(save_path)#, bbox_inches='tight')
+#         yooo
+
+def get_best_all_tasks(pkl_path):
+    print('loading self.results from:', pkl_path)
+    with open(pkl_path, 'rb') as handle:
+        results = pickle.load(handle)
+    # get best exp task_datas
+    sorted_res = sorted(results, key = lambda i: -float(i['val_acc_mean']))
+    best_res = sorted_res[0]
+    best_model_all_tasks = best_res['novel_task_datas']
+    print('best_model_all_tasks[0]["c00_qu00"]:', best_model_all_tasks[0]["c00_qu00"])
+    return best_model_all_tasks
 
 
 def main(args):
