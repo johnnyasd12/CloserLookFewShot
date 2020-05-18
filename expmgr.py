@@ -274,7 +274,7 @@ class ExpManager:
         pass
 
 
-def draw_most_differ_tasks(pkl_path1, pkl_path2, save_img_folder, exp_postfix):
+def draw_most_differ_tasks(pkl_path1, pkl_path2, n_tasks, save_img_folder, exp1_postfix, exp2_postfix):
     best_exp_1_all_task = get_best_all_tasks(pkl_path1)
     best_exp_2_all_task = get_best_all_tasks(pkl_path2)
     
@@ -290,6 +290,7 @@ def draw_most_differ_tasks(pkl_path1, pkl_path2, save_img_folder, exp_postfix):
         acc1 = exp_1_task['acc']
         acc2 = exp_2_task['acc']
         diff_task['1-2_acc'] = acc1 - acc2
+        diff_task['2-1_acc'] = acc2 - acc1
         diff_task['exp1_acc'] = acc1
         diff_task['exp2_acc'] = acc2
         
@@ -308,11 +309,20 @@ def draw_most_differ_tasks(pkl_path1, pkl_path2, save_img_folder, exp_postfix):
         all_tasks_diff.append(diff_task)
     
     diff12_increase_tasks = sorted(all_tasks_diff, key = lambda i: i['1-2_acc'])
-    diff12_decrease_tasks = sorted(all_tasks_diff, key = lambda i: -i['1-2_acc'])
+    exp_postfix_2_gt_1 = exp2_postfix + '_gt_' + exp1_postfix
     print('Drawing tasks Exp2 better than Exp1 ...')
-    draw_tasks(diff12_increase_tasks, n_tasks = 3, 
-               save_img_folder = save_img_folder, exp_postfix = exp_postfix, compare_diff = True)
-#     print('Drawing tasks Exp1 better than Exp2 ...')
+    draw_tasks(diff12_increase_tasks, n_tasks = n_tasks, 
+               save_img_folder = save_img_folder, exp_postfix = exp_postfix_2_gt_1, compare_diff = True)
+
+    diff21_increase_tasks = sorted(all_tasks_diff, key = lambda i: i['2-1_acc'])
+    for i in range(3):
+        print('diff12_increase_tasks[i]["1-2_acc"]:', diff12_increase_tasks[i]['1-2_acc'])
+    for i in range(3):
+        print('diff21_increase_tasks[i]["1-2_acc"]:', diff21_increase_tasks[i]['1-2_acc'])
+    exp_postfix_2_lt_1 = exp2_postfix + '_lt_' + exp1_postfix
+    print('Drawing tasks Exp1 better than Exp2 ...')
+    draw_tasks(diff21_increase_tasks, n_tasks = n_tasks, 
+               save_img_folder = save_img_folder, exp_postfix = exp_postfix_2_lt_1, compare_diff = True)
     
 
 def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None, compare_diff = False):
