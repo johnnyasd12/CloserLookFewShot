@@ -25,6 +25,8 @@ import pickle
 import matplotlib.pyplot as plt
 # to draw gray images ???
 import matplotlib.cm as cm
+# to draw task
+import copy
 
 class ExpManager:
     def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params, pkl_postfix):
@@ -281,24 +283,39 @@ def draw_most_differ_tasks(pkl_path1, pkl_path2, save_img_folder, exp_postfix):
         exp_1_task = best_exp_1_all_task[i]
         exp_2_task = best_exp_2_all_task[i]
         
-        diff_task = exp_1_task.copy()
+#         diff_task = exp_1_task.copy()
+        diff_task = copy.deepcopy(exp_1_task)
+#         print('diff_task.keys():', diff_task.keys()) # acc, img_keys
         del diff_task['acc']
         acc1 = exp_1_task['acc']
         acc2 = exp_2_task['acc']
+        diff_task['1-2_acc'] = acc1 - acc2
         diff_task['exp1_acc'] = acc1
         diff_task['exp2_acc'] = acc2
-        diff_task['1-2_acc'] = acc1 - acc2
+        
+        for img_key in diff_task:
+#             print('img_key:', img_key)
+#             print('diff_task[img_key]:', diff_task[img_key])
+            if isinstance(diff_task[img_key], dict):
+                if 'pred_prob' in diff_task[img_key]:
+                    del diff_task[img_key]['pred']
+                    del diff_task[img_key]['pred_prob']
+#                     print('exp_1_task[img_key].keys():', exp_1_task[img_key].keys())
+                    pred1 = exp_1_task[img_key]['pred']
+                    pred2 = exp_2_task[img_key]['pred']
+                    diff_task[img_key]['exp1_pred'] = pred1
+                    diff_task[img_key]['exp2_pred'] = pred2
         all_tasks_diff.append(diff_task)
     
     diff12_increase_tasks = sorted(all_tasks_diff, key = lambda i: i['1-2_acc'])
     diff12_decrease_tasks = sorted(all_tasks_diff, key = lambda i: -i['1-2_acc'])
     print('Drawing tasks Exp2 better than Exp1 ...')
     draw_tasks(diff12_increase_tasks, n_tasks = 3, 
-               save_img_folder = save_img_folder, exp_postfix = exp_postfix)
+               save_img_folder = save_img_folder, exp_postfix = exp_postfix, compare_diff = True)
 #     print('Drawing tasks Exp1 better than Exp2 ...')
     
 
-def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None):
+def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None, compare_diff = False):
     # draw top ? task imgs
 #     print('len(all_tasks):'+str(len(all_tasks)))
 #     print('all_tasks:', type(all_tasks), len(all_tasks)) # n_episodes
@@ -309,10 +326,13 @@ def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None):
         task = all_tasks[i]
         save_filename = 'task_' + str(i + 1) + '_' + exp_postfix + '.png'
 #         save_img_folder = os.path.join(self.record_folder, 'imgs')
-        draw_single_task(task = task, save_filename = save_filename, save_img_folder = save_img_folder)
+        draw_single_task(
+            task = task, save_filename = save_filename, save_img_folder = save_img_folder, 
+            compare_diff = compare_diff
+        )
 
 
-def draw_single_task(task, save_filename = None, save_img_folder = None):
+def draw_single_task(task, save_filename = None, save_img_folder = None, compare_diff = False):
     n_way = 5
     n_support = 5
     n_query = 15
@@ -341,18 +361,40 @@ def draw_single_task(task, save_filename = None, save_img_folder = None):
 #                 print('key:', key)
 #                 print('path:', path)
             if 'qu' in key:
-                pred = task[key]['pred']
-                pred_prob = task[key]['pred_prob']
-                is_correct = pred == cl
-#                     print('pred:', pred)
-#                     print('pred_prob:', pred_prob)
+                if compare_diff:
+                    pred1 = task[key]['exp1_pred']
+                    pred2 = task[key]['exp2_pred']
+                    sub_title_str = 'pred1=%s, pred2=%s'%(pred1, pred2)
+                    axarr[n, cl].title.set_text(sub_title_str)
+                    if cl != pred1 and cl == pred2: # exp2 correct, but exp1 error
+                        axarr[n, cl].title.set_color('r')
+                    elif cl != pred1 and cl != pred2: # exp1 and exp2 both error
+                        axarr[n, cl].title.set_color('b')
+                else:
+                    pred = task[key]['pred']
+                    pred_prob = task[key]['pred_prob']
+                    is_correct = pred == cl
 
             img = plt.imread(path)
             if len(img.shape) == 2:
                 axarr[n, cl].imshow(img, cmap=cm.gray, aspect=1) # set aspect to avoid showing with actual size
             else:
                 axarr[n, cl].imshow(img, aspect=1) # set aspect to avoid showing with actual size
+            
+#             if compare_diff:
+#                 if 'qu' in key:
+#                     sub_title_str = 'pred=%s'%(pred)
+#                     axarr[n, cl].title.set_text(sub_title_str)
+#                     if cl != pred:
+#                         axarr[n, cl].title.set_color('r')
+#             else:
+#                 pass
 
+    if compare_diff:
+        title_str = 'acc1=%s%%, acc2=%s%%'%(task['exp1_acc'], task['exp2_acc'])
+        fig.suptitle(title_str)
+    else:
+        pass
     plt.show()
 #         save_img_folder = os.path.join(self.record_folder, 'imgs')
     if not os.path.exists(save_img_folder):
