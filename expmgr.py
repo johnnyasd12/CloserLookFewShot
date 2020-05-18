@@ -203,38 +203,17 @@ class ExpManager:
         if mode == 'draw_tasks':
             print('loading self.results from:', pkl_path)
             best_model_all_tasks = get_best_all_tasks(pkl_path = pkl_path)
-#             with open(pkl_path, 'rb') as handle:
-#                 results = pickle.load(handle)
-#             # get best exp task_datas
-#             sorted_res = sorted(results, key = lambda i: -float(i['val_acc_mean']))
-#             best_res = sorted_res[0]
-#             best_model_all_tasks = best_res['novel_task_datas']
-#             print('best_model_all_tasks[0]["c00_qu00"]:', best_model_all_tasks[0]["c00_qu00"])
             
             print('sorting tasks...')
             sorted_tasks = sorted(best_model_all_tasks, key = lambda i: float(i['acc'])) # in ascending order
             print('Draw Worst Tasks...')
-            self.draw_tasks(sorted_tasks, n_tasks = 3) # utilize self.results, save all_tasks of best res
-#             self.draw_tasks(best_model_all_tasks, n_tasks = 3) # utilize self.results, save all_tasks of best res
-            
-    
-    
-    def draw_tasks(self, all_tasks, n_tasks):
-        # TODO: 5/12 draw top ?% task imgs
-#         print('len(all_tasks):'+str(len(all_tasks)))
-#         print('all_tasks:', type(all_tasks), len(all_tasks)) # n_episodes
-#         print('all_tasks[0]:', all_tasks[0].keys(), type(all_tasks[0]['acc'])) # 'acc'(float), 'c00_qu14'
-        print('drawing with', n_tasks, 'tasks...')
-        for i in range(n_tasks):
-            print('the', i + 1, 'task')
-            task = all_tasks[i]
-            save_filename = 'task_' + str(i + 1) + '_' + self.pkl_postfix + '.png'
             save_img_folder = os.path.join(self.record_folder, 'imgs')
-            draw_single_task(task = task, save_filename = save_filename, save_img_folder = save_img_folder)
-    
+            draw_tasks(
+                sorted_tasks, n_tasks = 3, 
+                save_img_folder = save_img_folder, exp_postfix = self.pkl_postfix
+            ) # utilize self.results, save all_tasks of best res
+#             self.draw_tasks(best_model_all_tasks, n_tasks = 3) # utilize self.results, save all_tasks of best res
 
-        
-    
     def sum_up_results(self, choose_by, top_k, show_same_params=True): # choose the best according to dataset & split
         
         def select_cols_if_exists(df, cols: list):
@@ -293,8 +272,45 @@ class ExpManager:
         pass
 
 
-def draw_most_differ_tasks(pkl_path1, pkl_path2):
-    pass
+def draw_most_differ_tasks(pkl_path1, pkl_path2, save_img_folder, exp_postfix):
+    best_exp_1_all_task = get_best_all_tasks(pkl_path1)
+    best_exp_2_all_task = get_best_all_tasks(pkl_path2)
+    
+    all_tasks_diff = []
+    for i in range(len(best_exp_1_all_task)):
+        exp_1_task = best_exp_1_all_task[i]
+        exp_2_task = best_exp_2_all_task[i]
+        
+        diff_task = exp_1_task.copy()
+        del diff_task['acc']
+        acc1 = exp_1_task['acc']
+        acc2 = exp_2_task['acc']
+        diff_task['exp1_acc'] = acc1
+        diff_task['exp2_acc'] = acc2
+        diff_task['1-2_acc'] = acc1 - acc2
+        all_tasks_diff.append(diff_task)
+    
+    diff12_increase_tasks = sorted(all_tasks_diff, key = lambda i: i['1-2_acc'])
+    diff12_decrease_tasks = sorted(all_tasks_diff, key = lambda i: -i['1-2_acc'])
+    print('Drawing tasks Exp2 better than Exp1 ...')
+    draw_tasks(diff12_increase_tasks, n_tasks = 3, 
+               save_img_folder = save_img_folder, exp_postfix = exp_postfix)
+#     print('Drawing tasks Exp1 better than Exp2 ...')
+    
+
+def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None):
+    # draw top ? task imgs
+#     print('len(all_tasks):'+str(len(all_tasks)))
+#     print('all_tasks:', type(all_tasks), len(all_tasks)) # n_episodes
+#     print('all_tasks[0]:', all_tasks[0].keys(), type(all_tasks[0]['acc'])) # 'acc'(float), 'c00_qu14'
+    print('drawing with', n_tasks, 'tasks...')
+    for i in range(n_tasks):
+        print('the', i + 1, 'task')
+        task = all_tasks[i]
+        save_filename = 'task_' + str(i + 1) + '_' + exp_postfix + '.png'
+#         save_img_folder = os.path.join(self.record_folder, 'imgs')
+        draw_single_task(task = task, save_filename = save_filename, save_img_folder = save_img_folder)
+
 
 def draw_single_task(task, save_filename = None, save_img_folder = None):
     n_way = 5
@@ -346,7 +362,6 @@ def draw_single_task(task, save_filename = None, save_img_folder = None):
         save_path = os.path.join(save_img_folder, save_filename)
         print('Saving image to:', save_path)
         fig.savefig(save_path)#, bbox_inches='tight')
-#         yooo
 
 def get_best_all_tasks(pkl_path):
     print('loading self.results from:', pkl_path)
