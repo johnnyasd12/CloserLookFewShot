@@ -314,15 +314,15 @@ def draw_most_differ_tasks(pkl_path1, pkl_path2, n_tasks, save_img_folder, exp1_
     draw_tasks(diff12_increase_tasks, n_tasks = n_tasks, 
                save_img_folder = save_img_folder, exp_postfix = exp_postfix_2_gt_1, compare_diff = True)
 
-    diff21_increase_tasks = sorted(all_tasks_diff, key = lambda i: i['2-1_acc'])
-    for i in range(3):
-        print('diff12_increase_tasks[i]["1-2_acc"]:', diff12_increase_tasks[i]['1-2_acc'])
-    for i in range(3):
-        print('diff21_increase_tasks[i]["1-2_acc"]:', diff21_increase_tasks[i]['1-2_acc'])
-    exp_postfix_2_lt_1 = exp2_postfix + '_lt_' + exp1_postfix
-    print('Drawing tasks Exp1 better than Exp2 ...')
-    draw_tasks(diff21_increase_tasks, n_tasks = n_tasks, 
-               save_img_folder = save_img_folder, exp_postfix = exp_postfix_2_lt_1, compare_diff = True)
+#     diff21_increase_tasks = sorted(all_tasks_diff, key = lambda i: i['2-1_acc'])
+#     for i in range(3):
+#         print('diff12_increase_tasks[i]["1-2_acc"]:', diff12_increase_tasks[i]['1-2_acc'])
+#     for i in range(3):
+#         print('diff21_increase_tasks[i]["1-2_acc"]:', diff21_increase_tasks[i]['1-2_acc'])
+#     exp_postfix_2_lt_1 = exp2_postfix + '_lt_' + exp1_postfix
+#     print('Drawing tasks Exp1 better than Exp2 ...')
+#     draw_tasks(diff21_increase_tasks, n_tasks = n_tasks, 
+#                save_img_folder = save_img_folder, exp_postfix = exp_postfix_2_lt_1, compare_diff = True)
     
 
 def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None, compare_diff = False):
@@ -349,15 +349,24 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
 
     n_col = n_way
     n_row = n_support + n_query
-    unit_size = 50
-    plt.figure()
-    img = plt.imread(task['c00_qu00']['path'])
-    plt.imshow(img)
-    plt.show()
+    unit_size = 3
+#     plt.figure()
+#     img = plt.imread(task['c00_qu00']['path'])
+#     plt.imshow(img)
+#     plt.show()
 
-    fig, axarr = plt.subplots(n_row, n_col, figsize=(unit_size, unit_size))
+    fig, axarr = plt.subplots(
+        n_row, n_col, 
+        figsize=(unit_size*n_col, unit_size*n_row) # WTF?????????? WHY???????
+    )
+    fig.tight_layout()
+    plt.subplots_adjust(top=n_row/(n_row+1)) # to set margin for suptitle 'after' tight_layout()
+    if compare_diff:
+        title_str = 'acc1=%s%%, acc2=%s%%'%(task['exp1_acc'], task['exp2_acc'])
+        fig.suptitle(title_str, size = unit_size*7)
+    else:
+        pass
 #         plt.figure()
-#         fig.tight_layout()
     for n in range(n_row): # for each data per class
         if n < n_support:
             data_str = 'su' + str(n).zfill(2)
@@ -375,7 +384,9 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
                     pred1 = task[key]['exp1_pred']
                     pred2 = task[key]['exp2_pred']
                     sub_title_str = 'pred1=%s, pred2=%s'%(pred1, pred2)
+                    sub_title_size = unit_size * 4
                     axarr[n, cl].title.set_text(sub_title_str)
+                    axarr[n, cl].title.set_size(sub_title_size)
                     if cl != pred1 and cl == pred2: # exp2 correct, but exp1 error
                         axarr[n, cl].title.set_color('r')
                     elif cl != pred1 and cl != pred2: # exp1 and exp2 both error
@@ -400,11 +411,11 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
 #             else:
 #                 pass
 
-    if compare_diff:
-        title_str = 'acc1=%s%%, acc2=%s%%'%(task['exp1_acc'], task['exp2_acc'])
-        fig.suptitle(title_str)
-    else:
-        pass
+#     if compare_diff:
+#         title_str = 'acc1=%s%%, acc2=%s%%'%(task['exp1_acc'], task['exp2_acc'])
+#         fig.suptitle(title_str)
+#     else:
+#         pass
     plt.show()
 #         save_img_folder = os.path.join(self.record_folder, 'imgs')
     if not os.path.exists(save_img_folder):
