@@ -134,6 +134,11 @@ def parse_args(script, parse_str=None):
         if params.n_test_candidates!=None: # both should be True or False
             if params.dropout_p == 0:
                 raise ValueError('dropout_p and n_test_candidates not match.')
+            if 'baseline' in params.method:
+                if params.n_test_candidates > 10:
+                    raise ValueError('too many test candidates for baseline.')
+                if params.frac_ensemble != 1:
+                    raise ValueError('frac_ensemble for baseline methods should be 1.')
     if (params.aug_type==None)^(params.aug_target==None):
         raise ValueError('aug_type & aug_target not match.')
     if (params.recons_decoder==None)^(params.recons_lambda==0):
