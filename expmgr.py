@@ -359,8 +359,8 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
         n_row, n_col, 
         figsize=(unit_size*n_col, unit_size*n_row) # WTF?????????? WHY???????
     )
-    fig.tight_layout()
-    plt.subplots_adjust(top=n_row/(n_row+1)) # to set margin for suptitle 'after' tight_layout()
+#     fig.tight_layout()
+#     plt.subplots_adjust(top=n_row/(n_row+1)) # to set margin for suptitle 'after' tight_layout()
     if compare_diff:
         title_str = 'acc1=%s%%, acc2=%s%%'%(task['exp1_acc'], task['exp2_acc'])
         fig.suptitle(title_str, size = unit_size*7)
@@ -402,20 +402,11 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
             else:
                 axarr[n, cl].imshow(img, aspect=1) # set aspect to avoid showing with actual size
             
-#             if compare_diff:
-#                 if 'qu' in key:
-#                     sub_title_str = 'pred=%s'%(pred)
-#                     axarr[n, cl].title.set_text(sub_title_str)
-#                     if cl != pred:
-#                         axarr[n, cl].title.set_color('r')
-#             else:
-#                 pass
-
-#     if compare_diff:
-#         title_str = 'acc1=%s%%, acc2=%s%%'%(task['exp1_acc'], task['exp2_acc'])
-#         fig.suptitle(title_str)
-#     else:
-#         pass
+    fig.tight_layout()
+    plt.subplots_adjust(
+        top = n_row/(n_row+1), # set margin for suptitle 'after' tight_layout()
+        hspace = 0.5 # subplot height margin (for subtitle)
+    )
     plt.show()
 #         save_img_folder = os.path.join(self.record_folder, 'imgs')
     if not os.path.exists(save_img_folder):
