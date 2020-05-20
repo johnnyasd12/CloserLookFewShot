@@ -309,7 +309,7 @@ def draw_most_differ_tasks(pkl_path1, pkl_path2, n_tasks, save_img_folder, exp1_
         all_tasks_diff.append(diff_task)
     
     diff12_increase_tasks = sorted(all_tasks_diff, key = lambda i: i['1-2_acc'])
-    exp_postfix_2_gt_1 = exp2_postfix + '_gt_' + exp1_postfix
+    exp_postfix_2_gt_1 = exp1_postfix + '_lt_' + exp2_postfix
     print('Drawing tasks Exp2 better than Exp1 ...')
     draw_tasks(diff12_increase_tasks, n_tasks = n_tasks, 
                save_img_folder = save_img_folder, exp_postfix = exp_postfix_2_gt_1, compare_diff = True)
@@ -334,7 +334,8 @@ def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None, c
     for i in range(n_tasks):
         print('the', i + 1, 'task')
         task = all_tasks[i]
-        save_filename = 'task_' + str(i + 1) + '_' + exp_postfix + '.png'
+        task_str = 'task_' + str(i + 1).zfill(2)
+        save_filename = exp_postfix + '_' + task_str + '.png'
 #         save_img_folder = os.path.join(self.record_folder, 'imgs')
         draw_single_task(
             task = task, save_filename = save_filename, save_img_folder = save_img_folder, 
@@ -363,7 +364,7 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
 #     plt.subplots_adjust(top=n_row/(n_row+1)) # to set margin for suptitle 'after' tight_layout()
     if compare_diff:
         title_str = 'acc1=%s%%, acc2=%s%%'%(task['exp1_acc'], task['exp2_acc'])
-        fig.suptitle(title_str, size = unit_size*7)
+        fig.suptitle(title_str, size = unit_size*10)
     else:
         pass
 #         plt.figure()
@@ -376,36 +377,50 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
             cl_str = 'c' + str(cl).zfill(2)
             key = cl_str + '_' + data_str
             path = task[key]['path']
-#                 print(task[key].keys())
-#                 print('key:', key)
-#                 print('path:', path)
+
+            if 'su' in key:
+                alpha = 1 # plot transparency ( 1 for solid)
             if 'qu' in key:
+                alpha = 0.2 # plot transparency ( 1 for solid)
                 if compare_diff:
                     pred1 = task[key]['exp1_pred']
                     pred2 = task[key]['exp2_pred']
-                    sub_title_str = 'pred1=%s, pred2=%s'%(pred1, pred2)
+                    
+                    sub_title_str = 'pred1=%s\npred2=%s'%(pred1, pred2)
                     sub_title_size = unit_size * 4
                     axarr[n, cl].title.set_text(sub_title_str)
                     axarr[n, cl].title.set_size(sub_title_size)
                     if cl != pred1 and cl == pred2: # exp2 correct, but exp1 error
+                        alpha = 1
                         axarr[n, cl].title.set_color('r')
                     elif cl != pred1 and cl != pred2: # exp1 and exp2 both error
                         axarr[n, cl].title.set_color('b')
+                    elif cl == pred1 and cl == pred2: # exp1 and exp2 both correct
+                        pass
                 else:
                     pred = task[key]['pred']
                     pred_prob = task[key]['pred_prob']
                     is_correct = pred == cl
 
-            img = plt.imread(path)
+#             img = plt.imread(path)
+            img = plt.imread(path, 0) # BUGFIX: ValueError: invalid PNG header
             if len(img.shape) == 2:
-                axarr[n, cl].imshow(img, cmap=cm.gray, aspect=1) # set aspect to avoid showing with actual size
+                axarr[n, cl].imshow(
+                    img, cmap=cm.gray, 
+                    aspect=1, # set aspect to avoid showing with actual size
+                    alpha=alpha
+                ) 
             else:
-                axarr[n, cl].imshow(img, aspect=1) # set aspect to avoid showing with actual size
-            
+                axarr[n, cl].imshow(
+                    img, 
+                    aspect=1, # set aspect to avoid showing with actual size
+                    alpha=alpha
+                )
+#             axarr[n, cl].set_axis_off()
     fig.tight_layout()
     plt.subplots_adjust(
         top = n_row/(n_row+1), # set margin for suptitle 'after' tight_layout()
-        hspace = 0.5 # subplot height margin (for subtitle)
+        hspace = 0.7 # subplot height margin (for subtitle)
     )
     plt.show()
 #         save_img_folder = os.path.join(self.record_folder, 'imgs')
