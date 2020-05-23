@@ -1082,9 +1082,12 @@ def ResNet18(flatten = True, dropout_p=0, dropout_block_id=3, more_to_drop=None,
     return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten, 
                  dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
                   more_to_drop=more_to_drop, gram_sid=gram_bid)
-#     return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten, flatten, 
-#                  dropout_p=dropout_p, dropout_block_id=dropout_block_id)
-#     return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten)
+
+def ResNet18Widen1(flatten = True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ResNet(SimpleBlock, [2,2,2,2],[128,256,512,1024], flatten, 
+#     return ResNet(SimpleBlock, [2,2,2,2],[96,192,384,768], flatten, 
+                 dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+                  more_to_drop=more_to_drop, gram_sid=gram_bid)
 
 def DeResNet18(flatten=True):
     return DeResNet(DeSimpleBlock, [2,2,2,2], [512,256,128,64], flatten, indim=512)

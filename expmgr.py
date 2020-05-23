@@ -7,6 +7,9 @@ from param_utils import get_all_params_comb, get_all_args_ls, get_modified_args,
 import pandas as pd
 import os
 
+# to empty cache
+import torch
+
 # for better error message when encounter RuntimeError: CUDA error: device-side assert triggered
 if False:
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
@@ -177,6 +180,7 @@ class ExpManager:
                         exp_record, task_datas = exp_test(copy_args(split_final_test_args), n_episodes=n_episodes, should_del_features=True)#, show_data=show_data)
                         write_record['epoch'] = exp_record['epoch']
                         write_record[split+'_acc_mean'] = exp_record['acc_mean']
+#                         write_record[split+'_acc_std'] = exp_record['acc_std']
                     
                     print('Saving record to:', csv_path)
                     record_to_csv(final_test_args, write_record, csv_path=csv_path)
@@ -186,6 +190,8 @@ class ExpManager:
                     print('Saving self.results into:', pkl_path)
                     with open(pkl_path, 'wb') as handle:
                         pickle.dump(self.results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                
+                torch.cuda.empty_cache()
                 
         # TODO: can also loop dataset
         for choose_by in ['val_acc_mean', 'novel_acc_mean']:

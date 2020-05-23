@@ -278,6 +278,7 @@ def exp_train_val(params):
     model, result = train(base_loader, val_loader,  model, optimization, start_epoch, stop_epoch, params, record)
     
     torch.cuda.empty_cache()
+    
     end_time = datetime.datetime.now()
 #     print('exp_train_val() start at', start_time, ', end at', get_time_now())
     print('exp_train_val() start at', start_time, ', end at', end_time, '.\n')
