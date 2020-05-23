@@ -52,8 +52,11 @@ class ExpPlotter:
         else:
             print(sorted_df.head(top_k))
     
-    def plot_exps(self, independent_var, dependent_var, specific=True):
-        
+    def plot_exps(self, independent_var, dependent_var, specific=True, sort=False):
+        '''
+        Args:
+            sort (bool): only work for specific = True
+        '''
         def process_nan_xs(xs, ys, mode):
             is_nan = np.isnan(xs)
             if any(is_nan):
@@ -82,10 +85,45 @@ class ExpPlotter:
         print(self.base_params)
         
         control_vars = self.controllable_vars.copy()
-        control_vars.remove(independent_var)
+        control_vars.remove(independent_var) # not include independent_var, not include dependent_var
         nan_x_process_mode = 'replace'
         
-        if not specific:
+        if specific:
+            all_settings_df = self.df_drop[control_vars].drop_duplicates()
+
+            sub_dfs = []
+            
+            for _, setting_row in all_settings_df.iterrows():
+                sub_df = self.df_drop.copy()
+
+                for k,v in setting_row.items(): # setting_row.items() is zip object
+                    if v==v: # v is not nan
+                        sub_df = sub_df[sub_df[k]==v]
+                    else: # v is nan
+                        sub_df = sub_df[sub_df[k]!=sub_df[k]]
+                sub_dfs.append(sub_df.copy())
+            
+            if sort:
+                sub_dfs.sort(key = lambda i: -(i[dependent_var].max())) # in descending order
+
+            for sub_df in sub_dfs:
+                print('='*20, 'Control Variables:', '='*20)
+                print(sub_df[control_vars].iloc[0]) # select NOT by index
+                print('sub_df[dependent_var].max():', sub_df[dependent_var].max())
+                xs = sub_df[independent_var].values
+                ys = sub_df[dependent_var].values
+                xs, ys = process_nan_xs(xs, ys, mode=nan_x_process_mode)
+                
+                print('%s:\n'%(independent_var), xs)
+                print('%s:\n'%(dependent_var), ys)
+                
+                y_baseline = get_y_baseline(ys)
+                bar_width = get_barwidth(xs)
+                plt.bar(xs, ys-y_baseline, width=bar_width, bottom=y_baseline)
+                plt.show()
+            
+            
+        else:
             possible_values = self.df_drop[independent_var].drop_duplicates().values
             mean_dependent_values = []
             df = self.df_drop.copy()
@@ -104,38 +142,12 @@ class ExpPlotter:
             print('%s:\n'%(independent_var), xs)
             print('%s:\n'%(dependent_var), ys)
             
-            baseline = get_y_baseline(ys)
+            y_baseline = get_y_baseline(ys)
             bar_width = get_barwidth(xs)
-            print('baseline:', baseline)
-            print('bar_width:', bar_width)
-            plt.bar(xs, ys-baseline, width=bar_width, bottom=baseline)
+#             print('y_baseline:', y_baseline)
+#             print('bar_width:', bar_width)
+            plt.bar(xs, ys-y_baseline, width=bar_width, bottom=y_baseline)
             plt.show()
-            
-        else:
-            all_settings_df = self.df_drop[control_vars].drop_duplicates()
-
-            for _, setting_row in all_settings_df.iterrows():
-                sub_df = self.df_drop.copy()
-
-                print('='*20, 'Control Variables:', '='*20)
-                for k,v in setting_row.items():
-                    print(k, ':', v)
-                    if v==v: # v is not nan
-                        sub_df = sub_df[sub_df[k]==v]
-                    else: # v is nan
-                        sub_df = sub_df[sub_df[k]!=sub_df[k]]
-
-                xs = sub_df[independent_var].values
-                ys = sub_df[dependent_var].values
-                xs, ys = process_nan_xs(xs, ys, mode=nan_x_process_mode)
-                
-                print('%s:\n'%(independent_var), xs)
-                print('%s:\n'%(dependent_var), ys)
-                
-                baseline = get_y_baseline(ys)
-                bar_width = get_barwidth(xs)
-                plt.bar(xs, ys-baseline, width=bar_width, bottom=baseline)
-                plt.show()
     
     
     def drop_duplicate(df):
