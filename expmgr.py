@@ -180,10 +180,11 @@ class ExpManager:
                         exp_record, task_datas = exp_test(copy_args(split_final_test_args), n_episodes=n_episodes, should_del_features=True)#, show_data=show_data)
                         write_record['epoch'] = exp_record['epoch']
                         write_record[split+'_acc_mean'] = exp_record['acc_mean']
-#                         write_record[split+'_acc_std'] = exp_record['acc_std']
+                        write_record[split+'_acc_std'] = exp_record['acc_std']
                     
                     print('Saving record to:', csv_path)
                     record_to_csv(final_test_args, write_record, csv_path=csv_path)
+                    
                     write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
                     self.results.append(write_record)
                     
