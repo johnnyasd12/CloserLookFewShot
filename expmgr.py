@@ -32,7 +32,7 @@ import matplotlib.cm as cm
 import copy
 
 class ExpManager:
-    def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params, pkl_postfix):
+    def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params, pkl_postfix, record_folder = './record'):
         '''
         Args:
             base_params (dict): the core settings of the experiment
@@ -46,7 +46,10 @@ class ExpManager:
         self.negligible_vars = ['gpu_id', 'csv_name',] # can be ignored when comparing results but in ArgParser
         
         self.results_pkl = [] # params as well as results restore in the list of dictionaries
-        self.record_folder = './record'
+        
+        self.record_folder = record_folder
+        print('record_folder:', record_folder)
+        
         self.csv_path = os.path.join(self.record_folder, test_fixed_params['csv_name'])
         self.pkl_postfix = pkl_postfix
         if os.path.exists(self.csv_path):
@@ -58,16 +61,29 @@ class ExpManager:
             mode (str): 'from_scratch'|'resume'|'draw_tasks'|'tmp_pkl'
         '''
         print('exp_grid() start.')
-        print(self.base_params)
+        print('self.base_params:', self.base_params)
+        base_params = self.base_params.copy() # set to test_n_way = default(5)
+        if mode == 'tmp_pkl':
+            if 'test_n_way' in base_params:
+                print('change base_params["test_n_way"] to be 5.')
+                base_params['test_n_way'] = 5
         default_args = {} # the raw default args of the code
         default_args['train'] = parse_args('train', parse_str='')
         default_args['test'] = parse_args('test', parse_str='')
         possible_params = self.possible_params
         
-        train_args = get_modified_args(default_args['train'], {**self.base_params, **self.fixed_params['train']})
-        test_args = get_modified_args(default_args['test'], {**self.base_params, **self.fixed_params['test']})
-        all_general_params = get_all_params_comb(possible_params=possible_params['general'])
-        all_test_params = get_all_params_comb(possible_params=possible_params['test'])
+        if mode == 'tmp_pkl':
+            for key in possible_params['general']:
+                if len(possible_params['general'][key]) != 1:
+                    raise ValueError('general param length should be 1 for mode: tmp_pkl')
+            for key in possible_params['test']:
+                if len(possible_params['test'][key]) != 1:
+                    raise ValueError('test param length should be 1 for mode: tmp_pkl')
+        
+        train_args = get_modified_args(default_args['train'], {**base_params, **self.fixed_params['train']})
+        test_args = get_modified_args(default_args['test'], {**self.base_params, **self.fixed_params['test']}) # test_n_way should be 2
+        all_general_possible_params = get_all_params_comb(possible_params=possible_params['general'])
+        all_test_possible_params = get_all_params_comb(possible_params=possible_params['test'])
         
         csv_path = os.path.join(self.record_folder, self.fixed_params['test']['csv_name'])
         
@@ -84,33 +100,45 @@ class ExpManager:
 #             assert is_csv_new, "csv file shouldn't exist or should be empty."
         
     
-        pkl_postfix_str = '_' + self.pkl_postfix + '.pkl'
-        pkl_path = csv_path.replace('.csv', pkl_postfix_str)
+        
+        pkl_postfix_str = '_' + self.pkl_postfix #+ '.pkl'
+        pkl_postfix_str += '.pkl'
+#         if mode == 'tmp_pkl':
+#             pkl_postfix_str += '_tmp.pkl'
+#         else:
+#             pkl_postfix_str += '.pkl'
+        pkl_path = csv_path.replace('.csv', pkl_postfix_str) # restore ALL experiments in this class
+        is_pkl_exists = os.path.exists(pkl_path)
         
         ########## load pickle data ##########
         if mode == 'resume':
             print('loading self.results_pkl from:', pkl_path)
-            if os.path.exists(pkl_path):
+            if is_pkl_exists:
                 with open(pkl_path, 'rb') as handle:
                     self.results_pkl = pickle.load(handle)
             else:
                 logging.warning('No previous result pickle file: %s, only record self.results_pkl from scratch.'%(pkl_path))
             print('self.results_pkl at begin, len =', len(self.results_pkl))
-        
-        for params in all_general_params:
+        elif mode == 'tmp_pkl':
+            if is_pkl_exists:
+                print('pickle file: %s, already exists.'%(pkl_path))
+                return
+            
+            
+        for params in all_general_possible_params:
             
             ########## decide if should_train ##########
             if mode == 'resume':# or mode == 'draw_tasks':
                 print()
                 print('='*20, 'Checking if already trained in:', csv_path, '='*20)
-                print('base_params:', self.base_params)
+                print('base_params:', base_params)
                 print('general_params:', params)
                 # read csv
                 loaded_df = pd.read_csv(csv_path)
 
                 # check if ALL test_params has been experimented. if so, then do NOT even train model
                 check_df = loaded_df.copy()
-                check_param = {**self.base_params, **params}
+                check_param = {**base_params, **params}
                 check_df = get_matched_df(check_param, check_df)
                 num_experiments = len(check_df)
                 
@@ -118,7 +146,7 @@ class ExpManager:
                 
             elif mode == 'from_scratch':
                 should_train = True
-            elif mode == 'draw_tasks':
+            elif mode in ['draw_tasks', 'tmp_pkl']:
                 should_train = False
             
             ########## training ##########
@@ -138,7 +166,7 @@ class ExpManager:
             modified_test_args = get_modified_args(test_args, params)
             
             # loop over testing settings under each general setting
-            for test_params in all_test_params:
+            for test_params in all_test_possible_params:
                 
                 ########## check if should test ##########
                 if mode == 'resume':
@@ -152,6 +180,10 @@ class ExpManager:
                     if num_test_experiments>0: # already experiments
                         print('NO need to test since already tested %s times in record: %s'%(num_test_experiments, csv_path))
                         continue
+                elif mode == 'tmp_pkl':
+                    pass
+                        
+                    
                     
                 final_test_args = get_modified_args(modified_test_args, test_params)
                 
@@ -170,7 +202,7 @@ class ExpManager:
                     write_record['train_acc_mean'] = train_result['train_acc']
                 
                 ########## save_features & test ##########
-                if mode in ['from_scratch', 'resume']:
+                if mode in ['from_scratch', 'resume', 'tmp_pkl']:
                     splits = ['val', 'novel'] # temporary no 'train'
                     for split in splits: # val, novel
 
@@ -181,6 +213,7 @@ class ExpManager:
                         print('test_params:', test_params)
                         print('data split:', split)
                         exp_save_features(copy_args(split_final_test_args))
+                        
                         print('\n', '='*20, 'Testing', '='*20)
                         print('params:', params)
                         print('test_params:', test_params)
@@ -192,23 +225,28 @@ class ExpManager:
                         write_record[split+'_acc_mean'] = exp_record['acc_mean']
                         write_record[split+'_acc_std'] = exp_record['acc_std']
                     
-                    print('Saving record to:', csv_path)
-                    record_to_csv(final_test_args, write_record, csv_path=csv_path)
+                    ########## record to csv ##########
+                    if mode != 'tmp_pkl':
+                        print('Saving record to:', csv_path)
+                        record_to_csv(final_test_args, write_record, csv_path=csv_path)
                     
                     write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
                     self.results_pkl.append(write_record)
                     
+                    ########## record to pickle ##########
                     print('Saving self.results_pkl into:', pkl_path)
                     with open(pkl_path, 'wb') as handle:
                         pickle.dump(self.results_pkl, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 
                 torch.cuda.empty_cache()
-                
+        
+        ########## sum up results ##########
         # TODO: can also loop dataset
-        for choose_by in ['val_acc_mean', 'novel_acc_mean']:
-            # read csv to compare results
-            top_k = None
-            self.sum_up_results(choose_by, top_k)
+        if mode in ['from_scratch', 'resume', 'draw_tasks']:
+            for choose_by in ['val_acc_mean', 'novel_acc_mean']:
+                # read csv to compare results
+                top_k = None
+                self.sum_up_results(choose_by, top_k)
         
         # TODO: 5/12 save task_datas in file
         # directly save self.results_pkl in file 'csv_name.pkl'????????????
@@ -361,7 +399,9 @@ def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None, c
 
 
 def draw_single_task(task, save_filename = None, save_img_folder = None, compare_diff = False):
-    n_way = 5
+    # TODO: automatically decide n_way
+    n_way = 2
+#     n_way = 5
     n_support = 5
     n_query = 15
 
@@ -398,7 +438,7 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
             if 'su' in key:
                 alpha = 1 # plot transparency ( 1 for solid)
             if 'qu' in key:
-                alpha = 0.2 # plot transparency ( 1 for solid)
+                alpha = 0.5 # plot transparency ( 1 for solid)
                 if compare_diff:
                     pred1 = task[key]['exp1_pred']
                     pred2 = task[key]['exp2_pred']
