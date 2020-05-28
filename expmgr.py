@@ -72,12 +72,12 @@ class ExpManager:
         csv_path = os.path.join(self.record_folder, self.fixed_params['test']['csv_name'])
         
         # TODO: refactor to many functions with argument: mode
-        is_csv_exists = os.path.exists(csv_path)
-        if is_csv_exists:
-            loaded_df = pd.read_csv(csv_path)
-            is_csv_new = len(loaded_df)==0
-        else:
-            is_csv_new = True
+#         is_csv_exists = os.path.exists(csv_path)
+#         if is_csv_exists:
+#             loaded_df = pd.read_csv(csv_path)
+#             is_csv_new = len(loaded_df)==0
+#         else:
+#             is_csv_new = True
 #         if mode == 'resume':
 #             assert not is_csv_new, "csv file should exist and be filled with some content."
 #         else: # new experiments
@@ -86,6 +86,8 @@ class ExpManager:
     
         pkl_postfix_str = '_' + self.pkl_postfix + '.pkl'
         pkl_path = csv_path.replace('.csv', pkl_postfix_str)
+        
+        ########## load pickle data ##########
         if mode == 'resume':
             print('loading self.results_pkl from:', pkl_path)
             if os.path.exists(pkl_path):
@@ -97,6 +99,7 @@ class ExpManager:
         
         for params in all_general_params:
             
+            ########## decide if should_train ##########
             if mode == 'resume':# or mode == 'draw_tasks':
                 print()
                 print('='*20, 'Checking if already trained in:', csv_path, '='*20)
@@ -110,6 +113,7 @@ class ExpManager:
                 check_param = {**self.base_params, **params}
                 check_df = get_matched_df(check_param, check_df)
                 num_experiments = len(check_df)
+                
                 should_train = num_experiments == 0
                 
             elif mode == 'from_scratch':
@@ -117,6 +121,7 @@ class ExpManager:
             elif mode == 'draw_tasks':
                 should_train = False
             
+            ########## training ##########
             if should_train:
                 # train model
                 print()
@@ -134,6 +139,8 @@ class ExpManager:
             
             # loop over testing settings under each general setting
             for test_params in all_test_params:
+                
+                ########## check if should test ##########
                 if mode == 'resume':
                     print('\n', '='*20, 'Checking if already did experiments', '='*20)
                     print(params)
@@ -149,6 +156,8 @@ class ExpManager:
                 final_test_args = get_modified_args(modified_test_args, test_params)
                 
                 write_record = {**params, **test_params}
+                
+                ########## write train_acc to record dict ##########
                 if mode == 'resume': #in ['resume', 'draw_tasks']:
                     if should_train:
                         write_record['train_acc_mean'] = train_result['train_acc']
@@ -160,6 +169,7 @@ class ExpManager:
                 elif mode == 'from_scratch':
                     write_record['train_acc_mean'] = train_result['train_acc']
                 
+                ########## save_features & test ##########
                 if mode in ['from_scratch', 'resume']:
                     splits = ['val', 'novel'] # temporary no 'train'
                     for split in splits: # val, novel
