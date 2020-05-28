@@ -45,7 +45,7 @@ class ExpManager:
         self.fixed_params = {'train':train_fixed_params, 'test':test_fixed_params}
         self.negligible_vars = ['gpu_id', 'csv_name',] # can be ignored when comparing results but in ArgParser
         
-        self.results = [] # params as well as results restore in the list of dictionaries
+        self.results_pkl = [] # params as well as results restore in the list of dictionaries
         self.record_folder = './record'
         self.csv_path = os.path.join(self.record_folder, test_fixed_params['csv_name'])
         self.pkl_postfix = pkl_postfix
@@ -55,7 +55,7 @@ class ExpManager:
     def exp_grid(self, choose_by='val_acc_mean', mode='from_scratch'):
         '''
         Args:
-            mode (str): 'from_scratch'|'resume'|'draw_tasks'
+            mode (str): 'from_scratch'|'resume'|'draw_tasks'|'tmp_pkl'
         '''
         print('exp_grid() start.')
         print(self.base_params)
@@ -71,7 +71,7 @@ class ExpManager:
         
         csv_path = os.path.join(self.record_folder, self.fixed_params['test']['csv_name'])
         
-        # TODO: refactor 成許多 function，有 argument: mode
+        # TODO: refactor to many functions with argument: mode
         is_csv_exists = os.path.exists(csv_path)
         if is_csv_exists:
             loaded_df = pd.read_csv(csv_path)
@@ -87,13 +87,13 @@ class ExpManager:
         pkl_postfix_str = '_' + self.pkl_postfix + '.pkl'
         pkl_path = csv_path.replace('.csv', pkl_postfix_str)
         if mode == 'resume':
-            print('loading self.results from:', pkl_path)
+            print('loading self.results_pkl from:', pkl_path)
             if os.path.exists(pkl_path):
                 with open(pkl_path, 'rb') as handle:
-                    self.results = pickle.load(handle)
+                    self.results_pkl = pickle.load(handle)
             else:
-                logging.warning('No previous result pickle file, only record self.results from scratch.')
-            print('self.results at begin, len =', len(self.results))
+                logging.warning('No previous result pickle file: %s, only record self.results_pkl from scratch.'%(pkl_path))
+            print('self.results_pkl at begin, len =', len(self.results_pkl))
         
         for params in all_general_params:
             
@@ -186,11 +186,11 @@ class ExpManager:
                     record_to_csv(final_test_args, write_record, csv_path=csv_path)
                     
                     write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
-                    self.results.append(write_record)
+                    self.results_pkl.append(write_record)
                     
-                    print('Saving self.results into:', pkl_path)
+                    print('Saving self.results_pkl into:', pkl_path)
                     with open(pkl_path, 'wb') as handle:
-                        pickle.dump(self.results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                        pickle.dump(self.results_pkl, handle, protocol=pickle.HIGHEST_PROTOCOL)
                 
                 torch.cuda.empty_cache()
                 
@@ -201,16 +201,16 @@ class ExpManager:
             self.sum_up_results(choose_by, top_k)
         
         # TODO: 5/12 save task_datas in file
-        # directly save self.results in file 'csv_name.pkl'????????????
+        # directly save self.results_pkl in file 'csv_name.pkl'????????????
         # TODO: CANNOT just save to csv_path.pkl since different expmgr might have the same csv_path
         
 #         if mode in ['from_scratch', 'resume']:
-#             print('saving self.results into:', pkl_path)
+#             print('saving self.results_pkl into:', pkl_path)
 #             with open(pkl_path, 'wb') as handle:
-#                 pickle.dump(self.results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+#                 pickle.dump(self.results_pkl, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
         if mode == 'draw_tasks':
-            print('loading self.results from:', pkl_path)
+            print('loading self.results_pkl from:', pkl_path)
             best_model_all_tasks = get_best_all_tasks(pkl_path = pkl_path)
             
             print('sorting tasks...')
@@ -220,8 +220,8 @@ class ExpManager:
             draw_tasks(
                 sorted_tasks, n_tasks = 3, 
                 save_img_folder = save_img_folder, exp_postfix = self.pkl_postfix
-            ) # utilize self.results, save all_tasks of best res
-#             self.draw_tasks(best_model_all_tasks, n_tasks = 3) # utilize self.results, save all_tasks of best res
+            ) # utilize self.results_pkl, save all_tasks of best res
+#             self.draw_tasks(best_model_all_tasks, n_tasks = 3) # utilize self.results_pkl, save all_tasks of best res
 
     def sum_up_results(self, choose_by, top_k, show_same_params=True): # choose the best according to dataset & split
         
@@ -440,7 +440,7 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
         fig.savefig(save_path)#, bbox_inches='tight')
 
 def get_best_all_tasks(pkl_path):
-    print('loading self.results from:', pkl_path)
+    print('loading self.results_pkl from:', pkl_path)
     with open(pkl_path, 'rb') as handle:
         results = pickle.load(handle)
     # get best exp task_datas
