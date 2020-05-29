@@ -32,7 +32,7 @@ import matplotlib.cm as cm
 import copy
 
 class ExpManager:
-    def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params, pkl_postfix, record_folder = './record'):
+    def __init__(self, base_params, train_fixed_params, test_fixed_params, general_possible_params, test_possible_params, pkl_postfix, record_folder):
         '''
         Args:
             base_params (dict): the core settings of the experiment
@@ -49,6 +49,9 @@ class ExpManager:
         
         self.record_folder = record_folder
         print('record_folder:', record_folder)
+        if not os.path.exists(record_folder):
+            print('record_folder not exists, creating...')
+            os.mkdir(record_folder)
         
         self.csv_path = os.path.join(self.record_folder, test_fixed_params['csv_name'])
         self.pkl_postfix = pkl_postfix
@@ -303,7 +306,7 @@ class ExpManager:
         if len(matched_df)!=0:
             sorted_df = matched_df.sort_values(by=choose_by, ascending=False)
             compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
-            compare_cols = compare_cols + ['train_acc_mean', 'val_acc_mean', 'novel_acc_mean']
+            compare_cols = compare_cols + ['epoch', 'train_acc_mean', 'val_acc_mean', 'novel_acc_mean']
             print()
             print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
             print()
@@ -420,8 +423,8 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
 #     fig.tight_layout()
 #     plt.subplots_adjust(top=n_row/(n_row+1)) # to set margin for suptitle 'after' tight_layout()
     if compare_diff:
-        title_str = 'acc1=%s%%, acc2=%s%%'%(task['exp1_acc'], task['exp2_acc'])
-        fig.suptitle(title_str, size = unit_size*10)
+        title_str = 'acc1=%.3f%%, acc2=%.3f%%'%(task['exp1_acc'], task['exp2_acc'])
+        fig.suptitle(title_str, size = unit_size*n_col*3)
     else:
         pass
 #         plt.figure()
