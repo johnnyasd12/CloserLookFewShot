@@ -25,9 +25,13 @@ import pickle
 # matplotlib.pyplot.ion()
 # matplotlib.use('Agg')
 # matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
-# to draw gray images ???
+# import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt # to draw in notebook? (refer to draw_utils.py)
+
+# to draw gray images
 import matplotlib.cm as cm
+# from matplotlib import cm
+
 # to draw task
 import copy
 
