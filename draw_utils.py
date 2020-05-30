@@ -147,7 +147,7 @@ class ExpPlotter:
                 
                 if len(xs) <= 1:
                     print('len(xs) is less or euqal to 1, no need to draw.')
-                    return
+                    continue
                 
                 y_baseline = get_y_baseline(ys)
                 bar_width = get_barwidth(xs)
