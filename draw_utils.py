@@ -57,11 +57,33 @@ class ExpPlotter:
         else:
             print(sorted_df.head(top_k))
     
-    def plot_exps(self, independent_var, dependent_var, specific=True, sort=False):
+    def plot_exps(self, independent_var, dependent_var, specific=True, sort=False, pre_x_mode=None):
         '''
         Args:
             sort (bool): only work for specific = True
+            preprocess_x (str): None|'log2'|'log10' # delete all 0s if 'log'
         '''
+        def preprocess_xs(xs, ys, mode):
+            if mode == None:
+                new_xs = xs
+                new_ys = ys
+            elif 'log' in mode:
+                # delete all 0s (and corresponding ys)
+                zero_ids = np.argwhere(xs==0)
+                new_xs = np.delete(xs, zero_ids)
+                new_ys = np.delete(ys, zero_ids)
+                if mode == 'log10':
+                    new_xs = np.log10(new_xs)
+                elif mode == 'log2':
+                    new_xs = np.log2(new_xs)
+            else:
+                raise ValueError('Unknown mode:', mode)
+            
+            if mode is not None:
+                print('%s (preprocessed):\n'%(independent_var), new_xs)
+                print('%s (preprocessed):\n'%(dependent_var), new_ys)
+            return new_xs, new_ys
+        
         def process_nan_xs(xs, ys, mode):
             is_nan = np.isnan(xs)
             if any(is_nan):
@@ -117,10 +139,15 @@ class ExpPlotter:
                 print('sub_df[dependent_var].max():', sub_df[dependent_var].max())
                 xs = sub_df[independent_var].values
                 ys = sub_df[dependent_var].values
-                xs, ys = process_nan_xs(xs, ys, mode=nan_x_process_mode)
+                xs, ys = process_nan_xs(xs=xs, ys=ys, mode=nan_x_process_mode)
                 
                 print('%s:\n'%(independent_var), xs)
                 print('%s:\n'%(dependent_var), ys)
+                xs, ys = preprocess_xs(xs=xs, ys=ys, mode=pre_x_mode)
+                
+                if len(xs) <= 1:
+                    print('len(xs) is less or euqal to 1, no need to draw.')
+                    return
                 
                 y_baseline = get_y_baseline(ys)
                 bar_width = get_barwidth(xs)
@@ -146,6 +173,7 @@ class ExpPlotter:
             
             print('%s:\n'%(independent_var), xs)
             print('%s:\n'%(dependent_var), ys)
+            xs, ys = preprocess_xs(xs=xs, ys=ys, mode=pre_x_mode)
             
             y_baseline = get_y_baseline(ys)
             bar_width = get_barwidth(xs)
