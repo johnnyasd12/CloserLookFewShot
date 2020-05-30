@@ -43,6 +43,11 @@ class ExpPlotter:
         sorted_df = self.df_drop.sort_values(by=choose_by, ascending=False)
 #         compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
 #         compare_cols = compare_cols + ['val_acc_mean', 'novel_acc_mean']
+        
+        for n_var in self.negligible_vars:
+            if n_var in sorted_df:
+                del sorted_df[n_var]
+        
         print()
         print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
         print()
