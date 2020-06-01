@@ -88,7 +88,7 @@ class ExpPlotter:
             is_nan = np.isnan(xs)
             if any(is_nan):
                 nan_id = np.argwhere(is_nan)[0][0] # dunno why 2 dims, whatever...
-                print('nan process mode:', mode)
+                print('found nan! process mode:', mode)
                 print('nan_id:', nan_id)
                 if mode == 'delete':
                     xs = np.delete(xs, nan_id)
@@ -136,14 +136,20 @@ class ExpPlotter:
             for sub_df in sub_dfs:
                 print('='*20, 'Control Variables:', '='*20)
                 print(sub_df[control_vars].iloc[0]) # select NOT by index
-                print('sub_df[dependent_var].max():', sub_df[dependent_var].max())
+                print('sub_df["%s"].max():'%(dependent_var), sub_df[dependent_var].max())
                 xs = sub_df[independent_var].values
                 ys = sub_df[dependent_var].values
                 xs, ys = process_nan_xs(xs=xs, ys=ys, mode=nan_x_process_mode)
                 
+                sort_ids = np.argsort(xs)
+                xs = xs[sort_ids]
+                ys = ys[sort_ids]
+                
                 print('%s:\n'%(independent_var), xs)
                 print('%s:\n'%(dependent_var), ys)
+                xs_b4 = xs.copy()
                 xs, ys = preprocess_xs(xs=xs, ys=ys, mode=pre_x_mode)
+                plt.xticks(xs, xs_b4) # rename x-axis label to be original value
                 
                 if len(xs) <= 1:
                     print('len(xs) is less or euqal to 1, no need to draw.')
@@ -171,9 +177,15 @@ class ExpPlotter:
             ys = np.asarray(mean_dependent_values)
             xs, ys = process_nan_xs(xs, ys, mode=nan_x_process_mode)
             
+            sort_ids = np.argsort(xs)
+            xs = xs[sort_ids]
+            ys = ys[sort_ids]
+            
             print('%s:\n'%(independent_var), xs)
             print('%s:\n'%(dependent_var), ys)
+            xs_b4 = xs.copy()
             xs, ys = preprocess_xs(xs=xs, ys=ys, mode=pre_x_mode)
+            plt.xticks(xs, xs_b4) # rename x-axis label to be original value
             
             y_baseline = get_y_baseline(ys)
             bar_width = get_barwidth(xs)
