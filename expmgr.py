@@ -186,6 +186,7 @@ class ExpManager:
                     num_test_experiments = len(check_df)
                     if num_test_experiments>0: # already experiments
                         print('NO need to test since already tested %s times in record: %s'%(num_test_experiments, csv_path))
+                        print(check_df)
                         continue
                 elif mode == 'tmp_pkl':
                     pass
@@ -336,21 +337,44 @@ class ExpManager:
         pass
 
 
+def draw_both_worst_tasks(pkl_path1, pkl_path2, n_tasks, save_img_folder, exp1_postfix, exp2_postfix):
+    best_exp1_all_task = get_best_all_tasks(pkl_path1)
+    best_exp2_all_task = get_best_all_tasks(pkl_path2)
+    
+    all_tasks = []
+    for i in range(len(best_exp1_all_task)):
+        exp1_task = best_exp1_all_task[i]
+        exp2_task = best_exp2_all_task[i]
+        
+        task = copy.deepcopy(exp1_task)
+        
+        del task['acc']
+        acc1 = exp1_task['acc']
+        acc2 = exp2_task['acc']
+        task['both_avg_acc'] = (acc1 + acc2) / 2
+        
+        all_tasks.append(task)
+    
+    acc_increase_tasks = sorted(all_tasks, key=lambda i: i['both_avg_acc'])
+    exp_postfix = 'avg_' + exp1_postfix + '_' + exp2_postfix
+    
+    
+
 def draw_most_differ_tasks(pkl_path1, pkl_path2, n_tasks, save_img_folder, exp1_postfix, exp2_postfix):
-    best_exp_1_all_task = get_best_all_tasks(pkl_path1)
-    best_exp_2_all_task = get_best_all_tasks(pkl_path2)
+    best_exp1_all_task = get_best_all_tasks(pkl_path1)
+    best_exp2_all_task = get_best_all_tasks(pkl_path2)
     
     all_tasks_diff = []
-    for i in range(len(best_exp_1_all_task)):
-        exp_1_task = best_exp_1_all_task[i]
-        exp_2_task = best_exp_2_all_task[i]
+    for i in range(len(best_exp1_all_task)):
+        exp1_task = best_exp1_all_task[i]
+        exp2_task = best_exp2_all_task[i]
         
-#         diff_task = exp_1_task.copy()
-        diff_task = copy.deepcopy(exp_1_task)
+#         diff_task = exp1_task.copy()
+        diff_task = copy.deepcopy(exp1_task)
 #         print('diff_task.keys():', diff_task.keys()) # acc, img_keys
         del diff_task['acc']
-        acc1 = exp_1_task['acc']
-        acc2 = exp_2_task['acc']
+        acc1 = exp1_task['acc']
+        acc2 = exp2_task['acc']
         diff_task['1-2_acc'] = acc1 - acc2
         diff_task['2-1_acc'] = acc2 - acc1
         diff_task['exp1_acc'] = acc1
@@ -363,9 +387,9 @@ def draw_most_differ_tasks(pkl_path1, pkl_path2, n_tasks, save_img_folder, exp1_
                 if 'pred_prob' in diff_task[img_key]:
                     del diff_task[img_key]['pred']
                     del diff_task[img_key]['pred_prob']
-#                     print('exp_1_task[img_key].keys():', exp_1_task[img_key].keys())
-                    pred1 = exp_1_task[img_key]['pred']
-                    pred2 = exp_2_task[img_key]['pred']
+#                     print('exp1_task[img_key].keys():', exp1_task[img_key].keys())
+                    pred1 = exp1_task[img_key]['pred']
+                    pred2 = exp2_task[img_key]['pred']
                     diff_task[img_key]['exp1_pred'] = pred1
                     diff_task[img_key]['exp2_pred'] = pred2
         all_tasks_diff.append(diff_task)
@@ -375,16 +399,6 @@ def draw_most_differ_tasks(pkl_path1, pkl_path2, n_tasks, save_img_folder, exp1_
     print('Drawing tasks Exp2 better than Exp1 ...')
     draw_tasks(diff12_increase_tasks, n_tasks = n_tasks, 
                save_img_folder = save_img_folder, exp_postfix = exp_postfix_2_gt_1, compare_diff = True)
-
-#     diff21_increase_tasks = sorted(all_tasks_diff, key = lambda i: i['2-1_acc'])
-#     for i in range(3):
-#         print('diff12_increase_tasks[i]["1-2_acc"]:', diff12_increase_tasks[i]['1-2_acc'])
-#     for i in range(3):
-#         print('diff21_increase_tasks[i]["1-2_acc"]:', diff21_increase_tasks[i]['1-2_acc'])
-#     exp_postfix_2_lt_1 = exp2_postfix + '_lt_' + exp1_postfix
-#     print('Drawing tasks Exp1 better than Exp2 ...')
-#     draw_tasks(diff21_increase_tasks, n_tasks = n_tasks, 
-#                save_img_folder = save_img_folder, exp_postfix = exp_postfix_2_lt_1, compare_diff = True)
     
 
 def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None, compare_diff = False):
@@ -432,35 +446,78 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
     else:
         pass
 #         plt.figure()
-    for n in range(n_row): # for each data per class
-        if n < n_support:
-            data_str = 'su' + str(n).zfill(2)
-        else:
-            data_str = 'qu' + str(n-n_support).zfill(2)
-        for cl in range(n_col): # for each class
-            cl_str = 'c' + str(cl).zfill(2)
+    
+#     for n in range(n_row): # for each data per class
+#         if n < n_support:
+#             data_str = 'su' + str(n).zfill(2)
+#         else:
+#             data_str = 'qu' + str(n-n_support).zfill(2)
+#         for cl in range(n_col): # for each class
+#             cl_str = 'c' + str(cl).zfill(2)
+    for cl in range(n_col): # for each class
+        cl_str = 'c' + str(cl).zfill(2)
+        
+        if compare_diff:
+            # make error coordinate on the top
+            top_query_id = 0
+            bottom_query_id = n_query - 1
+        
+        for n in range(n_row): # for each data per class
+            if n < n_support:
+                data_str = 'su' + str(n).zfill(2)
+            else:
+                data_str = 'qu' + str(n-n_support).zfill(2)
+            
+            
             key = cl_str + '_' + data_str
             path = task[key]['path']
 
             if 'su' in key:
                 alpha = 1 # plot transparency ( 1 for solid)
+                plt_row_id = n
             if 'qu' in key:
                 alpha = 0.5 # plot transparency ( 1 for solid)
+                
                 if compare_diff:
+                    
+                    plt_row_id = None
+                    
                     pred1 = task[key]['exp1_pred']
                     pred2 = task[key]['exp2_pred']
                     
+                    if cl != pred1 and cl == pred2: # exp2 correct, but exp1 error
+                        plt_row_id = n_support + top_query_id
+                        top_query_id += 1
+                        
+                        alpha = 1
+#                         axarr[n, cl].title.set_color('r')
+                        axarr[plt_row_id, cl].title.set_color('r')
+                    elif cl != pred1 and cl != pred2: # exp1 and exp2 both error
+                        plt_row_id = n_support + bottom_query_id
+                        bottom_query_id -= 1
+                        
+#                         axarr[n, cl].title.set_color('b')
+                        axarr[plt_row_id, cl].title.set_color('b')
+                    elif cl == pred1 and cl == pred2: # exp1 and exp2 both correct
+                        plt_row_id = n_support + bottom_query_id
+                        bottom_query_id -= 1
+                    else: # exp1 correct, but exp2 error (no use)
+                        plt_row_id = n_support + bottom_query_id
+                        bottom_query_id -= 1
+                    
                     sub_title_str = 'pred1=%s\npred2=%s'%(pred1, pred2)
                     sub_title_size = unit_size * 4
-                    axarr[n, cl].title.set_text(sub_title_str)
-                    axarr[n, cl].title.set_size(sub_title_size)
-                    if cl != pred1 and cl == pred2: # exp2 correct, but exp1 error
-                        alpha = 1
-                        axarr[n, cl].title.set_color('r')
-                    elif cl != pred1 and cl != pred2: # exp1 and exp2 both error
-                        axarr[n, cl].title.set_color('b')
-                    elif cl == pred1 and cl == pred2: # exp1 and exp2 both correct
-                        pass
+#                     axarr[n, cl].title.set_text(sub_title_str)
+#                     axarr[n, cl].title.set_size(sub_title_size)
+                    axarr[plt_row_id, cl].title.set_text(sub_title_str)
+                    axarr[plt_row_id, cl].title.set_size(sub_title_size)
+#                     if cl != pred1 and cl == pred2: # exp2 correct, but exp1 error
+#                         alpha = 1
+#                         axarr[n, cl].title.set_color('r')
+#                     elif cl != pred1 and cl != pred2: # exp1 and exp2 both error
+#                         axarr[n, cl].title.set_color('b')
+#                     elif cl == pred1 and cl == pred2: # exp1 and exp2 both correct
+#                         pass
                 else:
                     pred = task[key]['pred']
                     pred_prob = task[key]['pred_prob']
@@ -469,13 +526,15 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
 #             img = plt.imread(path)
             img = plt.imread(path, 0) # BUGFIX: ValueError: invalid PNG header
             if len(img.shape) == 2:
-                axarr[n, cl].imshow(
+                axarr[plt_row_id, cl].imshow(
+#                 axarr[n, cl].imshow(
                     img, cmap=cm.gray, 
                     aspect=1, # set aspect to avoid showing with actual size
                     alpha=alpha
                 ) 
             else:
-                axarr[n, cl].imshow(
+                axarr[plt_row_id, cl].imshow(
+#                 axarr[n, cl].imshow(
                     img, 
                     aspect=1, # set aspect to avoid showing with actual size
                     alpha=alpha
