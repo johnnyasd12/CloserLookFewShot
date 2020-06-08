@@ -613,34 +613,83 @@ class BottleneckBlock(nn.Module): # utilized by ResNet50, ResNet101
         return out
 
 
-class ConvNet(nn.Module, CustomDropoutNet):
-    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None): # CUB/miniImgnet Conv input = 84*84*3
+class ConvNet(nn.Module, CustomDropoutNet, MinGramDropoutNet):
+    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid = None): # CUB/miniImgnet Conv input = 84*84*3
+#     def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None): # CUB/miniImgnet Conv input = 84*84*3
         super(ConvNet,self).__init__()
         trunk = []
-        for i in range(depth): 
-            ''' input = 3*84*84
-            -> [64*84*84 -> 64*42*42]
-            -> [64*42*42 -> 64*21*21]
-            -> [64*21*21 -> 64*10*10]
-            -> [64*10*10 -> 64*5*5]
+#         for i in range(depth): 
+#             ''' input = 3*84*84
+#             -> [64*84*84 -> 64*42*42]
+#             -> [64*42*42 -> 64*21*21]
+#             -> [64*21*21 -> 64*10*10]
+#             -> [64*10*10 -> 64*5*5]
+#             '''
+#             # if the 1st block then input is image, otherwise 64 from pre-block
+# #             indim = 3 if i == 0 else 64 
+#             # BUGFIX for more_to_drop
+#             indim = 3 if i == 0 else outdim
+#             outdim = 64
+            
+#             # CustomDropout
+#             dropout_cond = i==dropout_block_id # whether this layer should dropout
+#             block_dropout_p = dropout_p if dropout_cond else 0.
+#             # more_to_drop
+#             if more_to_drop=='double' and dropout_cond:
+#                 outdim = outdim*2
+            
+#             #only pooling for first 4 layers
+#             B = ConvBlock(indim, outdim, pool = ( i <4 ), 
+#                           dropout_p=block_dropout_p)
+#             trunk.append(B)
+
+#         if flatten:
+#             trunk.append(Flatten())
+
+#         self.trunk = nn.Sequential(*trunk)
+        
+#         # BUGFIX for more_to_drop
+#         self.final_feat_dim = outdim*5*5
+# #         self.final_feat_dim = 1600 # output = 64*5*5
+        
+#         # for CustomDropout
+#         self.record_active_dropout()
+        
+        ###################### rewrite ######################
+        for i in range(depth):
+            '''input = 1*28*28 (see self.forward)
+            TODO: compute the dimension, modify the decoder
+            -> [64*28*28 -> 64*14*14]
+            -> [64*14*14 -> 64*7*7]
+            -> [64*7*7 -> 64*3*3]
+            -> [64*3*3 -> 64*1*1]
             '''
-            # if the 1st block then input is image, otherwise 64 from pre-block
-#             indim = 3 if i == 0 else 64 
             # BUGFIX for more_to_drop
             indim = 3 if i == 0 else outdim
             outdim = 64
-            
             # CustomDropout
             dropout_cond = i==dropout_block_id # whether this layer should dropout
             block_dropout_p = dropout_p if dropout_cond else 0.
             # more_to_drop
             if more_to_drop=='double' and dropout_cond:
                 outdim = outdim*2
-            
+            # for Gram Matrix block
+            if gram_bid is None:
+                gram_cond = False
+            else:
+                gm_bid = dropout_block_id if 'dropout' in gram_bid else gram_bid
+                gram_cond = i==gm_bid # whether this block should output Gram Matrix
             #only pooling for first 4 layers
-            B = ConvBlock(indim, outdim, pool = ( i <4 ), 
-                          dropout_p=block_dropout_p)
+            B = ConvBlock(indim, outdim, pool = ( i <4 ), dropout_p=block_dropout_p) 
             trunk.append(B)
+            
+            # for Gram Matrix block
+            if gram_cond: # currently assume only 1 block should output Gram matrix
+                gram_trunk = trunk.copy()
+                target_block = gram_trunk.pop() # remove & get last one
+                target_block_b4_dropout = target_block.trunk
+                gram_trunk.append(target_block_b4_dropout)
+                self.trunk_to_gram_block = nn.Sequential(*gram_trunk)
 
         if flatten:
             trunk.append(Flatten())
@@ -648,11 +697,13 @@ class ConvNet(nn.Module, CustomDropoutNet):
         self.trunk = nn.Sequential(*trunk)
         
         # BUGFIX for more_to_drop
-        self.final_feat_dim = outdim*5*5
-#         self.final_feat_dim = 1600 # output = 64*5*5
+        self.final_feat_dim = outdim
         
         # for CustomDropout
         self.record_active_dropout()
+        # Gram matrix
+        self.indim = 3 # BUGFIX for get_feature_map_for_gram
+        self.min_gram_init(gram_bid)
 
     def forward(self,x):
         out = self.trunk(x)
@@ -1038,8 +1089,13 @@ class DeConvNet2(nn.Module):
 # def Conv4Drop(dropout_p=0.):
 #     return ConvNet(4,dropout_p=dropout_p)
 
-def Conv4(dropout_p=0., dropout_block_id=3, more_to_drop=None):
-    return ConvNet(4,dropout_p=dropout_p, dropout_block_id=dropout_block_id, more_to_drop=more_to_drop)
+def Conv4(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
+# def Conv4(dropout_p=0., dropout_block_id=3, more_to_drop=None):
+#     return ConvNet(4,dropout_p=dropout_p, dropout_block_id=dropout_block_id, more_to_drop=more_to_drop)
+    return ConvNet(
+        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+        more_to_drop=more_to_drop, 
+        gram_bid=gram_bid)
 
 def Conv6():
     return ConvNet(6)
