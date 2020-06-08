@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 class ExpPlotter:
-    def __init__(self, csv_name, record_folder, base_params, negligible_vars, dependent_vars):
+    def __init__(self, csv_name, record_folder, base_params, negligible_vars, dependent_vars, ylim = None):
         '''
         Args:
             csv_name        (str)  : record file name (exclude file path)
@@ -12,6 +12,7 @@ class ExpPlotter:
             base_params     (dict) : only consider this setting
             negligible_vars (list) : ignore these variables
             dependent_vars  (list) : result variables
+            ylim            (tuple): plot y-axis upper & lower bounds
         '''
         
         self.csv_path = os.path.join(record_folder, csv_name)
@@ -25,6 +26,8 @@ class ExpPlotter:
         self.df_drop = ExpPlotter.drop_duplicate(self.df_drop)
         
         self.controllable_vars = [x for x in list(self.df_drop.columns) if x not in negligible_vars and x not in dependent_vars] # contains independent variable & controlled variables
+        
+        self.ylim = ylim
         
     def get_matched_df(params, df):
         for k,v in params.items():
@@ -157,7 +160,11 @@ class ExpPlotter:
                 
                 y_baseline = get_y_baseline(ys)
                 bar_width = get_barwidth(xs)
-                plt.bar(xs, ys-y_baseline, width=bar_width, bottom=y_baseline)
+                if self.ylim is None:
+                    plt.bar(xs, ys-y_baseline, width=bar_width, bottom=y_baseline)
+                else:
+                    plt.bar(xs, ys, width=bar_width)
+                    plt.ylim(self.ylim)
                 plt.show()
             
             
