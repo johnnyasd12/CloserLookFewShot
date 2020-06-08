@@ -348,6 +348,15 @@ def draw_both_worst_tasks(pkl_path1, pkl_path2, n_tasks, save_img_folder, exp1_p
         
         task = copy.deepcopy(exp1_task)
         
+        for img_key in task:
+            if 'qu' in img_key:
+                del task[img_key]['pred']
+                del task[img_key]['pred_prob']
+                pred1 = exp1_task[img_key]['pred']
+                pred2 = exp2_task[img_key]['pred']
+                task[img_key]['exp1_pred'] = pred1
+                task[img_key]['exp2_pred'] = pred2
+        
         del task['acc']
         acc1 = exp1_task['acc']
         acc2 = exp2_task['acc']
@@ -358,6 +367,8 @@ def draw_both_worst_tasks(pkl_path1, pkl_path2, n_tasks, save_img_folder, exp1_p
     acc_increase_tasks = sorted(all_tasks, key=lambda i: i['both_avg_acc'])
     exp_postfix = 'avg_' + exp1_postfix + '_' + exp2_postfix
     
+    draw_tasks(acc_increase_tasks, n_tasks = n_tasks, 
+               save_img_folder = save_img_folder, exp_postfix = exp_postfix, mode = 'both_exp_avg')
     
 
 def draw_most_differ_tasks(pkl_path1, pkl_path2, n_tasks, save_img_folder, exp1_postfix, exp2_postfix):
@@ -398,10 +409,14 @@ def draw_most_differ_tasks(pkl_path1, pkl_path2, n_tasks, save_img_folder, exp1_
     exp_postfix_2_gt_1 = exp1_postfix + '_lt_' + exp2_postfix
     print('Drawing tasks Exp2 better than Exp1 ...')
     draw_tasks(diff12_increase_tasks, n_tasks = n_tasks, 
-               save_img_folder = save_img_folder, exp_postfix = exp_postfix_2_gt_1, compare_diff = True)
+#                save_img_folder = save_img_folder, exp_postfix = exp_postfix_2_gt_1, compare_diff = True)
+               save_img_folder = save_img_folder, exp_postfix = exp_postfix_2_gt_1, mode = 'compare_diff')
     
-
-def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None, compare_diff = False):
+def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None, mode = 'single_exp'):
+    '''
+    mode (str): 'single_exp'|'compare_diff'|'both_exp_avg'
+    '''
+# def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None, compare_diff = False):
     # draw top ? task imgs
 #     print('len(all_tasks):'+str(len(all_tasks)))
 #     print('all_tasks:', type(all_tasks), len(all_tasks)) # n_episodes
@@ -415,11 +430,15 @@ def draw_tasks(all_tasks, n_tasks, save_img_folder = None, exp_postfix = None, c
 #         save_img_folder = os.path.join(self.record_folder, 'imgs')
         draw_single_task(
             task = task, save_filename = save_filename, save_img_folder = save_img_folder, 
-            compare_diff = compare_diff
+#             compare_diff = compare_diff
+            mode = mode
         )
 
-
-def draw_single_task(task, save_filename = None, save_img_folder = None, compare_diff = False):
+# def draw_single_task(task, save_filename = None, save_img_folder = None, compare_diff = False):
+def draw_single_task(task, save_filename = None, save_img_folder = None, mode = 'single_exp'):
+    '''
+    mode (str): 'single_exp'|'compare_diff'|'both_exp_avg'
+    '''
     # TODO: automatically decide n_way
     n_way = 2
 #     n_way = 5
@@ -440,10 +459,14 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
     )
 #     fig.tight_layout()
 #     plt.subplots_adjust(top=n_row/(n_row+1)) # to set margin for suptitle 'after' tight_layout()
-    if compare_diff:
+    if mode == 'compare_diff':
         title_str = 'acc1=%.3f%%, acc2=%.3f%%'%(task['exp1_acc'], task['exp2_acc'])
         fig.suptitle(title_str, size = unit_size*n_col*3)
-    else:
+    elif mode == 'both_exp_avg':
+        # TODO: 
+        title_str = 'avg acc = %.3f%%'%(task['both_avg_acc'])
+        fig.suptitle(title_str, size = unit_size*n_col*3)
+    elif mode == 'single_exp':
         pass
 #         plt.figure()
     
@@ -457,7 +480,7 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
     for cl in range(n_col): # for each class
         cl_str = 'c' + str(cl).zfill(2)
         
-        if compare_diff:
+        if mode in ['compare_diff', 'both_exp_avg']:
             # make error coordinate on the top
             top_query_id = 0
             bottom_query_id = n_query - 1
@@ -476,9 +499,9 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
                 alpha = 1 # plot transparency ( 1 for solid)
                 plt_row_id = n
             if 'qu' in key:
-                alpha = 0.5 # plot transparency ( 1 for solid)
+                alpha = 0.6 # plot transparency ( 1 for solid)
                 
-                if compare_diff:
+                if mode == 'compare_diff':
                     
                     plt_row_id = None
                     
@@ -511,17 +534,32 @@ def draw_single_task(task, save_filename = None, save_img_folder = None, compare
 #                     axarr[n, cl].title.set_size(sub_title_size)
                     axarr[plt_row_id, cl].title.set_text(sub_title_str)
                     axarr[plt_row_id, cl].title.set_size(sub_title_size)
-#                     if cl != pred1 and cl == pred2: # exp2 correct, but exp1 error
-#                         alpha = 1
-#                         axarr[n, cl].title.set_color('r')
-#                     elif cl != pred1 and cl != pred2: # exp1 and exp2 both error
-#                         axarr[n, cl].title.set_color('b')
-#                     elif cl == pred1 and cl == pred2: # exp1 and exp2 both correct
-#                         pass
-                else:
+
+                elif mode == 'single_exp':
                     pred = task[key]['pred']
                     pred_prob = task[key]['pred_prob']
                     is_correct = pred == cl
+                    
+                elif mode == 'both_exp_avg':
+                    pred1 = task[key]['exp1_pred']
+                    pred2 = task[key]['exp2_pred']
+                    both_error = (pred1 != cl) and (pred2 != cl)
+                    
+                    if both_error:
+                        plt_row_id = n_support + top_query_id
+                        top_query_id += 1
+                        alpha = 1
+                        
+                        axarr[plt_row_id, cl].title.set_color('r')
+                    else:
+                        plt_row_id = n_support + bottom_query_id
+                        bottom_query_id -= 1
+                    
+                    # TODO:
+                    sub_title_str = 'pred1 = %s\npred2 = %s'%(pred1, pred2)
+                    sub_title_size = unit_size * 4
+                    axarr[plt_row_id, cl].title.set_text(sub_title_str)
+                    axarr[plt_row_id, cl].title.set_size(sub_title_size)
 
 #             img = plt.imread(path)
             img = plt.imread(path, 0) # BUGFIX: ValueError: invalid PNG header
