@@ -144,8 +144,15 @@ class MetaTemplate(nn.Module):
                 #print(optimizer.state_dict()['param_groups'][0]['lr'])
                 description_str = 'Epoch %d: avg Loss = %.2f'%(epoch, sum_loss/float(i+1))
                 if compute_acc:
+#                     avg_acc = np.asarray(acc_all)
+#                     avg_acc = np.mean(avg_acc)
+#                     description_str += ' , avg Acc = %.2f%%'%(avg_acc)
                     avg_acc = np.asarray(acc_all)
-                    avg_acc = np.mean(avg_acc)
+                    n_avg = 100
+                    if i > n_avg:
+                        avg_acc = np.mean(avg_acc[-n_avg:])
+                    else:
+                        avg_acc = np.mean(avg_acc)
                     description_str += ' , avg Acc = %.2f%%'%(avg_acc)
                 tt.set_description(description_str)
         
