@@ -95,7 +95,17 @@ class ExpManager:
         csv_path = os.path.join(self.record_folder, self.fixed_params['test']['csv_name'])
         
         # TODO: refactor to many functions with argument: mode
-#         is_csv_exists = os.path.exists(csv_path)
+        
+        is_csv_exists = os.path.exists(csv_path)
+        
+        ########## deal with initial csv ##########
+        if mode == 'from_scratch':
+            if not is_csv_exists:
+                # create empty csv
+                print("Creating file: '%s' since not exist"%(csv_path))
+                with open(csv_path, "w") as file:
+                    empty_df = pd.DataFrame(columns=['dataset'])
+                    empty_df.to_csv(file, header=True, index=False)
 #         if is_csv_exists:
 #             loaded_df = pd.read_csv(csv_path)
 #             is_csv_new = len(loaded_df)==0
@@ -132,27 +142,28 @@ class ExpManager:
                 return
             
             
-        for params in all_general_possible_params:
+        for general_params in all_general_possible_params:
             
             ########## decide if should_train ##########
-            if mode == 'resume':# or mode == 'draw_tasks':
+            if mode in ['resume', 'from_scratch']:
+#             if mode == 'resume':# or mode == 'draw_tasks':
                 print()
                 print('='*20, 'Checking if already trained in:', csv_path, '='*20)
                 print('base_params:', base_params)
-                print('general_params:', params)
+                print('general_params:', general_params)
                 # read csv
                 loaded_df = pd.read_csv(csv_path)
 
                 # check if ALL test_params has been experimented. if so, then do NOT even train model
                 check_df = loaded_df.copy()
-                check_param = {**base_params, **params}
+                check_param = {**base_params, **general_params}
                 check_df = get_matched_df(check_param, check_df)
                 num_experiments = len(check_df)
                 
                 should_train = num_experiments == 0
                 
-            elif mode == 'from_scratch':
-                should_train = True
+#             elif mode == 'from_scratch':
+#                 should_train = True
             elif mode in ['draw_tasks', 'tmp_pkl']:
                 should_train = False
             
@@ -161,8 +172,8 @@ class ExpManager:
                 # train model
                 print()
                 print('='*20, 'Training', '='*20)
-                print(params)
-                modified_train_args = get_modified_args(train_args, params)
+                print('general_params:', general_params)
+                modified_train_args = get_modified_args(train_args, general_params)
                 train_result = exp_train_val(modified_train_args)
             else:
                 if mode == 'draw_tasks':
@@ -170,7 +181,7 @@ class ExpManager:
                 else:
                     print('NO need to train since already trained in record:', csv_path)
             
-            modified_test_args = get_modified_args(test_args, params)
+            modified_test_args = get_modified_args(test_args, general_params)
             
             # loop over testing settings under each general setting
             for test_params in all_test_possible_params:
@@ -178,10 +189,10 @@ class ExpManager:
                 ########## check if should test ##########
                 if mode == 'resume':
                     print('\n', '='*20, 'Checking if already did experiments', '='*20)
-                    print(params)
+                    print('general_params:', general_params)
                     print(test_params)
                     check_df = loaded_df.copy()
-                    check_param = {**self.base_params, **params, **test_params}
+                    check_param = {**self.base_params, **general_params, **test_params}
                     check_df = get_matched_df(check_param, loaded_df)
                     num_test_experiments = len(check_df)
                     if num_test_experiments>0: # already experiments
@@ -195,19 +206,20 @@ class ExpManager:
                     
                 final_test_args = get_modified_args(modified_test_args, test_params)
                 
-                write_record = {**params, **test_params}
+                write_record = {**general_params, **test_params}
                 
                 ########## write train_acc to record dict ##########
-                if mode == 'resume': #in ['resume', 'draw_tasks']:
+                if mode in ['resume', 'from_scratch']:
+#                 if mode == 'resume': #in ['resume', 'draw_tasks']:
                     if should_train:
                         write_record['train_acc_mean'] = train_result['train_acc']
                     else:
                         # to get train_acc, so no need test_params
                         check_df = loaded_df.copy()
-                        check_df = get_matched_df({**self.base_params, **params}, check_df)
+                        check_df = get_matched_df({**self.base_params, **general_params}, check_df)
                         write_record['train_acc_mean'] = check_df['train_acc_mean'].iloc[0]
-                elif mode == 'from_scratch':
-                    write_record['train_acc_mean'] = train_result['train_acc']
+#                 elif mode == 'from_scratch':
+#                     write_record['train_acc_mean'] = train_result['train_acc']
                 
                 ########## save_features & test ##########
                 if mode in ['from_scratch', 'resume', 'tmp_pkl']:
@@ -217,13 +229,13 @@ class ExpManager:
                         split_final_test_args = copy_args(final_test_args)
                         split_final_test_args.split = split
                         print('\n', '='*20, 'Saving Features', '='*20)
-                        print('params:', params)
+                        print('general_params:', general_params)
                         print('test_params:', test_params)
                         print('data split:', split)
                         exp_save_features(copy_args(split_final_test_args))
                         
                         print('\n', '='*20, 'Testing', '='*20)
-                        print('params:', params)
+                        print('general_params:', general_params)
                         print('test_params:', test_params)
                         print('data split:', split)
                         n_episodes = 10 if split_final_test_args.debug or mode=='draw_tasks' else 600
