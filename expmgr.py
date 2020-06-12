@@ -65,7 +65,7 @@ class ExpManager:
     def exp_grid(self, choose_by='val_acc_mean', mode='from_scratch'):
         '''
         Args:
-            mode (str): 'from_scratch'|'resume'|'draw_tasks'|'tmp_pkl'
+            mode (str): 'from_scratch'|'resume'|'draw_tasks'|'tmp_pkl' # 'draw_tasks' could be deprecated???
         '''
         print('exp_grid() start.')
         print('self.base_params:', self.base_params)
@@ -211,6 +211,21 @@ class ExpManager:
                 ########## write train_acc to record dict ##########
                 if mode in ['resume', 'from_scratch']:
 #                 if mode == 'resume': #in ['resume', 'draw_tasks']:
+                    source_val = True
+                    
+                    # write source_val_acc
+                    if source_val and base_params['dataset'] in ['cross', 'cross_char']:
+                        if should_train:
+                            write_record['source_val_acc'] = train_result['source_val_acc']
+                        else:
+                            # to get source_val_acc, so no need test_params
+                            check_df = loaded_df.copy()
+                            check_df = get_matched_df({**self.base_params, **general_params}, check_df)
+                            write_record['source_val_acc'] = check_df['source_val_acc'].iloc[0]
+                    else:
+                        write_record['source_val_acc'] = None
+                    
+                    # write train_acc
                     if should_train:
                         write_record['train_acc_mean'] = train_result['train_acc']
                     else:
@@ -323,7 +338,8 @@ class ExpManager:
         if len(matched_df)!=0:
             sorted_df = matched_df.sort_values(by=choose_by, ascending=False)
             compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
-            compare_cols = compare_cols + ['epoch', 'train_acc_mean', 'val_acc_mean', 'novel_acc_mean']
+#             compare_cols = compare_cols + ['epoch', 'train_acc_mean', 'val_acc_mean', 'novel_acc_mean']
+            compare_cols = compare_cols + ['epoch', 'train_acc_mean', 'source_val_acc', 'val_acc_mean', 'novel_acc_mean']
             print()
             print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
             print()

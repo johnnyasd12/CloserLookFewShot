@@ -24,7 +24,11 @@ from my_utils import set_random_seed
 from model_utils import get_few_shot_params, get_model, restore_vaegan
 import datetime
 
-def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch, params, record):
+def train(base_loader, val_loader, source_val_loader, model, optimization, start_epoch, stop_epoch, params, record):
+    '''
+    Returns:
+        result (dict): '{train_loss|val_acc}_his'
+    '''
     if optimization == 'Adam':
         optimizer = torch.optim.Adam(model.parameters())
     else:
@@ -58,21 +62,25 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
 
         set_random_seed(42) # validation episodes should be the same for each loop
         acc = model.test_loop( val_loader)
+        if source_val_loader is not None:
+            source_acc = model.test_loop(source_val_loader)
         set_random_seed(seeds[epoch])
         
         record['train_loss'].append(train_loss)
         record['val_acc'].append(acc)
+        if source_val_loader is not None:
+            record['source_val_acc'].append(source_acc)
         
         if need_train_acc:
             record['train_acc'].append(train_acc)
             
-        if acc > max_acc : #for baseline and baseline++, we don't use validation in default and we let acc = -1, but we allow options to validate with DB index
+        if acc > max_acc:
             max_acc = acc
             best_epoch = epoch
             outfile = os.path.join(params.checkpoint_dir, 'best_model.tar')
             print("best model! save at:", outfile)
             torch.save({'record':record, 'epoch':epoch, 'state':model.state_dict()}, outfile)
-        if epoch==stop_epoch-1:
+        if epoch == stop_epoch-1:
             outfile = os.path.join(params.checkpoint_dir, '{:d}.tar'.format(epoch))
             print("last epoch! save at: %s"%(outfile))
             torch.save({'record':record, 'epoch':epoch, 'state':model.state_dict()}, outfile)
@@ -102,11 +110,15 @@ def train(base_loader, val_loader, model, optimization, start_epoch, stop_epoch,
     if need_train_acc:
         result['train_acc_his'] = record['train_acc'].copy()
     result['val_acc_his'] = record['val_acc'].copy()
+    if source_val_loader is not None:
+        result['source_val_acc_his'] = record['source_val_acc'].copy()
     
     result['train_loss'] = record['train_loss'][best_epoch]# avg train_acc of best epoch
     if need_train_acc:
         result['train_acc'] = record['train_acc'][best_epoch] # avg train_acc of best epoch
     result['val_acc'] = max_acc
+    if source_val_loader is not None:
+        result['source_val_acc'] = record['source_val_acc'][best_epoch]
     
     return model, result
 
@@ -115,13 +127,32 @@ def get_train_val_filename(params):
     if params.dataset == 'cross':
         base_file = configs.data_dir['miniImagenet'] + 'all.json' 
         val_file   = configs.data_dir['CUB'] + 'val.json' 
+#         source_val_file = configs.data_dir['miniImagenet'] + 'val.json'
     elif params.dataset == 'cross_char':
         base_file = configs.data_dir['omniglot'] + 'noLatin.json' 
         val_file   = configs.data_dir['emnist'] + 'val.json' 
+#         source_val_file = configs.data_dir['omniglot'] + 'val.json'
     else:
         base_file = configs.data_dir[params.dataset] + 'base.json' 
         val_file   = configs.data_dir[params.dataset] + 'val.json'
+#     if source_val:
+#         if 'cross' in params.dataset:
+#             return base_file, val_file, source_val_file
+#         else:
+#             raise ValueError('Cannot return source_val_file when dataset =', params.dataset)
+#     else:
     return base_file, val_file
+
+def get_source_val_filename(params):
+    if params.dataset == 'cross':
+        source_val_file = configs.data_dir['miniImagenet'] + 'val.json'
+    elif params.dataset == 'cross_char':
+        source_val_file = configs.data_dir['omniglot'] + 'val.json'
+    else:
+        raise ValueError('Cannot return source_val_file when dataset =', params.dataset)
+        
+    return source_val_file
+
 
 def set_default_stop_epoch(params):
     if params.stop_epoch == -1: 
@@ -142,12 +173,14 @@ def set_default_stop_epoch(params):
             else:
                 params.stop_epoch = 600 #default
 
-def get_train_val_loader(params):
+def get_train_val_loader(params, source_val):
     # to prevent circular import
     from data.datamgr import SimpleDataManager, SetDataManager, AugSetDataManager, VAESetDataManager
     
     image_size = get_img_size(params)
     base_file, val_file = get_train_val_filename(params)
+    if source_val:
+        source_val_file = get_source_val_filename(params)
     
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)
@@ -159,7 +192,10 @@ def get_train_val_loader(params):
         n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
         test_few_shot_params     = get_few_shot_params(params, 'test')
         val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
-        val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
+        val_loader              = val_datamgr.get_data_loader( val_file, aug = False)
+        if source_val:
+            source_val_datamgr = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
+            source_val_loader  = val_datamgr.get_data_loader(source_val_file, aug = False)
         
     elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
@@ -178,18 +214,20 @@ def get_train_val_loader(params):
                                         vaegan_exp = params.vaegan_exp, 
                                         vaegan_step = params.vaegan_step, 
                                         vaegan_is_train = params.vaegan_is_train, 
-                                        lambda_zlogvar=params.zvar_lambda, 
+                                        lambda_zlogvar = params.zvar_lambda, 
                                         fake_prob = params.fake_prob, 
                                         **train_few_shot_params)
             # train_val or val???
             val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
             
             
-        elif params.aug_target is None:
+        elif params.aug_target is None: # Common Case
             assert params.aug_type is None
             
             base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)
             val_datamgr             = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
+            if source_val:
+                source_val_datamgr  = SetDataManager(image_size, n_query = n_query, **test_few_shot_params)
         else:
             aug_type = params.aug_type
             assert aug_type is not None
@@ -200,14 +238,24 @@ def get_train_val_loader(params):
                                                         aug_type=aug_type, aug_target='test-sample', 
                                                         **test_few_shot_params)
         base_loader             = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
-        val_loader              = val_datamgr.get_data_loader( val_file, aug = False) 
+        val_loader              = val_datamgr.get_data_loader( val_file, aug = False)
+        if source_val:
+            source_val_loader   = val_datamgr.get_data_loader(source_val_file, aug = False)
         #a batch for SetDataManager: a [n_way, n_support + n_query, n_channel, w, h] tensor        
         
     else:
         raise ValueError('Unknown method')
-    return base_loader, val_loader
+    
+    if source_val:
+        return base_loader, val_loader, source_val_loader
+    else:
+        return base_loader, val_loader
 
 def exp_train_val(params):
+    '''
+    Return:
+        result (dict): see function train()
+    '''
     start_time = datetime.datetime.now()
 #     start_time = get_time_now()
     print('exp_train_val() started at',start_time)
@@ -227,12 +275,16 @@ def exp_train_val(params):
 
     set_default_stop_epoch(params)
 
-    base_loader, val_loader = get_train_val_loader(params)
+    source_val = True
+    
+    if source_val and params.dataset in ['cross', 'cross_char']:
+        record['source_val_acc'] = []
+        base_loader, val_loader, source_val_loader = get_train_val_loader(params, source_val = True)
+    else:
+        base_loader, val_loader = get_train_val_loader(params, source_val = False)
+        source_val_loader = None
 
-#     if params.gpu_id:
     model = model.cuda()
-#     else:
-#         model = to_device(model)
 
     params.checkpoint_dir = get_checkpoint_dir(params)
     
@@ -275,7 +327,7 @@ def exp_train_val(params):
         else:
             raise ValueError('No warm_up file')
 
-    model, result = train(base_loader, val_loader,  model, optimization, start_epoch, stop_epoch, params, record)
+    model, result = train(base_loader, val_loader, source_val_loader, model, optimization, start_epoch, stop_epoch, params, record)
     
     torch.cuda.empty_cache()
     
