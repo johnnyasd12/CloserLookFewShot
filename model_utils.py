@@ -50,15 +50,20 @@ def get_backbone_func(params):
                 , more_to_drop=params.more_to_drop)
 
     else: # not RelationNet
-#         # TODO: WWWTTTFFFF wats goin on here???
-#         backbone_func = model_dict[params.model]
+        save_test_time = True # TODO: maybe bug ???
+        if params.test_dropout_p is not None and save_test_time:
+            dropout_p = params.test_dropout_p
+            dropout_bid = params.test_dropout_bid
+        else:
+            dropout_p = params.dropout_p
+            dropout_bid = params.dropout_block_id
         
-#         if params.dropout_p==0:
-#             backbone_func = model_dict[params.model] 
-#         else:
         backbone_func = lambda: model_dict[params.model](
-            dropout_p=params.dropout_p, dropout_block_id=params.dropout_block_id
+            dropout_p=dropout_p, dropout_block_id=dropout_bid
             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
+#         backbone_func = lambda: model_dict[params.model](
+#             dropout_p=params.dropout_p, dropout_block_id=params.dropout_block_id
+#             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
 
     return backbone_func
 

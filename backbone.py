@@ -312,6 +312,11 @@ class CustomDropoutBlock:
         else:
             outputs = self.dropout(inputs)
         return outputs
+    
+    # for test-time dropout
+    def turn_on_dropout(self, n_features, dropout_p):
+        assert self.dropout is None, 'Block.dropout should be None before turn_on_dropout()'
+        self.dropout = CustomDropout2D(n_features=n_features, p=dropout_p)
 
 def feat2gram(feat, normalize=True):
     '''

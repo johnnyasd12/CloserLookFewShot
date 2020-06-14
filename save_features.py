@@ -89,6 +89,11 @@ def exp_save_features(params):
         print('switching batch_norm layers to train mode...')
         backbone_net.apply(batchnorm_use_target_stats)
 
+    if params.test_dropout_p is not None:
+        # TODO: make backbone_net dropout
+        pass
+        
+        
     dirname = os.path.dirname(outfile)
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
@@ -115,6 +120,9 @@ def save_features(feature_net, data_loader, outfile, params):
             assert params.sample_strategy == 'none'
             outfile_n = outfile.replace('candidate', 'candidate'+str(n+1))
             print(outfile_n, ': procedure start...')
+            if params.test_dropout_p is not None:
+                # TODO: change network dropout_p to be test_dropout_p
+                pass
             feature_net.sample_random_subnet()
         elif 'complement' in outfile: # then use complementary-sample strategy
             assert params.sample_strategy == 'complement'
