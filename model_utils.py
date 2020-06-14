@@ -51,12 +51,13 @@ def get_backbone_func(params):
 
     else: # not RelationNet
         save_test_time = True # TODO: maybe bug ???
-        if params.test_dropout_p is not None and save_test_time:
-            dropout_p = params.test_dropout_p
-            dropout_bid = params.test_dropout_bid
-        else:
-            dropout_p = params.dropout_p
-            dropout_bid = params.dropout_block_id
+        
+        dropout_p = params.dropout_p
+        dropout_bid = params.dropout_block_id
+        if hasattr(params, 'test_dropout_p'):
+            if params.test_dropout_p is not None and save_test_time:
+                dropout_p = params.test_dropout_p
+                dropout_bid = params.test_dropout_bid
         
         backbone_func = lambda: model_dict[params.model](
             dropout_p=dropout_p, dropout_block_id=dropout_bid
