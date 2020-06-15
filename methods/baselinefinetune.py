@@ -9,11 +9,13 @@ from methods.meta_template import MetaTemplate
 from my_utils import *
 
 class BaselineFinetune(MetaTemplate):
-    def __init__(self, model_func,  n_way, n_support, loss_type = "softmax"):
+    def __init__(self, model_func,  n_way, n_support, loss_type = "softmax", finetune_dropout_p=None):
         super(BaselineFinetune, self).__init__( model_func,  n_way, n_support)
         self.loss_type = loss_type
         # BUGFIX: BaselinFinetune has no attribute 'loss_fn'
         self.loss_fn = nn.CrossEntropyLoss().cuda()
+        
+        self.finetune_dropout_p = finetune_dropout_p
 
     def set_forward(self,x,is_feature = True):
         return self.set_forward_adaptation(x,is_feature); #Baseline always do adaptation
@@ -28,6 +30,9 @@ class BaselineFinetune(MetaTemplate):
 
         y_support = torch.from_numpy(np.repeat(range( self.n_way ), self.n_support ))
         y_support = Variable(y_support.cuda())
+        
+        if self.finetune_dropout_p is not None:
+            dropout = nn.Dropout(p=finetune_dropout_p)#.cuda()?
 
         if self.loss_type == 'softmax':
             linear_clf = nn.Linear(self.feat_dim, self.n_way)
@@ -50,6 +55,10 @@ class BaselineFinetune(MetaTemplate):
 
                 z_batch = z_support[selected_id]
                 y_batch = y_support[selected_id] 
+                
+                if self.finetune_dropout_p is not None:
+                    z_batch = dropout(z_batch)
+                
                 scores = linear_clf(z_batch)
                 loss = loss_function(scores,y_batch)
                 loss.backward()

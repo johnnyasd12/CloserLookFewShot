@@ -101,8 +101,9 @@ def parse_args(script, parse_str=None):
         parser.add_argument('--sample_strategy', default='none', type=str, choices=['none', 'complement'])
         
         # test-only drop neurons
-        parser.add_argument('--test_dropout_p', default=None, type=float, help='the test-time dropout rate, if None then default is dropout_p.')
-        parser.add_argument('--test_dropout_bid', default=None, type=int, help='the test-time dropout block id, if None then dropout_p should be also None.')
+        parser.add_argument('--test_dropout_p', default=None, type=float, help='the test-time sampling(?) dropout rate, if None then default is dropout_p.')
+        parser.add_argument('--test_dropout_bid', default=None, type=int, help='the test-time sampling(?) dropout block id, if None then dropout_p should be also None.')
+        parser.add_argument('--finetune_dropout_p', default=None, type=float, help='the dropout rate when finetuning output layer, only affect when method is baseline/baseline++.')
         
         ############ test.py ########## but i think save_features.py is okay
 #         if script == 'test': # can also parse in save_features.py?? i think no effect is ok
@@ -137,6 +138,10 @@ def parse_args(script, parse_str=None):
     
     # sanity check
     if script=='save_features' or script=='test':
+        if params.finetune_dropout_p is not None:
+            if params.method not in ['baseline', 'baseline++']:
+                raise ValueError('finetune_dropout_p and method not match.')
+        
         if (params.test_dropout_p is None) ^ (params.test_dropout_bid is None):
             raise ValueError('test_dropout_p and test_dropout_bid not match.')
         if params.test_dropout_p is not None and params.n_test_candidates is None:

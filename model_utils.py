@@ -100,28 +100,6 @@ def get_model(params, mode):
 
     backbone_func = get_backbone_func(params)
     
-    # not sure
-#     if mode == 'train':
-#         if params.method == 'baseline':
-#             model           = BaselineTrain( backbone_func, params.num_classes)
-#         elif params.method == 'baseline++':
-#             model           = BaselineTrain( backbone_func, params.num_classes, loss_type = 'dist')
-#     elif mode == 'test':
-#         if params.method == 'baseline':
-#             model           = BaselineFinetune( backbone_func, **few_shot_params )
-#         elif params.method == 'baseline++':
-#             model           = BaselineFinetune( backbone_func, loss_type = 'dist', **few_shot_params )
-
-#     if params.method == 'baseline':
-#         if mode == 'train':
-#             model           = BaselineTrain( backbone_func, params.num_classes, loss_type = 'softmax')
-#         elif mode == 'test':
-#             model           = BaselineFinetune( backbone_func, **few_shot_params, loss_type = 'softmax' )
-#     elif params.method == 'baseline++':
-#         if mode == 'train':
-#             model           = BaselineTrain( backbone_func, params.num_classes, loss_type = 'dist')
-#         elif mode == 'test':
-#             model           = BaselineFinetune( backbone_func, loss_type = 'dist', **few_shot_params )
     if 'baseline' in params.method:
         loss_types = {
             'baseline':'softmax', 
@@ -129,8 +107,6 @@ def get_model(params, mode):
         }
         loss_type = loss_types[params.method]
         
-#         baseline_methods = {'train':BaselineTrain, 'test':BaselineFinetune}
-#         BaselineMethod = baseline_methods[mode]
         if recons_decoder is None and params.min_gram is None: # default baseline/baseline++
             if mode == 'train':
                 model = BaselineTrain(
@@ -139,7 +115,7 @@ def get_model(params, mode):
             elif mode == 'test':
                 model = BaselineFinetune(
                     model_func = backbone_func, loss_type = loss_type, 
-                    **few_shot_params)
+                    **few_shot_params, finetune_dropout_p = params.finetune_dropout_p)
         else: # other settings for baseline
             if params.min_gram is not None:
                 min_gram_params = {
@@ -153,7 +129,7 @@ def get_model(params, mode):
                 elif mode == 'test':
                     model = BaselineFinetune(
                         model_func = backbone_func, loss_type = loss_type, 
-                        **few_shot_params)
+                        **few_shot_params, finetune_dropout_p = params.finetune_dropout_p)
 #                     model = BaselineFinetuneMinGram(backbone_func, loss_type = loss_type, **few_shot_params, **min_gram_params)
             
     
