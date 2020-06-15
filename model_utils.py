@@ -50,12 +50,12 @@ def get_backbone_func(params):
                 , more_to_drop=params.more_to_drop)
 
     else: # not RelationNet
-        save_test_time = True # TODO: maybe bug ???
         
         dropout_p = params.dropout_p
         dropout_bid = params.dropout_block_id
-        if hasattr(params, 'test_dropout_p'):
-            if params.test_dropout_p is not None and save_test_time:
+#         if params.method not in ['baseline', 'baseline++']:
+        if hasattr(params, 'test_dropout_p'): # save_features or test
+            if params.test_dropout_p is not None:
                 dropout_p = params.test_dropout_p
                 dropout_bid = params.test_dropout_bid
         
