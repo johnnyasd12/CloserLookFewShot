@@ -32,7 +32,7 @@ class BaselineFinetune(MetaTemplate):
         y_support = Variable(y_support.cuda())
         
         if self.finetune_dropout_p is not None:
-            dropout = nn.Dropout(p=finetune_dropout_p)#.cuda()?
+            dropout = nn.Dropout(p=self.finetune_dropout_p)#.cuda()?
 
         if self.loss_type == 'softmax':
             linear_clf = nn.Linear(self.feat_dim, self.n_way)
