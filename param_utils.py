@@ -80,11 +80,13 @@ def get_matched_df(params, df, possible_params={}):
 #                 yeee
             ###################### DEBUG ######################
             
-            ###################### DEBUG ######################
-#             print('get_matched_df/k,v:', k, v)
-#             print('get_matched_df/cond:', cond)
-            ###################### DEBUG ######################
             base_cond = base_cond&cond if base_cond is not None else cond
+            
+            ###################### DEBUG (seems no problem?) ######################
+#             print('get_matched_df/k,v:', k, v)
+#             print('get_matched_df/cond:\n', cond)
+#             print('get_matched_df/base_cond:\n', base_cond)
+            ###################### DEBUG ######################
         else:
             logging.warning('param_utils/get_matched_df/"%s" not in df.columns'%(k))
     

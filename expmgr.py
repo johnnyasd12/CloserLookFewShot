@@ -47,7 +47,10 @@ class ExpManager:
         self.base_params = base_params # comparison is based on this setting.
         self.possible_params = {'general':general_possible_params, 'test':test_possible_params} # general means generalize to train/save_features/test
         self.fixed_params = {'train':train_fixed_params, 'test':test_fixed_params}
-        self.negligible_vars = ['gpu_id', 'csv_name',] # can be ignored when comparing results but in ArgParser
+        self.negligible_vars = ['gpu_id', 'csv_name'] # can be ignored when comparing results but in ArgParser
+        self.negligible_vars += ['split', 'num_classes']
+        self.dependent_vars = [
+            'epoch', 'train_acc_mean', 'source_val_acc', 'val_acc_mean', 'val_acc_std', 'novel_acc_mean', 'novel_acc_std']
         
         self.results_pkl = [] # params as well as results restore in the list of dictionaries
         
@@ -193,6 +196,21 @@ class ExpManager:
                     print(test_params)
                     check_df = loaded_df.copy()
                     check_param = {**self.base_params, **general_params, **test_params}
+                    # BUGFIX: add default params, delete useless params & dependent variables (result)
+                    
+                    default_args = parse_args('test', parse_str='')
+                    default_param = vars(default_args)
+                    check_param = {**default_param, **check_param}
+                    
+                    # delete vars not for checking
+                    del_vars = self.negligible_vars + self.dependent_vars
+                    for var in del_vars:
+                        if var in check_param:
+                            del check_param[var]
+                            
+                    ##### debug #####
+#                     print('check_param:', check_param)
+
                     check_df = get_matched_df(check_param, loaded_df)
                     num_test_experiments = len(check_df)
                     if num_test_experiments>0: # already experiments
@@ -201,9 +219,7 @@ class ExpManager:
                         continue
                 elif mode == 'tmp_pkl':
                     pass
-                        
-                    
-                    
+                
                 final_test_args = get_modified_args(modified_test_args, test_params)
                 
                 write_record = {**general_params, **test_params}
@@ -331,10 +347,13 @@ class ExpManager:
         all_possible_params = {**self.possible_params['general'], **self.possible_params['test']}
         
         matched_df = get_matched_df(important_fixed_params, record_df, possible_params=all_possible_params)
-#         logging.debug('matched_df:\n%s'%(matched_df))
+        
+        ##### debug #####
+        print('matched_df:\n%s'%(matched_df))
 
         if top_k==None:
             top_k = len(matched_df)
+        
         if len(matched_df)!=0:
             sorted_df = matched_df.sort_values(by=choose_by, ascending=False)
             compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
