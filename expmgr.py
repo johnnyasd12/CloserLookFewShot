@@ -349,7 +349,7 @@ class ExpManager:
         matched_df = get_matched_df(important_fixed_params, record_df, possible_params=all_possible_params)
         
         ##### debug #####
-        print('matched_df:\n%s'%(matched_df))
+#         print('matched_df:\n%s'%(matched_df))
 
         if top_k==None:
             top_k = len(matched_df)
