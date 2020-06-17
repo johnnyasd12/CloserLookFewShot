@@ -86,10 +86,16 @@ def get_model(params, mode):
                 raise ValueError('omniglot / cross_char should use ConvS/HiddenConvS decoder.')
     
     if params.method in ['baseline', 'baseline++'] and mode=='train':
-        if params.dataset == 'omniglot':
+        if params.dataset == 'omniglot': # 4112/688/1692
             assert params.num_classes >= 4112, 'class number need to be larger than max label id in base class'
-        if params.dataset == 'cross_char':
+        if params.dataset == 'cross_char': # 1597/31/31
             assert params.num_classes >= 1597, 'class number need to be larger than max label id in base class'
+        if params.dataset == 'miniImagenet': # 64/16/20
+            assert params.num_classes >= 64, 'class number need to be larger than max label id in base class'
+        if params.dataset == 'CUB': # 100/50/50
+            assert params.num_classes >= 100, 'class number need to be larger than max label id in base class'
+        if params.dataset == 'cross': # 64+16+20/50/50
+            assert params.num_classes >= 100, 'class number need to be larger than max label id in base class'
     
     if params.recons_decoder == None:
         print('params.recons_decoder == None')
