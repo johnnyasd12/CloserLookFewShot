@@ -148,11 +148,17 @@ def parse_args(script, parse_str=None):
             raise ValueError('test_dropout_p and n_test_candidates not match.')
             
         if params.n_test_candidates is not None: # both should be True or False
-            if params.dropout_p == 0:
-                raise ValueError('dropout_p and n_test_candidates not match.')
-            if params.test_dropout_p is None:
-                raise ValueError('test_dropout_p and n_test_candidates not match.')
-            if 'baseline' in params.method:
+            
+            if False:
+                if params.dropout_p == 0:
+                    raise ValueError('dropout_p and n_test_candidates not match.')
+                if params.test_dropout_p is None:
+                    raise ValueError('test_dropout_p and n_test_candidates not match.')
+            # should be like this, but why above code can pass when doing experiments before???
+            if params.dropout_p == 0 and params.test_dropout_p is None:
+                raise ValueError('dropout_p/test_dropout_p and n_test_candidates not match.')
+            
+            if params.method in ['baseline', 'baseline++']:
                 if params.n_test_candidates > 10:
                     raise ValueError('too many test candidates for baseline.')
                 if params.frac_ensemble != 1:
