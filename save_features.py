@@ -34,8 +34,9 @@ def exp_save_features(params):
     image_size = get_img_size(params)
     
     if params.dataset in ['omniglot', 'cross_char']:
-        assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
-        params.model = 'Conv4S'
+        # not sure if the following assertion useful...
+#         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
+        params.model = params.model.replace('Conv4', 'Conv4S')
 
     split = params.split
 

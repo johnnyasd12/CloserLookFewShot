@@ -734,7 +734,7 @@ class ConvNetNopool(nn.Module): #Relation net use a 4 layer conv with pooling in
 
 
 class ConvNetS(nn.Module, CustomDropoutNet, MinGramDropoutNet): #For omniglot, only 1 input channel, output dim is 64
-    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid = None):
+    def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid = None, output_dim = 64):
         '''
         Args:
             dropout_block_id: could be {0|1|2|3}
@@ -743,6 +743,7 @@ class ConvNetS(nn.Module, CustomDropoutNet, MinGramDropoutNet): #For omniglot, o
         '''
         super(ConvNetS,self).__init__()
         trunk = []
+        self.outdim = output_dim
         # TODO: trunk.append only select 1 channel
         for i in range(depth):
             '''input = 1*28*28 (see self.forward)
@@ -754,9 +755,9 @@ class ConvNetS(nn.Module, CustomDropoutNet, MinGramDropoutNet): #For omniglot, o
             '''
             # BUGFIX for more_to_drop
             indim = 1 if i == 0 else outdim
-            outdim = 64
+            outdim = self.outdim
             # CustomDropout
-            dropout_cond = i==dropout_block_id # whether this layer should dropout
+            dropout_cond = (dropout_block_id=='all') or (i==dropout_block_id) # whether this layer should dropout
             block_dropout_p = dropout_p if dropout_cond else 0.
             # more_to_drop
             if more_to_drop=='double' and dropout_cond:
@@ -1122,6 +1123,12 @@ def Conv4S(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
         4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
         more_to_drop=more_to_drop, 
         gram_bid=gram_bid)
+
+def Conv4SFat2(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ConvNetS(
+        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+        more_to_drop=more_to_drop, 
+        gram_bid=gram_bid, output_dim=128)
 
 def Conv4SNP():
     return ConvNetSNopool(4)

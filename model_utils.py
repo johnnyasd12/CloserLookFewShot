@@ -36,6 +36,15 @@ def get_few_shot_params(params, mode=None):
 
 def get_backbone_func(params):
     
+    # copy from get_model()
+#     if params.dataset in ['omniglot', 'cross_char']:
+# #         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
+#         assert 'Conv4' in params.model and not params.train_aug ,'omniglot/cross_char only support Conv4 without augmentation'
+#         params.model = params.model.replace('Conv4', 'Conv4S') # because Conv4Drop should also be Conv4SDrop
+#         if params.recons_decoder is not None:
+#             if 'ConvS' not in params.recons_decoder:
+#                 raise ValueError('omniglot / cross_char should use ConvS/HiddenConvS decoder.')
+    
     if params.method in ['relationnet', 'relationnet_softmax']:
         if params.model == 'Conv4': 
             backbone_func = backbone.Conv4NP
