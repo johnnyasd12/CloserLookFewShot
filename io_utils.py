@@ -18,9 +18,11 @@ model_dict = dict(
             ResNet50 = backbone.ResNet50,
             ResNet101 = backbone.ResNet101, 
     
-            ResNet18Widen1 = backbone.ResNet18Widen1, 
-            Conv4SFat2      = backbone.Conv4SFat2, 
-            Conv4SThin2     = backbone.Conv4SThin2, 
+#             ResNet18Widen1 = backbone.ResNet18Widen1, 
+            Conv4SFat2     = backbone.Conv4SFat2, 
+            Conv4SThin2    = backbone.Conv4SThin2, 
+            ResNet18Fat2   = backbone.ResNet18Fat2, 
+            ResNet18Thin2  = backbone.ResNet18Thin2, 
 #             Conv4Drop = backbone.Conv4Drop, 
 #             Conv4SDrop = backbone.Conv4SDrop
 ) 

@@ -1031,6 +1031,80 @@ class ResNet(nn.Module, CustomDropoutNet, MinGramDropoutNet):
         return out
 
 
+
+# def Conv4():
+#     return ConvNet(4)
+
+def Conv4(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
+# def Conv4(dropout_p=0., dropout_block_id=3, more_to_drop=None):
+#     return ConvNet(4,dropout_p=dropout_p, dropout_block_id=dropout_block_id, more_to_drop=more_to_drop)
+    return ConvNet(
+        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+        more_to_drop=more_to_drop, 
+        gram_bid=gram_bid)
+
+# def Conv4S():
+#     return ConvNetS(4)
+
+# def Conv4SDrop(dropout_p=0.):
+#     return ConvNetS(4,dropout_p=dropout_p)
+
+def Conv4S(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ConvNetS(
+        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+        more_to_drop=more_to_drop, 
+        gram_bid=gram_bid)
+
+def Conv4SFat2(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ConvNetS(
+        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+        more_to_drop=more_to_drop, 
+        gram_bid=gram_bid, output_dim=128)
+
+def Conv4SThin2(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ConvNetS(
+        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+        more_to_drop=more_to_drop, 
+        gram_bid=gram_bid, output_dim=32)
+
+
+def ResNet18(flatten = True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten, 
+                 dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+                  more_to_drop=more_to_drop, gram_sid=gram_bid)
+
+def ResNet18Fat2(flatten = True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ResNet(SimpleBlock, [2,2,2,2],[128,256,512,1024], flatten, 
+#     return ResNet(SimpleBlock, [2,2,2,2],[96,192,384,768], flatten, 
+                 dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+                  more_to_drop=more_to_drop, gram_sid=gram_bid)
+
+def ResNet18Thin2(flatten = True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ResNet(SimpleBlock, [2,2,2,2],[32,64,128,256], flatten, 
+                 dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+                  more_to_drop=more_to_drop, gram_sid=gram_bid)
+
+def ResNet10(flatten=True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    # WTF i dunno why SimpleBlock cost less memory
+    return ResNet(SimpleBlock, [1,1,1,1],[64,128,256,512], flatten, 
+                 dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+                  more_to_drop=more_to_drop, gram_sid=gram_bid)
+#     return ResNet(BottleneckBlock, [1,1,1,1],[64,128,256,512], flatten)
+
+
+def Conv6():
+    return ConvNet(6)
+
+def Conv4NP():
+    return ConvNetNopool(4)
+
+def Conv6NP():
+    return ConvNetNopool(6)
+
+def Conv4SNP():
+    return ConvNetSNopool(4)
+
+
 class DeConvNet(nn.Module): # for AE, input: flattened 64*5*5
     def __init__(self):
         super(DeConvNet, self).__init__() # BUGFIX: not sure if correct (padding, output_padding, Tanh())
@@ -1089,85 +1163,11 @@ class DeConvNet2(nn.Module):
         out = img_standardize(out)
         return out
 
-# def Conv4():
-#     return ConvNet(4)
-
-# def Conv4Drop(dropout_p=0.):
-#     return ConvNet(4,dropout_p=dropout_p)
-
-def Conv4(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
-# def Conv4(dropout_p=0., dropout_block_id=3, more_to_drop=None):
-#     return ConvNet(4,dropout_p=dropout_p, dropout_block_id=dropout_block_id, more_to_drop=more_to_drop)
-    return ConvNet(
-        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
-        more_to_drop=more_to_drop, 
-        gram_bid=gram_bid)
-
-def Conv6():
-    return ConvNet(6)
-
-def Conv4NP():
-    return ConvNetNopool(4)
-
-def Conv6NP():
-    return ConvNetNopool(6)
-
-# def Conv4S():
-#     return ConvNetS(4)
-
-# def Conv4SDrop(dropout_p=0.):
-#     return ConvNetS(4,dropout_p=dropout_p)
-
-def Conv4S(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
-    return ConvNetS(
-        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
-        more_to_drop=more_to_drop, 
-        gram_bid=gram_bid)
-
-def Conv4SFat2(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
-    return ConvNetS(
-        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
-        more_to_drop=more_to_drop, 
-        gram_bid=gram_bid, output_dim=128)
-
-def Conv4SThin2(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
-    return ConvNetS(
-        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
-        more_to_drop=more_to_drop, 
-        gram_bid=gram_bid, output_dim=32)
-
-def Conv4SNP():
-    return ConvNetSNopool(4)
-
-def ResNet10(flatten=True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
-    # WTF i dunno why SimpleBlock cost less memory
-    return ResNet(SimpleBlock, [1,1,1,1],[64,128,256,512], flatten, 
-                 dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
-                  more_to_drop=more_to_drop, gram_sid=gram_bid)
-#     return ResNet(BottleneckBlock, [1,1,1,1],[64,128,256,512], flatten)
-
 def DeResNet10(flatten=True):
     return DeResNet(DeSimpleBlock, [1,1,1,1], [512,256,128,64], flatten, indim=512)
 
 def DeResNet10_2(flatten=False):
     return DeResNet(DeSimpleBlock, [1,1], [128,64], flatten, indim=128)
-
-def ResNet18(flatten = True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
-    return ResNet(SimpleBlock, [2,2,2,2],[64,128,256,512], flatten, 
-                 dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
-                  more_to_drop=more_to_drop, gram_sid=gram_bid)
-
-def ResNet18Widen1(flatten = True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
-    return ResNet(SimpleBlock, [2,2,2,2],[128,256,512,1024], flatten, 
-#     return ResNet(SimpleBlock, [2,2,2,2],[96,192,384,768], flatten, 
-                 dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
-                  more_to_drop=more_to_drop, gram_sid=gram_bid)
-
-def ResNet18Widen2(flatten = True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
-    return ResNet(SimpleBlock, [2,2,2,2],[256,512,1024,2048], flatten, 
-#     return ResNet(SimpleBlock, [2,2,2,2],[96,192,384,768], flatten, 
-                 dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
-                  more_to_drop=more_to_drop, gram_sid=gram_bid)
 
 def DeResNet18(flatten=True):
     return DeResNet(DeSimpleBlock, [2,2,2,2], [512,256,128,64], flatten, indim=512)
