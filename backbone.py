@@ -427,39 +427,6 @@ class ConvBlock(nn.Module):
         out = CustomDropoutBlock.after_standard_forward(self, out)
         return out
 
-# Simple Block for Decoder of ResAE18
-class DeSimpleBlock(nn.Module):
-    maml = False
-    def __init__(self, indim, outdim, double_res):
-        super(DeSimpleBlock, self).__init__()
-        self.indim = indim
-        self.outdim = outdim
-        if self.maml:
-            raise ValueError('DeSimpleBlock do not support maml.')
-        else:
-            self.CT1 = nn.ConvTranspose2d(indim, indim, kernel_size=3, stride=1, 
-                                          padding=1, output_padding=0, bias=False)
-            self.BN1 = nn.BatchNorm2d(indim)
-            self.relu1 = nn.ReLU(inplace=True)
-            self.CT2 = nn.ConvTranspose2d(indim, outdim, kernel_size=3, 
-                                          stride=2 if double_res else 1, padding=1, 
-                                          output_padding=1 if double_res else 0, bias=False)
-            self.BN2 = nn.BatchNorm2d(outdim)
-            self.relu2 = nn.ReLU(inplace=True)
-            
-            self.parametrized_layers = [self.CT1, self.CT2, self.BN1, self.BN2]
-            
-            for layer in self.parametrized_layers:
-                init_layer(layer)
-    
-    def forward(self, x):
-        out = self.CT1(x)
-        out = self.BN1(out)
-        out = self.relu1(out)
-        out = self.CT2(out)
-        out = self.BN2(out)
-        out = self.relu2(out)
-        return out
 
 class LambdaLayer(nn.Module):
     # to do some hack in ResNet
@@ -1036,6 +1003,41 @@ class DeConvNet2(nn.Module):
         out = x.view(x.size(0),64,21,21)
         out = self.decoder(out)
         out = img_standardize(out)
+        return out
+    
+
+# Simple Block for Decoder of ResAE18
+class DeSimpleBlock(nn.Module):
+    maml = False
+    def __init__(self, indim, outdim, double_res):
+        super(DeSimpleBlock, self).__init__()
+        self.indim = indim
+        self.outdim = outdim
+        if self.maml:
+            raise ValueError('DeSimpleBlock do not support maml.')
+        else:
+            self.CT1 = nn.ConvTranspose2d(indim, indim, kernel_size=3, stride=1, 
+                                          padding=1, output_padding=0, bias=False)
+            self.BN1 = nn.BatchNorm2d(indim)
+            self.relu1 = nn.ReLU(inplace=True)
+            self.CT2 = nn.ConvTranspose2d(indim, outdim, kernel_size=3, 
+                                          stride=2 if double_res else 1, padding=1, 
+                                          output_padding=1 if double_res else 0, bias=False)
+            self.BN2 = nn.BatchNorm2d(outdim)
+            self.relu2 = nn.ReLU(inplace=True)
+            
+            self.parametrized_layers = [self.CT1, self.CT2, self.BN1, self.BN2]
+            
+            for layer in self.parametrized_layers:
+                init_layer(layer)
+    
+    def forward(self, x):
+        out = self.CT1(x)
+        out = self.BN1(out)
+        out = self.relu1(out)
+        out = self.CT2(out)
+        out = self.BN2(out)
+        out = self.relu2(out)
         return out
 
 def DeResNet10(flatten=True):
