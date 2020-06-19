@@ -1130,6 +1130,12 @@ def Conv4SFat2(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=Non
         more_to_drop=more_to_drop, 
         gram_bid=gram_bid, output_dim=128)
 
+def Conv4SThin2(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ConvNetS(
+        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+        more_to_drop=more_to_drop, 
+        gram_bid=gram_bid, output_dim=32)
+
 def Conv4SNP():
     return ConvNetSNopool(4)
 
