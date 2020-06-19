@@ -172,6 +172,8 @@ class ExpManager:
             
             ########## training ##########
             if should_train:
+                # release cuda memory
+                torch.cuda.empty_cache()
                 # train model
                 print()
                 print('='*20, 'Training', '='*20)
@@ -275,6 +277,8 @@ class ExpManager:
                         write_record['epoch'] = exp_record['epoch']
                         write_record[split+'_acc_mean'] = exp_record['acc_mean']
                         write_record[split+'_acc_std'] = exp_record['acc_std']
+                        
+                        torch.cuda.empty_cache()
                     
                     ########## record to csv ##########
                     if mode != 'tmp_pkl':
