@@ -757,7 +757,7 @@ class ConvNetS(nn.Module, CustomDropoutNet, MinGramDropoutNet): #For omniglot, o
             indim = 1 if i == 0 else outdim
             outdim = self.outdim
             # CustomDropout
-            dropout_cond = (dropout_block_id=='all') or (i==dropout_block_id) # whether this layer should dropout
+            dropout_cond = (dropout_block_id==-1) or (i==dropout_block_id) # whether this layer should dropout
             block_dropout_p = dropout_p if dropout_cond else 0.
             # more_to_drop
             if more_to_drop=='double' and dropout_cond:
@@ -799,132 +799,6 @@ class ConvNetS(nn.Module, CustomDropoutNet, MinGramDropoutNet): #For omniglot, o
         out = self.trunk(out)
         return out
 
-
-class DeConvNetS(nn.Module): # for AE, input: flattened 64*1*1
-    def __init__(self):
-        super(DeConvNetS, self).__init__() # BUGFIX: not sure if correct (padding, output_padding, Tanh())
-        self.decoder = nn.Sequential( # input: b, 64, 1, 1
-            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2, output_padding=(1,1)),  # b, 64, 3, 3
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 3, 3
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2, output_padding=(1,1)),  # b, 64, 7, 7
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 7, 7
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 14, 14
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 14, 14
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 28, 28
-            nn.ConvTranspose2d(64, 1, kernel_size=3, stride=1, padding=1),  # b, 1, 28, 28
-            nn.Tanh() # BUGFIX: see how image is input to the model
-        )
-        
-    def forward(self,x):
-        out = x.view(x.size(0),64,1,1)
-        out = self.decoder(out)
-        out = out.repeat(1,3,1,1) # repeat for channel dimension. NOTE: NOT act like numpy.repeat
-        out = img_standardize(out) # if don't want to standardize, then should cancel the normalize in get_composed_transform for omniglot
-        return out
-
-class DeConvNetS2(nn.Module):
-    def __init__(self):
-        super(DeConvNetS2, self).__init__()
-        self.decoder = nn.Sequential( # input 64, 7, 7
-            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 14, 14
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 14, 14
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 28, 28
-            nn.ConvTranspose2d(64, 1, kernel_size=3, stride=1, padding=1),  # b, 1, 28, 28
-            nn.Tanh() # BUGFIX: see how image is input to the model
-        )
-        
-    def forward(self,x):
-        out = x.view(x.size(0),64,7,7)
-        out = self.decoder(out)
-        out = out.repeat(1,3,1,1) # repeat for channel dimension. NOTE: NOT act like numpy.repeat
-        out = img_standardize(out)
-        return out
-
-class ConvNetSNopool(nn.Module): #Relation net use a 4 layer conv with pooling in only first two layers, else no pooling. For omniglot, only 1 input channel, output dim is [64,5,5]
-    def __init__(self, depth):
-        super(ConvNetSNopool,self).__init__()
-        trunk = []
-        for i in range(depth):
-            indim = 1 if i == 0 else 64
-            outdim = 64
-            B = ConvBlock(indim, outdim, pool = ( i in [0,1] ), padding = 0 if i in[0,1] else 1  ) #only first two layer has pooling and no padding
-            trunk.append(B)
-
-        self.trunk = nn.Sequential(*trunk)
-        self.final_feat_dim = [64,5,5]
-
-    def forward(self,x):
-        out = x[:,0:1,:,:] #only use the first dimension
-        out = self.trunk(out)
-        return out
-
-class DeResNet(nn.Module):
-    maml = False
-    def __init__(self, block, list_of_num_blocks, list_of_out_dims, flattened=True, indim=512):
-        super(DeResNet,self).__init__()
-        if flattened: # flattened input = 512
-#             CT0 = nn.ConvTranspose2d(512, 512, kernel_size=7) # 512*7*7
-#             bn0 = nn.BatchNorm2d(512)
-            # TODO: upsample
-            upsample0 = nn.Upsample(size=(7,7))
-            
-            
-            relu = nn.ReLU()
-#         else: # not flattened input = 512*7*7
-#             raise ValueError('DeResNet only support flattened input. ')
-        
-#         init_layer(CT0) # useless
-#         init_layer(bn0)
-        if flattened:
-#             trunk = [CT0, bn0]
-            trunk = [upsample0]
-        else:
-            trunk = []
-        
-#         indim = 512
-        n_stages = len(list_of_out_dims)
-#         list_of_out_dims = [512, 256, 128, 64]
-#         list_of_num_blocks = [2, 2, 2, 2]
-#         block = DeSimpleBlock
-        if self.maml:
-            raise ValueError('DeResNet18 do not support maml.')
-        else:
-            for i in range(n_stages): # 4 stages
-                for j in range(list_of_num_blocks[i]): # every stage is 2 for ResNet18
-                    double_res = (i<=2) and (j==list_of_num_blocks[i]-1)
-                    B = block(indim, list_of_out_dims[i], double_res)
-                    trunk.append(B)
-                    indim = list_of_out_dims[i] # NOT SURE
-        CT1 = nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2, 
-                                 padding=1, output_padding=1) # 64*56*56 -> 64*112*112
-        bn = nn.BatchNorm2d(64)
-        CT2 = nn.ConvTranspose2d(64, 3, kernel_size=7, stride=2, 
-                                 padding=3, output_padding=1) # 64*112*112 -> 3*224*224
-        tanh = nn.Tanh()
-        
-        init_layer(CT1) # useless
-        init_layer(CT2) # useless
-        init_layer(bn)
-        trunk += [CT1, bn, CT2, tanh]
-        self.trunk = nn.Sequential(*trunk)
-        self.flattened = flattened
-        
-    def forward(self, x):
-        if self.flattened:
-            out = x.view(x.size(0), 512, 1, 1)
-        else:
-            out = x
-        out = self.trunk(out)
-        out = img_standardize(out)
-#         print('out.shape =', out.shape, ', out.max() =', out.max(),' ,out.min() =', out.min())
-#         print('out0.min = %s, out0.max = %s' % (out[:,0,:,:].min(),out[:,0,:,:].max()))
-#         print('out1.min = %s, out1.max = %s' % (out[:,1,:,:].min(),out[:,1,:,:].max()))
-#         print('out2.min = %s, out2.max = %s' % (out[:,2,:,:].min(),out[:,2,:,:].max()))
-        return out
 
 class ResNet(nn.Module, CustomDropoutNet, MinGramDropoutNet):
     maml = False #Default
@@ -985,7 +859,8 @@ class ResNet(nn.Module, CustomDropoutNet, MinGramDropoutNet):
                 half_res = (i>=1) and (j==0) # only stage 2 and 3's first block?
                 # for CustomDropout
                 is_last_block_of_stage = j==list_of_num_blocks[i]-1
-                dropout_cond = i==dropout_block_id and is_last_block_of_stage # whether this layer should dropout
+                is_dropout_stage = (dropout_block_id==-1) or (i==dropout_block_id) # whether this layer should dropout
+                dropout_cond = is_dropout_stage and is_last_block_of_stage # whether this layer should dropout
                 block_dropout_p = dropout_p if dropout_cond else 0.
                 # more_to_drop
                 if more_to_drop=='double' and dropout_cond:
@@ -1171,6 +1046,134 @@ def DeResNet10_2(flatten=False):
 
 def DeResNet18(flatten=True):
     return DeResNet(DeSimpleBlock, [2,2,2,2], [512,256,128,64], flatten, indim=512)
+
+
+class DeConvNetS(nn.Module): # for AE, input: flattened 64*1*1
+    def __init__(self):
+        super(DeConvNetS, self).__init__() # BUGFIX: not sure if correct (padding, output_padding, Tanh())
+        self.decoder = nn.Sequential( # input: b, 64, 1, 1
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2, output_padding=(1,1)),  # b, 64, 3, 3
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 3, 3
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2, output_padding=(1,1)),  # b, 64, 7, 7
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 7, 7
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 14, 14
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 14, 14
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 28, 28
+            nn.ConvTranspose2d(64, 1, kernel_size=3, stride=1, padding=1),  # b, 1, 28, 28
+            nn.Tanh() # BUGFIX: see how image is input to the model
+        )
+        
+    def forward(self,x):
+        out = x.view(x.size(0),64,1,1)
+        out = self.decoder(out)
+        out = out.repeat(1,3,1,1) # repeat for channel dimension. NOTE: NOT act like numpy.repeat
+        out = img_standardize(out) # if don't want to standardize, then should cancel the normalize in get_composed_transform for omniglot
+        return out
+
+class DeConvNetS2(nn.Module):
+    def __init__(self):
+        super(DeConvNetS2, self).__init__()
+        self.decoder = nn.Sequential( # input 64, 7, 7
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 14, 14
+            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=1, padding=1),  # b, 64, 14, 14
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2),  # b, 64, 28, 28
+            nn.ConvTranspose2d(64, 1, kernel_size=3, stride=1, padding=1),  # b, 1, 28, 28
+            nn.Tanh() # BUGFIX: see how image is input to the model
+        )
+        
+    def forward(self,x):
+        out = x.view(x.size(0),64,7,7)
+        out = self.decoder(out)
+        out = out.repeat(1,3,1,1) # repeat for channel dimension. NOTE: NOT act like numpy.repeat
+        out = img_standardize(out)
+        return out
+
+class ConvNetSNopool(nn.Module): #Relation net use a 4 layer conv with pooling in only first two layers, else no pooling. For omniglot, only 1 input channel, output dim is [64,5,5]
+    def __init__(self, depth):
+        super(ConvNetSNopool,self).__init__()
+        trunk = []
+        for i in range(depth):
+            indim = 1 if i == 0 else 64
+            outdim = 64
+            B = ConvBlock(indim, outdim, pool = ( i in [0,1] ), padding = 0 if i in[0,1] else 1  ) #only first two layer has pooling and no padding
+            trunk.append(B)
+
+        self.trunk = nn.Sequential(*trunk)
+        self.final_feat_dim = [64,5,5]
+
+    def forward(self,x):
+        out = x[:,0:1,:,:] #only use the first dimension
+        out = self.trunk(out)
+        return out
+
+class DeResNet(nn.Module):
+    maml = False
+    def __init__(self, block, list_of_num_blocks, list_of_out_dims, flattened=True, indim=512):
+        super(DeResNet,self).__init__()
+        if flattened: # flattened input = 512
+#             CT0 = nn.ConvTranspose2d(512, 512, kernel_size=7) # 512*7*7
+#             bn0 = nn.BatchNorm2d(512)
+            # TODO: upsample
+            upsample0 = nn.Upsample(size=(7,7))
+            
+            
+            relu = nn.ReLU()
+#         else: # not flattened input = 512*7*7
+#             raise ValueError('DeResNet only support flattened input. ')
+        
+#         init_layer(CT0) # useless
+#         init_layer(bn0)
+        if flattened:
+#             trunk = [CT0, bn0]
+            trunk = [upsample0]
+        else:
+            trunk = []
+        
+#         indim = 512
+        n_stages = len(list_of_out_dims)
+#         list_of_out_dims = [512, 256, 128, 64]
+#         list_of_num_blocks = [2, 2, 2, 2]
+#         block = DeSimpleBlock
+        if self.maml:
+            raise ValueError('DeResNet18 do not support maml.')
+        else:
+            for i in range(n_stages): # 4 stages
+                for j in range(list_of_num_blocks[i]): # every stage is 2 for ResNet18
+                    double_res = (i<=2) and (j==list_of_num_blocks[i]-1)
+                    B = block(indim, list_of_out_dims[i], double_res)
+                    trunk.append(B)
+                    indim = list_of_out_dims[i] # NOT SURE
+        CT1 = nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2, 
+                                 padding=1, output_padding=1) # 64*56*56 -> 64*112*112
+        bn = nn.BatchNorm2d(64)
+        CT2 = nn.ConvTranspose2d(64, 3, kernel_size=7, stride=2, 
+                                 padding=3, output_padding=1) # 64*112*112 -> 3*224*224
+        tanh = nn.Tanh()
+        
+        init_layer(CT1) # useless
+        init_layer(CT2) # useless
+        init_layer(bn)
+        trunk += [CT1, bn, CT2, tanh]
+        self.trunk = nn.Sequential(*trunk)
+        self.flattened = flattened
+        
+    def forward(self, x):
+        if self.flattened:
+            out = x.view(x.size(0), 512, 1, 1)
+        else:
+            out = x
+        out = self.trunk(out)
+        out = img_standardize(out)
+#         print('out.shape =', out.shape, ', out.max() =', out.max(),' ,out.min() =', out.min())
+#         print('out0.min = %s, out0.max = %s' % (out[:,0,:,:].min(),out[:,0,:,:].max()))
+#         print('out1.min = %s, out1.max = %s' % (out[:,1,:,:].min(),out[:,1,:,:].max()))
+#         print('out2.min = %s, out2.max = %s' % (out[:,2,:,:].min(),out[:,2,:,:].max()))
+        return out
+
 
 def ResNet34( flatten = True):
     return ResNet(SimpleBlock, [3,4,6,3],[64,128,256,512], flatten)

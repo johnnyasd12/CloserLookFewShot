@@ -67,6 +67,15 @@ def get_matched_df(params, df, possible_params={}):
                     df_k_fillna = df[k].fillna('nan', inplace=False)
                     cond = df_k_fillna==v
                 else:
+                    ##### debug #####
+#                     print('k:%s, v:%s'%(k,v))
+#                     if k == 'dropout_block_id':
+#                         print('df[k].dtype:', df[k].dtype)
+#                         print('type(v):', type(v))
+#                         print('df[k].dtype == type(v):', df[k].dtype == type(v))
+#                     if isinstance(v,str):
+#                         cond = df[k].astype(str) == v
+#                     else:
                     cond = df[k]==v
             ###################### DEBUG (not solved yet) ######################
 #             try:

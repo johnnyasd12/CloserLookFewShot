@@ -73,7 +73,7 @@ def parse_args(script, parse_str=None):
 
     # domain CustomDropout
     parser.add_argument('--dropout_p', default=0, type=float, help='the domain CustomDropout probability. (1-dropout_p = keep_prob)')
-    parser.add_argument('--dropout_block_id', default=3, type=int, help='the domain CustomDropout block id. Useless if dropout_p is 0.')
+    parser.add_argument('--dropout_block_id', default=3, type=int, help='the domain CustomDropout block id (all-drop if -1). Useless if dropout_p is 0.')
     parser.add_argument('--more_to_drop', default=None, type=str, choices=[None, 'double']) # None, 'double', 'by_rate'
     # minimize Gram Matrix
     parser.add_argument('--min_gram', default=None, type=str, choices=[None, 'l2', 'l1'], help='whether minimize the norm of Gram Matrix')
@@ -106,7 +106,7 @@ def parse_args(script, parse_str=None):
         
         # test-only drop neurons
         parser.add_argument('--test_dropout_p', default=None, type=float, help='the test-time sampling(?) dropout rate, if None then default is dropout_p.')
-        parser.add_argument('--test_dropout_bid', default=None, type=int, help='the test-time sampling(?) dropout block id, if None then dropout_p should be also None.')
+        parser.add_argument('--test_dropout_bid', default=None, type=int, help='the test-time sampling(?) dropout block id (all-drop if -1), if None then dropout_p should be also None.')
         parser.add_argument('--finetune_dropout_p', default=None, type=float, help='the dropout rate when finetuning output layer, only affect when method is baseline/baseline++.')
         
         ############ test.py ########## but i think save_features.py is okay
@@ -141,7 +141,14 @@ def parse_args(script, parse_str=None):
         params = parser.parse_args(parse_str)
     
     # sanity check
+#     if params.dropout_block_id is not None and params.dropout_block_id != 'all':
+#         params.dropout_block_id = int(params.dropout_block_id)
+        
     if script=='save_features' or script=='test':
+        
+#         if params.test_dropout_bid is not None and params.test_dropout_bid != 'all':
+#             params.test_dropout_bid = int(params.test_dropout_bid)
+
         if params.finetune_dropout_p is not None:
             if params.method not in ['baseline', 'baseline++']:
                 raise ValueError('finetune_dropout_p and method not match.')
