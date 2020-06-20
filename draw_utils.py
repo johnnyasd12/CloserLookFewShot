@@ -3,6 +3,10 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
 
+import json
+from PIL import Image
+
+
 class ExpPlotter:
     def __init__(self, csv_name, record_folder, base_params, negligible_vars, dependent_vars, ylim = None):
         '''
@@ -212,7 +216,33 @@ class ExpPlotter:
         return df_drop
 
 
+class DatasetPlotter:
+    def __init__(self, json_file):
+        with open(json_file, 'r') as f:
+            self.meta = json.load(f)
 
+        self.cl_list = np.unique(self.meta['image_labels']).tolist()
+
+        self.sub_meta = {} # ALL images, content = class_1: [data_path_1, ..., data_path_n], class_k: [data_path_1, ..., ]
+        for cl in self.cl_list:
+            self.sub_meta[cl] = []
+
+        for x,y in zip(self.meta['image_names'],self.meta['image_labels']):
+            self.sub_meta[y].append(x)
+            
+    def plot_random_imgs(self, n_classes, k):
+        classes = np.random.choice(self.cl_list, n_classes, replace=False)
+        for cls in classes:
+            path_ls = self.sub_meta[cls]
+            img_paths = np.random.choice(path_ls, k, replace=False)
+#             print(img_paths)
+            for path in img_paths:
+                image = Image.open(path)
+                plt.imshow(image)
+                plt.show()
+#                 image.show()
+            print('='*50)
+    
 
 
 
