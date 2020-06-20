@@ -181,6 +181,8 @@ def save_features(feature_net, data_loader, outfile, params):
         print('Finish saving features to:', outfile_n)
         f.close()
         
+        torch.cuda.empty_cache()
+        
 if __name__ == '__main__':
     params = parse_args('save_features')
     exp_save_features(params)
