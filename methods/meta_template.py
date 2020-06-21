@@ -11,6 +11,51 @@ from packaging import version
 from my_utils import *
 from tqdm import tqdm
 
+class AENet:
+    def parse_feature_with_encoding(self,x,is_feature): # utilized by set_forward
+        ''' parsing xs or zs to support and query feature embedding
+        Return:
+            z_support: shape=(n_way, n_support,...)
+            z_query: shape=(n_way, batch_size - n_support, ...)
+        '''
+        x = x.cuda()
+        
+        # x.size = n_way, (n_supp + n_que), 3, size, size (even for omniglot channel size is 3
+        if is_feature:
+            z_all = x
+        else:
+            x           = x.contiguous().view( self.n_way * (self.n_support + self.n_query), *x.size()[2:]) 
+            # TODO: encoder forward
+            encodings   = self.encoder.forward(x)
+            z_all       = self.extractor.forward(encodings)
+#             z_all       = self.feature.forward(x)
+            z_all       = z_all.view( self.n_way, self.n_support + self.n_query, -1)
+        z_support   = z_all[:, :self.n_support]
+        z_query     = z_all[:, self.n_support:]
+
+        return z_support, z_query, encodings
+    
+    
+    def set_forward_loss(self, x): # utilized by train_loop
+        ''' compute task loss (by query set) given support and query set
+        '''
+        y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
+#         if self.device is None:
+#             y_query = Variable(to_device(y_query))
+#         else:
+        y_query = Variable(y_query.cuda())
+        scores, decoded_imgs = self.set_forward_with_decoded_img(x)
+        
+        x = x.view(x.size(0)*x.size(1),x.size(2),x.size(3),x.size(4)).cuda()
+#         print('decoded_imgs shape =',decoded_imgs.shape)
+        recons_loss = nn.MSELoss()(decoded_imgs,x) # TODO
+    
+        return self.loss_fn(scores, y_query ), recons_loss
+    
+    def total_loss(self, x):
+        set_loss, recons_loss = self.set_forward_loss(x)
+        return set_loss + recons_loss*self.lambda_d
+
 class MetaTemplate(nn.Module):
     def __init__(self, model_func, n_way, n_support, change_way = True):
         super(MetaTemplate, self).__init__()
