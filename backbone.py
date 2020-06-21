@@ -1050,7 +1050,7 @@ def DeResNet18(flatten=True):
     return DeResNet(DeSimpleBlock, [2,2,2,2], [512,256,128,64], flatten, indim=512)
 
 def DeResNet18_2(flatten=False):
-    return DeResNet(DeSimpleBlock, [2,2], [128,64], flatten, indim=128)
+    return DeResNet(DeSimpleBlock, [2,2], [128,64], flatten, indim=128) # too large
 
 
 class DeConvNetS(nn.Module): # for AE, input: flattened 64*1*1
