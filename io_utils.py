@@ -37,6 +37,7 @@ decoder_dict = dict(
     Res18 = backbone.DeResNet18(), 
     Res10 = backbone.DeResNet10(), 
     HiddenRes10 = backbone.DeResNet10_2(), 
+    HiddenRes18 = backbone.DeResNet18_2(), 
 )
 
 def parse_args(script, parse_str=None):
