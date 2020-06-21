@@ -96,13 +96,14 @@ class ProtoNetMinGram(ProtoNet):
         return loss
         
 class ProtoNetAE(AENet, ProtoNet): # TODO: self.recons_func = recons_func()
-    def __init__(self, model_func,  n_way, n_support, recons_func = None, lambda_d = 1):
+    def __init__(self, model_func,  n_way, n_support, recons_func = None, lambda_d = 1, is_color = True):
         super(ProtoNetAE, self).__init__( model_func,  n_way, n_support)
         self.recons_func = recons_func
         self.lambda_d = lambda_d
         self.encoder = self.feature
         from backbone import LambdaLayer # trick to get identity function as extractor after encoder
         self.extractor = LambdaLayer(lambda x: x)
+        self.is_color = is_color
         
     def set_forward_with_decoded_img(self,x,is_feature = False):
         ''' get the last output (scores of query set) from image or embedding

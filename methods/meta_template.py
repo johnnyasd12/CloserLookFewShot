@@ -25,6 +25,8 @@ class AENet:
             z_all = x
         else:
             x           = x.contiguous().view( self.n_way * (self.n_support + self.n_query), *x.size()[2:]) 
+            if not self.is_color:
+                x = x[:,:1,:,:]
             # TODO: encoder forward
             encodings   = self.encoder.forward(x)
             z_all       = self.extractor.forward(encodings)

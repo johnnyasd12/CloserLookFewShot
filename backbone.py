@@ -1096,6 +1096,7 @@ class DeConvNetS2(nn.Module):
         out = out.repeat(1,3,1,1) # repeat for channel dimension. NOTE: NOT act like numpy.repeat
         out = img_standardize(out)
         return out
+#         return out[:,0,:,:]
 
 class ConvNetSNopool(nn.Module): #Relation net use a 4 layer conv with pooling in only first two layers, else no pooling. For omniglot, only 1 input channel, output dim is [64,5,5]
     def __init__(self, depth):

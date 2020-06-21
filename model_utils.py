@@ -171,7 +171,10 @@ def get_model(params, mode):
                     elif params.recons_decoder == 'HiddenRes18':
                         model = ProtoNetAE2(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, extract_layer = 8)
                 else:
-                    model = ProtoNetAE(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda)
+                    if 'ConvS' in params.recons_decoder:
+                        model = ProtoNetAE(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, is_color=False)
+                    else:
+                        model = ProtoNetAE(backbone_func, **few_shot_params, recons_func=recons_decoder, lambda_d=params.recons_lambda, is_color=True)
     elif params.method == 'matchingnet':
         model           = MatchingNet( backbone_func, **few_shot_params )
     elif params.method in ['relationnet', 'relationnet_softmax']:
