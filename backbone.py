@@ -932,6 +932,11 @@ def ResNet18Thin2(flatten = True, dropout_p=0, dropout_block_id=3, more_to_drop=
                  dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
                   more_to_drop=more_to_drop, gram_sid=gram_bid)
 
+def ResNet18Thin4(flatten = True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ResNet(SimpleBlock, [2,2,2,2],[16,32,64,128], flatten, 
+                 dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+                  more_to_drop=more_to_drop, gram_sid=gram_bid)
+
 def ResNet10(flatten=True, dropout_p=0, dropout_block_id=3, more_to_drop=None, gram_bid=None):
     # WTF i dunno why SimpleBlock cost less memory
     return ResNet(SimpleBlock, [1,1,1,1],[64,128,256,512], flatten, 
