@@ -272,3 +272,4 @@ def show_bn_detail(bn):
     print('runnning mean:',bn.running_mean,'\nrunning var:',bn.running_var)
 #     print('beta:',bn.beta, '\ngamma:',bn.gamma)
     print('beta:',bn.bias, '\ngamma:',bn.weight)
+
