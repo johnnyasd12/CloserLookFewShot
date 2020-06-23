@@ -55,19 +55,30 @@ def get_backbone_func(params):
             dropout_bid = params.test_dropout_bid
     
     if params.method in ['relationnet', 'relationnet_softmax']:
-        if params.model == 'Conv4': 
-            backbone_func = lambda: backbone.Conv4NP(
+        b_func = {
+            'Conv4':backbone.Conv4NP,
+            'Conv6':backbone.Conv6NP,
+            'Conv4S':backbone.Conv4SNP,
+            'Conv4SThin2':backbone.Conv4SNPThin2,
+            'Conv4SThin4':backbone.Conv4SNPThin4,
+        }
+#         if params.model == 'Conv4': 
+#             backbone_func = lambda: backbone.Conv4NP(
+#             dropout_p=dropout_p, dropout_block_id=dropout_bid
+#             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
+#         elif params.model == 'Conv6': 
+#             backbone_func = lambda: backbone.Conv6NP(
+#             dropout_p=dropout_p, dropout_block_id=dropout_bid
+#             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
+#         elif params.model == 'Conv4S': 
+#             backbone_func = lambda: backbone.Conv4SNP(
+#             dropout_p=dropout_p, dropout_block_id=dropout_bid
+#             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
+        if 'Conv' in params.model:
+            backbone_func = lambda: b_func[params.model](
             dropout_p=dropout_p, dropout_block_id=dropout_bid
             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
-        elif params.model == 'Conv6': 
-            backbone_func = lambda: backbone.Conv6NP(
-            dropout_p=dropout_p, dropout_block_id=dropout_bid
-            , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
-        elif params.model == 'Conv4S': 
-            backbone_func = lambda: backbone.Conv4SNP(
-            dropout_p=dropout_p, dropout_block_id=dropout_bid
-            , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
-        else:
+        else: # ResNet
             backbone_func = lambda: model_dict[params.model](
             dropout_p=dropout_p, dropout_block_id=dropout_bid
             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)

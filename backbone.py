@@ -926,6 +926,18 @@ def Conv4SNP(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None)
         more_to_drop=more_to_drop, 
         gram_bid=gram_bid)
 
+def Conv4SNPThin2(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ConvNetSNopool(
+        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+        more_to_drop=more_to_drop, 
+        gram_bid=gram_bid, output_dim=32)
+
+def Conv4SNPThin4(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
+    return ConvNetSNopool(
+        4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
+        more_to_drop=more_to_drop, 
+        gram_bid=gram_bid, output_dim=16)
+
 def Conv4S(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
     return ConvNetS(
         4, dropout_p=dropout_p, dropout_block_id=dropout_block_id, 
