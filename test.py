@@ -99,6 +99,8 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
             # if 'baseline' or 'baseline++' then NO NEED to load model !!!
             model.load_state_dict(tmp['state'])
         load_epoch = int(tmp['epoch'])
+        
+        print('model successfully loaded.')
     
     # train/val/novel
 #     split = params.split
