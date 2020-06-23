@@ -109,24 +109,10 @@ class ExpManager:
                 with open(csv_path, "w") as file:
                     empty_df = pd.DataFrame(columns=['dataset'])
                     empty_df.to_csv(file, header=True, index=False)
-#         if is_csv_exists:
-#             loaded_df = pd.read_csv(csv_path)
-#             is_csv_new = len(loaded_df)==0
-#         else:
-#             is_csv_new = True
-#         if mode == 'resume':
-#             assert not is_csv_new, "csv file should exist and be filled with some content."
-#         else: # new experiments
-#             assert is_csv_new, "csv file shouldn't exist or should be empty."
-        
-    
-        
+
         pkl_postfix_str = '_' + self.pkl_postfix #+ '.pkl'
         pkl_postfix_str += '.pkl'
-#         if mode == 'tmp_pkl':
-#             pkl_postfix_str += '_tmp.pkl'
-#         else:
-#             pkl_postfix_str += '.pkl'
+
         pkl_path = csv_path.replace('.csv', pkl_postfix_str) # restore ALL experiments in this class
         is_pkl_exists = os.path.exists(pkl_path)
         
@@ -209,9 +195,16 @@ class ExpManager:
                     for var in del_vars:
                         if var in check_param:
                             del check_param[var]
-                            
+                    
+                    # FIXME: resume check not correct
+                    
+                    
+                    
+                    
+                    
+                    
                     ##### debug #####
-#                     print('check_param:', check_param)
+#                     print('check_param:\n', check_param)
 
                     check_df = get_matched_df(check_param, loaded_df)
                     num_test_experiments = len(check_df)
