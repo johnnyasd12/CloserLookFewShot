@@ -27,20 +27,36 @@ class RelationNet(MetaTemplate):
         z_support, z_query  = self.parse_feature(x,is_feature)
 
         z_support   = z_support.contiguous()
-        z_proto     = z_support.view( self.n_way, self.n_support, *self.feat_dim ).mean(1) 
-        z_query     = z_query.contiguous().view( self.n_way* self.n_query, *self.feat_dim )
-
         
-        z_proto_ext = z_proto.unsqueeze(0).repeat(self.n_query* self.n_way,1,1,1,1)
-        z_query_ext = z_query.unsqueeze(0).repeat( self.n_way,1,1,1,1)
+        # self.feat_dim = Conv4:[64,5,5]
+        # n_all_queries = n_query*n_way
+        z_proto     = z_support.view( self.n_way, self.n_support, *self.feat_dim ).mean(1)  # [n_way, *feat_dim]
+        z_query     = z_query.contiguous().view( self.n_way* self.n_query, *self.feat_dim ) # [n_way*n_query, *feat_dim]
+
+        z_proto_ext = z_proto.unsqueeze(0).repeat(self.n_query* self.n_way,1,1,1,1) # [n_query*n_way,n_way, *feat_dim]
+        z_query_ext = z_query.unsqueeze(0).repeat( self.n_way,1,1,1,1)              # [n_query*n_way,n_way, *feat_dim]
         z_query_ext = torch.transpose(z_query_ext,0,1)
-        extend_final_feat_dim = self.feat_dim.copy()
-        extend_final_feat_dim[0] *= 2
-        relation_pairs = torch.cat((z_proto_ext,z_query_ext),2).view(-1, *extend_final_feat_dim)
-        relations = self.relation_module(relation_pairs).view(-1, self.n_way)
+        extend_final_feat_dim = self.feat_dim.copy() # Conv4:[64,5,5]
+        extend_final_feat_dim[0] *= 2                # Conv4:[128,5,5]
+        relation_pairs = torch.cat((z_proto_ext,z_query_ext),2).view(-1, *extend_final_feat_dim) # Conv4: [(n_query*n_way)*n_way, 128,5,5]
+        relations = self.relation_module(relation_pairs).view(-1, self.n_way) # [n_query*n_way, n_way]
 
         return relations
 
+    def forwardout2prob(self, forward_outputs):
+        '''
+        Args:
+            forward_outputs: shape=(n_way*n_query, n_way)
+        '''
+        if self.loss_type == 'mse':
+            raise ValueError('have not implemented forwardout2prob.')
+        else:
+            probs = nn.Softmax(dim=1)(forward_outputs)
+        return probs
+    
+#     def total_loss(self, x):
+#         return self.set_forward_loss(x)
+    
     def set_forward_adaptation(self,x,is_feature = True): #overwrite parent function
         assert is_feature == True, 'Finetune only support fixed feature' 
         full_n_support = self.n_support
@@ -106,12 +122,10 @@ class RelationNet(MetaTemplate):
         if self.loss_type == 'mse':
             y_onehot = utils.one_hot(y, self.n_way)
             y_onehot = Variable(y_onehot.cuda())
-#             y_onehot = Variable(to_device(y_onehot))
 
             return self.loss_fn(scores, y_onehot )
         else:
             y = Variable(y.cuda())
-#             y = Variable(to_device(y))
             return self.loss_fn(scores, y )
 
 
