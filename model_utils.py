@@ -35,6 +35,7 @@ def get_few_shot_params(params, mode=None):
         return few_shot_params[mode]
 
 def get_backbone_func(params):
+    print('get_backbone_func() start...')
     
     # copy from get_model()
 #     if params.dataset in ['omniglot', 'cross_char']:
@@ -45,28 +46,33 @@ def get_backbone_func(params):
 #             if 'ConvS' not in params.recons_decoder:
 #                 raise ValueError('omniglot / cross_char should use ConvS/HiddenConvS decoder.')
     
+    # decide dropout settings
+    dropout_p = params.dropout_p
+    dropout_bid = params.dropout_block_id
+    if hasattr(params, 'test_dropout_p'): # save_features or test
+        if params.test_dropout_p is not None:
+            dropout_p = params.test_dropout_p
+            dropout_bid = params.test_dropout_bid
+    
     if params.method in ['relationnet', 'relationnet_softmax']:
         if params.model == 'Conv4': 
-            backbone_func = backbone.Conv4NP
+            backbone_func = lambda: backbone.Conv4NP(
+            dropout_p=dropout_p, dropout_block_id=dropout_bid
+            , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
         elif params.model == 'Conv6': 
-            backbone_func = backbone.Conv6NP
+            backbone_func = lambda: backbone.Conv6NP(
+            dropout_p=dropout_p, dropout_block_id=dropout_bid
+            , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
         elif params.model == 'Conv4S': 
-            backbone_func = backbone.Conv4SNP
+            backbone_func = lambda: backbone.Conv4SNP(
+            dropout_p=dropout_p, dropout_block_id=dropout_bid
+            , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
         else:
             backbone_func = lambda: model_dict[params.model](
-                flatten = False, 
-                dropout_p=params.dropout_p, dropout_block_id=params.dropout_block_id
-                , more_to_drop=params.more_to_drop)
+            dropout_p=dropout_p, dropout_block_id=dropout_bid
+            , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
 
     else: # not RelationNet
-        
-        dropout_p = params.dropout_p
-        dropout_bid = params.dropout_block_id
-#         if params.method not in ['baseline', 'baseline++']:
-        if hasattr(params, 'test_dropout_p'): # save_features or test
-            if params.test_dropout_p is not None:
-                dropout_p = params.test_dropout_p
-                dropout_bid = params.test_dropout_bid
         
         backbone_func = lambda: model_dict[params.model](
             dropout_p=dropout_p, dropout_block_id=dropout_bid
@@ -75,6 +81,7 @@ def get_backbone_func(params):
 #             dropout_p=params.dropout_p, dropout_block_id=params.dropout_block_id
 #             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
 
+    print('get_backbone_func() finished.')
     return backbone_func
 
 def get_model(params, mode):
@@ -83,6 +90,7 @@ def get_model(params, mode):
         params: argparse params
         mode: (str), 'train', 'test'
     '''
+    print('get_model() start...')
     few_shot_params_d = get_few_shot_params(params, None)
     few_shot_params = few_shot_params_d[mode]
     
@@ -202,6 +210,7 @@ def get_model(params, mode):
     else:
         raise ValueError('Unexpected params.method: %s'%(params.method))
     
+    print('get_model() finished.')
     return model
 
 
