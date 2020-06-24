@@ -195,16 +195,6 @@ class ExpManager:
                     for var in del_vars:
                         if var in check_param:
                             del check_param[var]
-                    
-                    # FIXME: resume check not correct
-                    
-                    
-                    
-                    
-                    
-                    
-                    ##### debug #####
-#                     print('check_param:\n', check_param)
 
                     check_df = get_matched_df(check_param, loaded_df)
                     num_test_experiments = len(check_df)
