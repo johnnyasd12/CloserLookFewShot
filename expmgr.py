@@ -165,6 +165,8 @@ class ExpManager:
                 print('='*20, 'Training', '='*20)
                 print('general_params:', general_params)
                 modified_train_args = get_modified_args(train_args, general_params)
+                if mode == 'resume':
+                    modified_train_args.resume = True
                 train_result = exp_train_val(modified_train_args)
             else:
                 if mode == 'draw_tasks':

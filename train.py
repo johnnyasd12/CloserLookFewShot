@@ -298,7 +298,10 @@ def exp_train_val(params):
         stop_epoch = params.stop_epoch * model.n_task #maml use multiple tasks in one update 
 
     if params.resume:
-        resume_file = get_resume_file(params.checkpoint_dir)
+#         resume_file = get_resume_file(params.checkpoint_dir)
+        # modify to best_model.tar so that we don't need save_freq that consume so much space
+        resume_file = get_best_file(params.checkpoint_dir)
+        
         if resume_file is not None:
             tmp = torch.load(resume_file)
             start_epoch = tmp['epoch']+1
