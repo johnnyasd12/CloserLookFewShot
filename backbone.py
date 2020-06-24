@@ -590,43 +590,6 @@ class ConvNet(nn.Module, CustomDropoutNet, MinGramDropoutNet):
 #     def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None): # CUB/miniImgnet Conv input = 84*84*3
         super(ConvNet,self).__init__()
         trunk = []
-#         for i in range(depth): 
-#             ''' input = 3*84*84
-#             -> [64*84*84 -> 64*42*42]
-#             -> [64*42*42 -> 64*21*21]
-#             -> [64*21*21 -> 64*10*10]
-#             -> [64*10*10 -> 64*5*5]
-#             '''
-#             # if the 1st block then input is image, otherwise 64 from pre-block
-# #             indim = 3 if i == 0 else 64 
-#             # BUGFIX for more_to_drop
-#             indim = 3 if i == 0 else outdim
-#             outdim = 64
-            
-#             # CustomDropout
-#             dropout_cond = i==dropout_block_id # whether this layer should dropout
-#             block_dropout_p = dropout_p if dropout_cond else 0.
-#             # more_to_drop
-#             if more_to_drop=='double' and dropout_cond:
-#                 outdim = outdim*2
-            
-#             #only pooling for first 4 layers
-#             B = ConvBlock(indim, outdim, pool = ( i <4 ), 
-#                           dropout_p=block_dropout_p)
-#             trunk.append(B)
-
-#         if flatten:
-#             trunk.append(Flatten())
-
-#         self.trunk = nn.Sequential(*trunk)
-        
-#         # BUGFIX for more_to_drop
-#         self.final_feat_dim = outdim*5*5
-# #         self.final_feat_dim = 1600 # output = 64*5*5
-        
-#         # for CustomDropout
-#         self.record_active_dropout()
-        
         ###################### rewrite ######################
         for i in range(depth):
             '''input = 1*28*28 (see self.forward)
@@ -640,7 +603,7 @@ class ConvNet(nn.Module, CustomDropoutNet, MinGramDropoutNet):
             indim = 3 if i == 0 else outdim
             outdim = 64
             # CustomDropout
-            dropout_cond = i==dropout_block_id # whether this layer should dropout
+            dropout_cond = (dropout_block_id==-1) or (i==dropout_block_id) # whether this layer should dropout
             block_dropout_p = dropout_p if dropout_cond else 0.
             # more_to_drop
             if more_to_drop=='double' and dropout_cond:
@@ -692,6 +655,7 @@ class ConvNetNopool(nn.Module, CustomDropoutNet): #Relation net use a 4 layer co
             outdim = self.outdim
             dropout_cond = (dropout_block_id==-1) or (i==dropout_block_id) # whether this layer should dropout
             block_dropout_p = dropout_p if dropout_cond else 0.
+            
 #             B = ConvBlock(indim, outdim, pool = ( i in [0,1] ), padding = 0 if i in[0,1] else 1  ) #only first two layer has pooling and no padding
             B = ConvBlock(indim, outdim, pool = (i in [0,1]), padding = 0 if i in[0,1] else 1, dropout_p=block_dropout_p) #only first two layer has pooling and no padding
             trunk.append(B)
