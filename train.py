@@ -24,6 +24,8 @@ from my_utils import set_random_seed
 from model_utils import get_few_shot_params, get_model, restore_vaegan
 import datetime
 
+import logging
+
 def train(base_loader, val_loader, source_val_loader, model, optimization, start_epoch, stop_epoch, params, record):
     '''
     Returns:
@@ -309,7 +311,7 @@ def exp_train_val(params):
                 record = tmp['record']
             model.load_state_dict(tmp['state'])
         else:
-            raise ValueError('resume_file is None!!!')
+            print('resume_file is None!!! Train form scratch!!!')
     elif params.warmup: #We also support warmup from pretrained baseline feature, but we never used in our paper
         # TODO: checkpoint_dir for resume haven't synchronize
         baseline_checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, 'baseline')
