@@ -22,6 +22,7 @@ model_dict = dict(
             Conv4SFat2     = backbone.Conv4SFat2, 
             Conv4SThin2    = backbone.Conv4SThin2, 
             Conv4SThin4    = backbone.Conv4SThin4, 
+            Conv4SThin8    = backbone.Conv4SThin8, 
             ResNet18Fat2   = backbone.ResNet18Fat2, 
             ResNet18Thin2  = backbone.ResNet18Thin2, 
             ResNet18Thin4  = backbone.ResNet18Thin4, 
