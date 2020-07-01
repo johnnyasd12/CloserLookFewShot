@@ -48,7 +48,7 @@ def parse_args(script, parse_str=None):
     parser = argparse.ArgumentParser(description= 'few-shot script %s' %(script))
     
     # expmgr.py, train.py, save_features.py, test.py
-    parser.add_argument('--dataset'     , default=None, choices=['CUB','miniImagenet','cross','omniglot','cross_char'])#, required=True)
+    parser.add_argument('--dataset'     , default=None, choices=['CUB','miniImagenet','cross','omniglot','cross_char','cross_char_half'])#, required=True)
     parser.add_argument('--model'       , default=None,      help='model: Conv{4|6} / ResNet{10|18|34|50|101}') # 50 and 101 are not used in the paper
     parser.add_argument('--method'      , default=None,   help='baseline/baseline++/protonet/matchingnet/relationnet{_softmax}/maml{_approx}') #relationnet_softmax replace L2 norm with softmax to expedite training, maml_approx use first-order approximation in the gradient for efficiency
     parser.add_argument('--train_n_way' , default=5, type=int,  help='class num to classify for training') #baseline and baseline++ would ignore this parameter
@@ -267,7 +267,7 @@ def params2df(params, extra_dict):
 
 def get_img_size(params):
     if 'Conv' in params.model:
-        if params.dataset in ['omniglot', 'cross_char']:
+        if params.dataset in ['omniglot', 'cross_char', 'cross_char_half']:
             image_size = 28 if params.image_size is None else params.image_size
         else:
             image_size = 84 if params.image_size is None else params.image_size
@@ -292,6 +292,11 @@ def get_loadfile_path(params, split):
     elif params.dataset == 'cross_char':
         if split == 'base':
             loadfile = configs.data_dir['omniglot'] + 'noLatin.json' 
+        else:
+            loadfile  = configs.data_dir['emnist'] + split +'.json' 
+    elif params.dataset == 'cross_char_half':
+        if split == 'base':
+            loadfile = configs.data_dir['omniglot'] + 'noLatin_half.json' 
         else:
             loadfile  = configs.data_dir['emnist'] + split +'.json' 
     else: 
