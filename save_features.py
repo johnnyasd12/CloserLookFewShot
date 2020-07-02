@@ -33,7 +33,7 @@ def exp_save_features(params):
     
     image_size = get_img_size(params)
     
-    if params.dataset in ['omniglot', 'cross_char']:
+    if params.dataset in ['omniglot', 'cross_char', 'cross_char_half']:
         # not sure if the following assertion useful...
 #         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
         params.model = params.model.replace('Conv4', 'Conv4S')
@@ -91,8 +91,14 @@ def exp_save_features(params):
         backbone_net.apply(batchnorm_use_target_stats)
 
     if params.test_dropout_p is not None:
-        # TODO: make backbone_net dropout
+        # TODO: make backbone_net dropout ?????2020/07/02????
         pass
+    
+    
+    
+    
+    
+    
         
         
     dirname = os.path.dirname(outfile)
@@ -123,6 +129,11 @@ def save_features(feature_net, data_loader, outfile, params):
             print(outfile_n, ': procedure start...')
             if params.test_dropout_p is not None:
                 # TODO: change network dropout_p to be test_dropout_p
+                
+                
+                
+                
+                
                 pass
             feature_net.sample_random_subnet()
         elif 'complement' in outfile: # then use complementary-sample strategy
