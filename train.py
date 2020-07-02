@@ -129,23 +129,15 @@ def get_train_val_filename(params):
     if params.dataset == 'cross':
         base_file = configs.data_dir['miniImagenet'] + 'all.json' 
         val_file   = configs.data_dir['CUB'] + 'val.json' 
-#         source_val_file = configs.data_dir['miniImagenet'] + 'val.json'
     elif params.dataset == 'cross_char':
         base_file = configs.data_dir['omniglot'] + 'noLatin.json' 
         val_file   = configs.data_dir['emnist'] + 'val.json'
-#         source_val_file = configs.data_dir['omniglot'] + 'val.json'
     elif params.dataset == 'cross_char_half':
         base_file = configs.data_dir['omniglot'] + 'noLatin_half.json' 
-#         val_file  = configs.data_dir['emnist'] + 'val.json' # sure????
+        val_file  = configs.data_dir['emnist'] + 'val.json' # sure????
     else:
         base_file = configs.data_dir[params.dataset] + 'base.json' 
         val_file   = configs.data_dir[params.dataset] + 'val.json'
-#     if source_val:
-#         if 'cross' in params.dataset:
-#             return base_file, val_file, source_val_file
-#         else:
-#             raise ValueError('Cannot return source_val_file when dataset =', params.dataset)
-#     else:
     return base_file, val_file
 
 def get_source_val_filename(params):
@@ -154,14 +146,11 @@ def get_source_val_filename(params):
     elif params.dataset == 'cross_char':
         # TODO?????
         
-        
-        
-        source_val_file = configs.data_dir['omniglot'] + 'val.json'
+        source_val_file = configs.data_dir['omniglot'] + 'cross_char_source_val_180.json'
+#         source_val_file = configs.data_dir['omniglot'] + 'val.json'
     elif params.dataset == 'cross_char_half':
         # TODO
-        pass
-    
-    
+        source_val_file = configs.data_dir['omniglot'] + 'cross_char_source_val_180.json'
     else:
         raise ValueError('Cannot return source_val_file when dataset =', params.dataset)
         
