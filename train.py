@@ -135,6 +135,9 @@ def get_train_val_filename(params):
     elif params.dataset == 'cross_char_half':
         base_file = configs.data_dir['omniglot'] + 'noLatin_half.json' 
         val_file  = configs.data_dir['emnist'] + 'val.json' # sure????
+    elif params.dataset == 'cross_char_quarter':
+        base_file = configs.data_dir['omniglot'] + 'noLatin_quarter.json' 
+        val_file  = configs.data_dir['emnist'] + 'val.json' # sure????
     else:
         base_file = configs.data_dir[params.dataset] + 'base.json' 
         val_file   = configs.data_dir[params.dataset] + 'val.json'
@@ -145,12 +148,16 @@ def get_source_val_filename(params):
         source_val_file = configs.data_dir['miniImagenet'] + 'val.json'
     elif params.dataset == 'cross_char':
         # TODO?????
-        
-        source_val_file = configs.data_dir['omniglot'] + 'cross_char_source_val_180.json'
+        source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
+#         source_val_file = configs.data_dir['omniglot'] + 'cross_char_source_val_180.json'
 #         source_val_file = configs.data_dir['omniglot'] + 'val.json'
     elif params.dataset == 'cross_char_half':
         # TODO
-        source_val_file = configs.data_dir['omniglot'] + 'cross_char_source_val_180.json'
+        source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
+#         source_val_file = configs.data_dir['omniglot'] + 'cross_char_source_val_180.json'
+    elif params.dataset == 'cross_char_quarter':
+        # TODO
+        source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
     else:
         raise ValueError('Cannot return source_val_file when dataset =', params.dataset)
         
@@ -160,7 +167,7 @@ def get_source_val_filename(params):
 def set_default_stop_epoch(params):
     if params.stop_epoch == -1: 
         if params.method in ['baseline', 'baseline++'] :
-            if params.dataset in ['omniglot', 'cross_char']:
+            if params.dataset in ['omniglot', 'cross_char', 'cross_char_half', 'cross_char_quarter']:
                 params.stop_epoch = 5
             elif params.dataset in ['CUB']:
                 params.stop_epoch = 200 # This is different as stated in the open-review paper. However, using 400 epoch in baseline actually lead to over-fitting

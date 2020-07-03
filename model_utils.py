@@ -105,7 +105,7 @@ def get_model(params, mode):
     few_shot_params_d = get_few_shot_params(params, None)
     few_shot_params = few_shot_params_d[mode]
     
-    if params.dataset in ['omniglot', 'cross_char', 'cross_char_half']:
+    if params.dataset in ['omniglot', 'cross_char', 'cross_char_half', 'cross_char_quarter']:
 #         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
         assert 'Conv4' in params.model and not params.train_aug ,'omniglot/cross_char only support Conv4 without augmentation'
         params.model = params.model.replace('Conv4', 'Conv4S') # because Conv4Drop should also be Conv4SDrop
@@ -118,8 +118,10 @@ def get_model(params, mode):
             assert params.num_classes >= 4112, 'class number need to be larger than max label id in base class'
         if params.dataset == 'cross_char': # 1597/31/31
             assert params.num_classes >= 1597, 'class number need to be larger than max label id in base class'
-        if params.dataset == 'cross_char_half': # 1597/31/31
+        if params.dataset == 'cross_char_half': # 758/31/31
             assert params.num_classes >= 758, 'class number need to be larger than max label id in base class'
+        if params.dataset == 'cross_char_half': # 350/31/31
+            assert params.num_classes >= 350, 'class number need to be larger than max label id in base class'
         if params.dataset == 'miniImagenet': # 64/16/20
             assert params.num_classes >= 64, 'class number need to be larger than max label id in base class'
         if params.dataset == 'CUB': # 100/50/50
