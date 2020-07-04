@@ -9,12 +9,12 @@ import re
 cwd = os.getcwd() 
 data_path = join(cwd, 'preprocessed')#'ILSVRC2015/Data/CLS-LOC/train')
 savedir = './'
-dataset_list = ['base']#, 'val', 'novel']
+dataset_list = ['base', 'val', 'novel']
 
 #if not os.path.exists(savedir):
 #    os.makedirs(savedir)
 
-n_classes = 25
+n_classes = 20
 
 should_break = False
 
@@ -52,7 +52,7 @@ for dataset in dataset_list:
         if cl >= n_classes:
             should_break = True
             break
-        print('cl:', cl)
+        print('dataset:', dataset, ', cl:', cl)
         random.shuffle(filelist)
         filelists_flat[dataset] += filelist
         labellists_flat[dataset] += np.repeat(cl, len(filelist)).tolist() 
@@ -66,25 +66,25 @@ labellists_flat_all = labellists_flat['base'] + labellists_flat['val'] + labelli
 
 out_fname = 'all_%dclasses.json'%(n_classes)
 
-# fo = open(savedir + out_fname, "w")
-# fo.write('{"label_names": [')
-# fo.writelines(['"%s",' % item  for item in folderlist])
-# fo.seek(0, os.SEEK_END) 
-# fo.seek(fo.tell()-1, os.SEEK_SET)
-# fo.write('],')
+fo = open(savedir + out_fname, "w")
+fo.write('{"label_names": [')
+fo.writelines(['"%s",' % item  for item in folderlist])
+fo.seek(0, os.SEEK_END) 
+fo.seek(fo.tell()-1, os.SEEK_SET)
+fo.write('],')
 
-# fo.write('"image_names": [')
-# fo.writelines(['"%s",' % item  for item in filelists_flat_all])
-# fo.seek(0, os.SEEK_END) 
-# fo.seek(fo.tell()-1, os.SEEK_SET)
-# fo.write('],')
+fo.write('"image_names": [')
+fo.writelines(['"%s",' % item  for item in filelists_flat_all])
+fo.seek(0, os.SEEK_END) 
+fo.seek(fo.tell()-1, os.SEEK_SET)
+fo.write('],')
 
-# fo.write('"image_labels": [')
-# fo.writelines(['%d,' % item  for item in labellists_flat_all])
-# fo.seek(0, os.SEEK_END) 
-# fo.seek(fo.tell()-1, os.SEEK_SET)
-# fo.write(']}')
+fo.write('"image_labels": [')
+fo.writelines(['%d,' % item  for item in labellists_flat_all])
+fo.seek(0, os.SEEK_END) 
+fo.seek(fo.tell()-1, os.SEEK_SET)
+fo.write(']}')
 
-# fo.close()
+fo.close()
 
 print("%s -OK"%(out_fname))

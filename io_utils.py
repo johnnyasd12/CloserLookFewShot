@@ -314,6 +314,16 @@ def get_loadfile_path(params, split):
             loadfile = configs.data_dir['omniglot'] + 'noLatin_3lang.json' 
         else:
             loadfile  = configs.data_dir['emnist'] + split +'.json' 
+    elif params.dataset == 'cross_base80cl':
+        if split == 'base':
+            loadfile = configs.data_dir['miniImagenet'] + 'all_80classes.json' 
+        else:
+            loadfile   = configs.data_dir['CUB'] + split +'.json'
+    elif params.dataset == 'cross_base20cl':
+        if split == 'base':
+            loadfile = configs.data_dir['miniImagenet'] + 'all_20classes.json' 
+        else:
+            loadfile   = configs.data_dir['CUB'] + split +'.json'
     else: 
         loadfile    = configs.data_dir[params.dataset] + split + '.json'
     return loadfile

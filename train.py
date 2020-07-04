@@ -129,6 +129,12 @@ def get_train_val_filename(params):
     if params.dataset == 'cross':
         base_file = configs.data_dir['miniImagenet'] + 'all.json' 
         val_file   = configs.data_dir['CUB'] + 'val.json' 
+    elif params.dataset == 'cross_base80cl':
+        base_file = configs.data_dir['miniImagenet'] + 'all_80classes.json' 
+        val_file   = configs.data_dir['CUB'] + 'val.json' 
+    elif params.dataset == 'cross_base20cl':
+        base_file = configs.data_dir['miniImagenet'] + 'all_20classes.json' 
+        val_file   = configs.data_dir['CUB'] + 'val.json' 
     elif params.dataset == 'cross_char':
         base_file = configs.data_dir['omniglot'] + 'noLatin.json' 
         val_file   = configs.data_dir['emnist'] + 'val.json'
@@ -189,7 +195,7 @@ def set_default_stop_epoch(params):
                 params.stop_epoch = 5
             elif params.dataset in ['CUB']:
                 params.stop_epoch = 200 # This is different as stated in the open-review paper. However, using 400 epoch in baseline actually lead to over-fitting
-            elif params.dataset in ['miniImagenet', 'cross']:
+            elif params.dataset in ['miniImagenet', 'cross', 'cross_base80cl', 'cross_base20cl']:
                 params.stop_epoch = 400
             else:
                 params.stop_epoch = 400 #default

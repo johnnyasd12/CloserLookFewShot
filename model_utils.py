@@ -114,23 +114,36 @@ def get_model(params, mode):
             if 'ConvS' not in params.recons_decoder:
                 raise ValueError('omniglot / cross_char should use ConvS/HiddenConvS decoder.')
     
+    if mode == 'train':
+        n_base_class_map = {
+            'omniglot':4112, # val:688, novel:1692
+            'CUB':100, # val:50, novel:50
+            'miniImagenet':64, # val:16, novel:20
+            'cross_char':1597, 'cross_char_half':758, 'cross_char_quarter':350, 'cross_char_base3lang':69, # val:31, novel:31
+            'cross':100, 'cross_base80cl':80, 'cross_base20cl':20, # val:50, novel:50
+        }
+#         params.num_classes = n_base_class_map[params.dataset]
     if params.method in ['baseline', 'baseline++'] and mode=='train':
-        if params.dataset == 'omniglot': # 4112/688/1692
-            assert params.num_classes >= 4112, 'class number need to be larger than max label id in base class'
-        if params.dataset == 'cross_char': # 1597/31/31
-            assert params.num_classes >= 1597, 'class number need to be larger than max label id in base class'
-        if params.dataset == 'cross_char_half': # 758/31/31
-            assert params.num_classes >= 758, 'class number need to be larger than max label id in base class'
-        if params.dataset in ['cross_char_quarter', 'cross_char_quarter_10shot']: # 350/31/31
-            assert params.num_classes >= 350, 'class number need to be larger than max label id in base class'
-        if params.dataset == 'cross_char_base3lang': # 69/31/31
-            assert params.num_classes >= 69, 'class number need to be larger than max label id in base class'
-        if params.dataset == 'miniImagenet': # 64/16/20
-            assert params.num_classes >= 64, 'class number need to be larger than max label id in base class'
-        if params.dataset == 'CUB': # 100/50/50
-            assert params.num_classes >= 100, 'class number need to be larger than max label id in base class'
-        if params.dataset == 'cross': # 64+16+20/50/50
-            assert params.num_classes >= 100, 'class number need to be larger than max label id in base class'
+        assert params.num_classes >= n_base_class_map[params.dataset]
+#         if params.dataset == 'omniglot': # 4112/688/1692
+#             assert params.num_classes >= 4112, 'class number need to be larger than max label id in base class'
+#         if params.dataset == 'cross_char': # 1597/31/31
+#             assert params.num_classes >= 1597, 'class number need to be larger than max label id in base class'
+#         if params.dataset == 'cross_char_half': # 758/31/31
+#             assert params.num_classes >= 758, 'class number need to be larger than max label id in base class'
+#         if params.dataset in ['cross_char_quarter', 'cross_char_quarter_10shot']: # 350/31/31
+#             assert params.num_classes >= 350, 'class number need to be larger than max label id in base class'
+#         if params.dataset == 'cross_char_base3lang': # 69/31/31
+#             assert params.num_classes >= 69, 'class number need to be larger than max label id in base class'
+#         if params.dataset == 'miniImagenet': # 64/16/20
+#             assert params.num_classes >= 64, 'class number need to be larger than max label id in base class'
+#         if params.dataset == 'CUB': # 100/50/50
+#             assert params.num_classes >= 100, 'class number need to be larger than max label id in base class'
+#         if params.dataset == 'cross': # 64+16+20/50/50
+#             assert params.num_classes >= 100, 'class number need to be larger than max label id in base class'
+#         if params.dataset == 'cross_base80cl': # 80/50/50
+#             assert params.num_classes >= 100, 'class number need to be larger than max label id in base class'
+        
     
     if params.recons_decoder == None:
         print('params.recons_decoder == None')
