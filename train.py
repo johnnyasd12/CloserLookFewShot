@@ -150,6 +150,9 @@ def get_train_val_filename(params):
     elif params.dataset == 'cross_char_base3lang':
         base_file = configs.data_dir['omniglot'] + 'noLatin_3lang.json' 
         val_file  = configs.data_dir['emnist'] + 'val.json' # sure????
+    elif params.dataset == 'cross_char_base1lang':
+        base_file = configs.data_dir['omniglot'] + 'noLatin_1lang.json' 
+        val_file  = configs.data_dir['emnist'] + 'val.json' # sure????
     else:
         base_file = configs.data_dir[params.dataset] + 'base.json' 
         val_file   = configs.data_dir[params.dataset] + 'val.json'
@@ -163,24 +166,27 @@ def get_source_val_filename(params):
         source_val_file = configs.data_dir['miniImagenet'] + 'novel.json'
     elif params.dataset == 'cross_base20cl':
         source_val_file = configs.data_dir['miniImagenet'] + 'novel.json'
-    elif params.dataset == 'cross_char':
-        # TODO?????
+    elif 'cross_char' in params.dataset:
+        # in ['cross_char','cross_char_half','cross_char_base3lang', 'cross_char_base1lang']
         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
-#         source_val_file = configs.data_dir['omniglot'] + 'cross_char_source_val_180.json'
-#         source_val_file = configs.data_dir['omniglot'] + 'val.json'
-    elif params.dataset == 'cross_char_half': # equals to 25lang
-        # TODO
-        source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
-#         source_val_file = configs.data_dir['omniglot'] + 'cross_char_source_val_180.json'
-    elif params.dataset == 'cross_char_quarter': # equals to 12lang
-        # TODO
-        source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
-    elif params.dataset == 'cross_char_quarter_10shot': # equals to 12lang
-        # TODO
-        source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
-    elif params.dataset == 'cross_char_base3lang':
-        # TODO
-        source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
+#     elif params.dataset == 'cross_char':
+#         # TODO?????
+#         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
+# #         source_val_file = configs.data_dir['omniglot'] + 'cross_char_source_val_180.json'
+# #         source_val_file = configs.data_dir['omniglot'] + 'val.json'
+#     elif params.dataset == 'cross_char_half': # equals to 25lang
+#         # TODO
+#         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
+# #         source_val_file = configs.data_dir['omniglot'] + 'cross_char_source_val_180.json'
+#     elif params.dataset == 'cross_char_quarter': # equals to 12lang
+#         # TODO
+#         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
+#     elif params.dataset == 'cross_char_quarter_10shot': # equals to 12lang
+#         # TODO
+#         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
+#     elif params.dataset == 'cross_char_base3lang':
+#         # TODO
+#         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
     else:
         raise ValueError('Cannot return source_val_file when dataset =', params.dataset)
         
