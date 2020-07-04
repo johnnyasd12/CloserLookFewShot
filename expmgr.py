@@ -217,7 +217,7 @@ class ExpManager:
                     source_val = True
                     
                     # write source_val_acc
-                    if source_val and 'cross' in base_params['dataset']:# in ['cross', 'cross_char', 'cross_char_half']:
+                    if source_val and 'cross' in base_params['dataset']:# in ['cross', 'cross_char', 'cross_char_half', 'cross_char_quarter']:
                         if should_train:
                             write_record['source_val_acc'] = train_result['source_val_acc']
                         else:

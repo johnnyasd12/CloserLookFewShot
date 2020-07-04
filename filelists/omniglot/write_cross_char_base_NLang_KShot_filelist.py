@@ -10,7 +10,7 @@ cwd = os.getcwd()
 data_path = join(cwd,'images')
 savedir = './'
 
-n_lang = 3
+n_lang = 3 # noLatin = 49??
 k_shot = None
 
 
