@@ -48,7 +48,7 @@ class ExpManager:
         self.possible_params = {'general':general_possible_params, 'test':test_possible_params} # general means generalize to train/save_features/test
         self.fixed_params = {'train':train_fixed_params, 'test':test_fixed_params}
         self.negligible_vars = ['gpu_id', 'csv_name'] # can be ignored when comparing results but in ArgParser
-        self.negligible_vars += ['split', 'num_classes']
+        self.negligible_vars += ['split', 'num_classes'] # not sure if should be ignored
         self.dependent_vars = [
             'epoch', 'train_acc_mean', 'source_val_acc', 'val_acc_mean', 'val_acc_std', 'novel_acc_mean', 'novel_acc_std']
         
@@ -183,27 +183,44 @@ class ExpManager:
                 if mode == 'resume':
                     print('\n', '='*20, 'Checking if already did experiments', '='*20)
                     print('general_params:', general_params)
-                    print(test_params)
+                    print('test_params:', test_params)
                     check_df = loaded_df.copy()
-                    check_param = {**self.base_params, **general_params, **test_params}
+                    constrained_param = {**self.base_params, **general_params, **test_params}
                     # BUGFIX: add default params, delete useless params & dependent variables (result)
                     
                     default_args = parse_args('test', parse_str='')
                     default_param = vars(default_args)
-                    check_param = {**default_param, **check_param}
+                    check_param = {**default_param, **constrained_param}
+                    
+                    ##### debug
+#                     print('='*20)
+#                     print('constrained_param:', constrained_param)
+#                     print('='*20)
+#                     print('default_param:', default_param)
+#                     print('='*20)
+#                     print('check_param:', check_param)
                     
                     # delete vars not for checking
                     del_vars = self.negligible_vars + self.dependent_vars
                     for var in del_vars:
                         if var in check_param:
                             del check_param[var]
-
+                    
+                    ##### debug
+                    print('='*20)
+                    print('check_param after deleted:', check_param)
+#                     hehehehe
+                    
+                    
+                    
                     check_df = get_matched_df(check_param, loaded_df)
                     num_test_experiments = len(check_df)
                     if num_test_experiments>0: # already experiments
                         print('NO need to test since already tested %s times in record: %s'%(num_test_experiments, csv_path))
                         print(check_df)
                         continue
+                    else:
+                        print('Need to do testing since there\'s NO experiment in data.')
                 elif mode == 'tmp_pkl':
                     pass
                 

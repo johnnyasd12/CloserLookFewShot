@@ -56,43 +56,22 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
 
     checkpoint_dir = get_checkpoint_dir(params)
     
-    #modelfile   = get_resume_file(checkpoint_dir)
     # load model
     print('loading from:',checkpoint_dir)
-    
-#     if not params.method in ['baseline', 'baseline++'] : 
-#         if params.save_iter != -1:
-#             modelfile   = get_assigned_file(checkpoint_dir, params.save_iter)
-#         else:
-#             modelfile   = get_best_file(checkpoint_dir)
-#         if modelfile is not None:
-#             if params.gpu_id is None:
-#                 tmp = torch.load(modelfile)
-#             else: # TODO: figure out WTF is going on here
-#                 print('params.gpu_id =', params.gpu_id)
-#                 map_location = 'cuda:0'
-# #                 gpu_str = 'cuda:' + '0'#str(params.gpu_id)
-# #                 map_location = {'cuda:1':gpu_str, 'cuda:0':gpu_str} # see here: https://hackmd.io/koKAo6kURn2YBqjoXXDhaw#RuntimeError-CUDA-error-invalid-device-ordinal
-#                 tmp = torch.load(modelfile, map_location=map_location)
-# #                 tmp = torch.load(modelfile)
-#             model.load_state_dict(tmp['state'])
-#             load_epoch = int(tmp['epoch'])
-#     else: # if 'baseline' or 'baseline++' then NO NEED to load model !!!
-#         load_epoch = -1 # TODO: get load_epoch, first save 'epoch' in train.py
 
-    
     if params.save_iter != -1:
         modelfile   = get_assigned_file(checkpoint_dir, params.save_iter)
     else:
         modelfile   = get_best_file(checkpoint_dir)
+    
     if modelfile is not None:
         if params.gpu_id is None:
             tmp = torch.load(modelfile)
         else: # TODO: figure out WTF is going on here
             print('params.gpu_id =', params.gpu_id)
             map_location = 'cuda:0'
-#                 gpu_str = 'cuda:' + '0'#str(params.gpu_id)
-#                 map_location = {'cuda:1':gpu_str, 'cuda:0':gpu_str} # see here: https://hackmd.io/koKAo6kURn2YBqjoXXDhaw#RuntimeError-CUDA-error-invalid-device-ordinal
+#             gpu_str = 'cuda:' + '0'#str(params.gpu_id)
+#             map_location = {'cuda:1':gpu_str, 'cuda:0':gpu_str} # see here: https://hackmd.io/koKAo6kURn2YBqjoXXDhaw#RuntimeError-CUDA-error-invalid-device-ordinal
             tmp = torch.load(modelfile, map_location=map_location)
 #                 tmp = torch.load(modelfile)
         if not params.method in ['baseline', 'baseline++'] : 
@@ -101,9 +80,6 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
         load_epoch = int(tmp['epoch'])
         
         print('model successfully loaded.')
-    
-    # train/val/novel
-#     split = params.split
     
     if params.method in ['maml', 'maml_approx']: #maml do not support testing with feature
         image_size = get_img_size(params)
@@ -127,11 +103,7 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
         
         if params.n_test_candidates is None: # common setting (no candidate)
             feature_file = all_feature_files[0]
-#             if show_data:
             cl_feature, cl_filepath = feat_loader.init_loader(feature_file, return_path=True)
-#             else:
-#                 cl_feature = feat_loader.init_loader(feature_file)
-#                 cl_filepath = None
             cl_feature_single = [cl_feature]
             
             for i in tqdm(range(n_episodes)):
@@ -239,15 +211,7 @@ def del_features(params):
     else:
         checkpoint_dir = get_checkpoint_dir(params)
         feature_file = get_save_feature_filepath(params, checkpoint_dir, params.split)
-#         if 'candidate' in feature_file:
-#             all_feature_files = []
-#             for n in tqdm(range(params.n_test_candidates)):
-#                 nth_feature_file = feature_file.replace('candidate','candidate'+str(n+1))
-#                 all_feature_files.append(nth_feature_file)
-#         else:
-#             all_feature_files = [feature_file]
-        
-        print('Deleting feature file(s): %s'%(feature_file))
+        print('Deleting %d feature file(s): %s'%(len(all_feature_files), feature_file))
         for filename in all_feature_files:
             os.remove(filename)
         print('Finished deleting.')
@@ -291,27 +255,3 @@ if __name__ == '__main__':
 #     record_to_csv(params, extra_record, csv_path='./record/results_backup_'+extra_record['time']+'.csv')
     if params.csv_name is not None:
         record_to_csv(params, extra_record, csv_path='./record/'+params.csv_name)
-
-# def record_txt(params, n_episodes, acc_str):    
-#     # writing settings into txt
-#     if params.save_iter != -1:
-#         split_str = params.split + "_" +str(params.save_iter)
-#     else:
-#         split_str = params.split
-#     with open('./record/results.txt' , 'a') as f:
-#         # this part should modify for every argument change
-#         aug_str = '-aug' if params.train_aug else ''
-#         aug_str += '-adapted' if params.adaptation else ''
-#         aug_str += ('-Decoder' + params.recons_decoder+str(params.recons_lambda)) if params.recons_decoder else ''
-#         aug_str += ('-'+params.aug_target+'('+params.aug_type+')') if params.aug_type else ''
-        
-#         if params.method in ['baseline', 'baseline++'] :
-#             exp_setting = '%s-%s-%s-%s%s %sshot %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str, params.n_shot, params.test_n_way )
-#         else:
-#             exp_setting = '%s-%s-%s-%s%s %sshot %sway_train %sway_test' %(params.dataset, split_str, params.model, params.method, aug_str , params.n_shot , params.train_n_way, params.test_n_way )
-#         acc_descr = '%d Test Acc = ' %(n_episodes)
-#         acc_descr += acc_str
-#         f.write( 'Time: %s, Setting: %s, Acc: %s \n' %(timestamp,exp_setting,acc_descr)  )
-        
-    
-    
