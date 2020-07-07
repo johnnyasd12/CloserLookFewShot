@@ -24,7 +24,7 @@ language_folder_list = [f for f in listdir(data_path) if isdir(join(data_path, f
 language_folder_list.sort()
 
 if n_lang is not None:
-    language_folder_list = language_folder_list[:n_lang] # only take half
+    language_folder_list = language_folder_list[:n_lang] # only take first n languages
 
 filelists = {}
 
