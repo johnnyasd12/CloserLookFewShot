@@ -77,10 +77,11 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
         if not params.method in ['baseline', 'baseline++'] : 
             # if 'baseline' or 'baseline++' then NO NEED to load model !!!
             model.load_state_dict(tmp['state'])
+            print('Model successfully loaded.')
+        else:
+            print('No need to load model for baseline/baseline++ when testing.')
         load_epoch = int(tmp['epoch'])
         
-        print('model successfully loaded.')
-    
     if params.method in ['maml', 'maml_approx']: #maml do not support testing with feature
         image_size = get_img_size(params)
         load_file = get_loadfile_path(params, params.split)
@@ -119,25 +120,15 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
             candidate_cl_feature = [] # features of each class of each candidates
             print('Loading features of %s candidates into dictionaries...' %(params.n_test_candidates))
             for n in tqdm(range(params.n_test_candidates)):
-#                 nth_feature_file = feature_file.replace(keyword, keyword+str(n+1))
                 nth_feature_file = all_feature_files[n]
-#                 feature_files.append(nth_feature_file)
-
-#                 if show_data:
                 cl_feature, cl_filepath = feat_loader.init_loader(nth_feature_file, return_path=True)
-#                 else:
-#                     cl_feature = feat_loader.init_loader(nth_feature_file)
-#                     cl_filepath = None
                 candidate_cl_feature.append(cl_feature)
             
             print('Evaluating...')
             # TODO: aggregate this and upper part of for loop, only cl_feature are different
             for i in tqdm(range(n_episodes)):
                 # TODO: fix data list? can only fix class list?
-#                 acc = feature_evaluation(
-#                     candidate_cl_feature, model, params=params, n_query=15, **few_shot_params, 
-#                     cl_filepath=cl_filepath,
-#                 )
+
                 task_data = feature_evaluation(
                     candidate_cl_feature, model, params=params, n_query=15, **few_shot_params, 
                     cl_filepath=cl_filepath,
@@ -145,21 +136,12 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
                 acc = task_data['acc']
                 acc_all.append(acc)
                 task_datas[i] = task_data
-                
-        
 
         acc_all  = np.asarray(acc_all)
         acc_mean = np.mean(acc_all)
         acc_std  = np.std(acc_all)
         print('loaded from %d epoch model.' %(load_epoch))
         print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(n_episodes, acc_mean, 1.96* acc_std/np.sqrt(n_episodes)))
-        
-        # TODO: 5/10 save task_datas in file
-#         todo
-        # TODO: 5/10 sort task_datas by acc
-#         todo
-        # TODO: 5/10 draw top ?% task imgs
-#         todo
         
     
     torch.cuda.empty_cache()
