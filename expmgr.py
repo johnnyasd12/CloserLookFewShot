@@ -49,6 +49,7 @@ class ExpManager:
         self.fixed_params = {'train':train_fixed_params, 'test':test_fixed_params}
         self.negligible_vars = ['gpu_id', 'csv_name'] # can be ignored when comparing results but in ArgParser
         self.negligible_vars += ['split', 'num_classes'] # not sure if should be ignored
+        self.negligible_vars += ['debug'] # hack: ignore debug param
         self.dependent_vars = [
             'epoch', 'train_acc_mean', 'source_val_acc', 'val_acc_mean', 'val_acc_std', 'novel_acc_mean', 'novel_acc_std']
         
@@ -207,11 +208,8 @@ class ExpManager:
                             del check_param[var]
                     
                     ##### debug
-                    print('='*20)
-                    print('check_param after deleted:', check_param)
-#                     hehehehe
-                    
-                    
+#                     print('='*20)
+#                     print('check_param after deleted:', check_param)
                     
                     check_df = get_matched_df(check_param, loaded_df)
                     num_test_experiments = len(check_df)
