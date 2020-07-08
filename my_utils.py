@@ -368,10 +368,11 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         return acc
     
-    def get_cand_prob_diversities(supp_prob_each_candidate):
+    def get_cand_prob_diversities(supp_prob_each_candidate, measure):
         '''
         Args:
             supp_prob_each_candidate (list): of prob arrays with shape: (n_way, n_shot, n_way) (or (n_way*n_shot, n_way))
+            measure (str): 'abs_diff', 'cross_entropy'
         '''
         # TODO:
         
@@ -544,7 +545,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                         n_way=n_way, the_one=loopccv_the_one, 
                         metric=params.candidate_metric, return_all_probs=True)
                     supp_prob = supp_prob.reshape(n_way*n_support, n_way)
-#                     print('supp_prob.shape:', supp_prob.shape) # originally (n_way, n_supp, n_way) should I ???
+                    # originally (n_way, n_supp, n_way) should I change to (n_way*n_support, n_way)???
+#                     print('supp_prob.shape:', supp_prob.shape) 
                     supp_prob_each_candidate.append(supp_prob)
                 else: # testing without loopccv
                     n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
@@ -564,9 +566,9 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 sorted_candidate_ids = np.argsort(-sub_result_each_candidate) # in descent order
             elif params.candidate_metric == 'loss':
                 sorted_candidate_ids = np.argsort(sub_result_each_candidate) # in ascent order
-            elif params.candidate_metric == 'div_abs':
+            elif params.candidate_metric == 'diversity_abs':
                 # TODO
-                diversity_each_candidate = get_cand_prob_diversities(supp_prob_each_candidate)
+                diversity_each_candidate = get_cand_prob_diversities(supp_prob_each_candidate, measure='abs_diff')
                 
                 
             else:
