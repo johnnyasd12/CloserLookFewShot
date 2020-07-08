@@ -21,6 +21,8 @@ from LrLiVAE import GMM_AE_GAN
 
 import torch
 
+from universal_settings import n_base_classes
+
 def get_few_shot_params(params, mode=None):
     '''
     :param mode: 'train', 'test'
@@ -115,16 +117,9 @@ def get_model(params, mode):
                 raise ValueError('omniglot / cross_char should use ConvS/HiddenConvS decoder.')
     
     if mode == 'train':
-        n_base_class_map = {
-            'omniglot':4112, # val:688, novel:1692
-            'CUB':100, # val:50, novel:50
-            'miniImagenet':64, # val:16, novel:20
-            'cross_char':1597, 'cross_char_half':758, 'cross_char_quarter':350, 'cross_char_base3lang':69, 'cross_char_base1lang':20, # val:31, novel:31
-            'cross':100, 'cross_base80cl':80, 'cross_base20cl':20, # val:50, novel:50
-        }
 #         params.num_classes = n_base_class_map[params.dataset]
     if params.method in ['baseline', 'baseline++'] and mode=='train':
-        assert params.num_classes >= n_base_class_map[params.dataset]
+        assert params.num_classes >= n_base_classes[params.dataset]
 #         if params.dataset == 'omniglot': # 4112/688/1692
 #             assert params.num_classes >= 4112, 'class number need to be larger than max label id in base class'
 #         if params.dataset == 'cross_char': # 1597/31/31
