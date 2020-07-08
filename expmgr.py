@@ -1,5 +1,5 @@
 import numpy as np
-from io_utils import parse_args
+from io_utils import parse_args, args_sanity_check
 from train import exp_train_val
 from save_features import exp_save_features
 from test import exp_test, record_to_csv
@@ -168,6 +168,9 @@ class ExpManager:
                 modified_train_args = get_modified_args(train_args, general_params)
                 if mode == 'resume':
                     modified_train_args.resume = True
+                
+                args_sanity_check(modified_train_args, script='train')
+                
                 train_result = exp_train_val(modified_train_args)
             else:
                 if mode == 'draw_tasks':
@@ -265,6 +268,10 @@ class ExpManager:
                         print('general_params:', general_params)
                         print('test_params:', test_params)
                         print('data split:', split)
+                        
+                        args_sanity_check(split_final_test_args, script='save_features')
+                        args_sanity_check(split_final_test_args, script='test')
+                        
                         exp_save_features(copy_args(split_final_test_args))
                         
                         print('\n', '='*20, 'Testing', '='*20)
@@ -272,7 +279,7 @@ class ExpManager:
                         print('test_params:', test_params)
                         print('data split:', split)
                         n_episodes = 10 if split_final_test_args.debug or mode=='draw_tasks' else 600
-
+                        
                         exp_record, task_datas = exp_test(copy_args(split_final_test_args), n_episodes=n_episodes, should_del_features=True)#, show_data=show_data)
                         write_record['epoch'] = exp_record['epoch']
                         write_record[split+'_acc_mean'] = exp_record['acc_mean']

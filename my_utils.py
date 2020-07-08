@@ -544,7 +544,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                         n_way=n_way, the_one=loopccv_the_one, 
                         metric=params.candidate_metric, return_all_probs=True)
                     supp_prob = supp_prob.reshape(n_way*n_support, n_way)
-                    print('supp_prob.shape:', supp_prob.shape) # originally (n_way, n_supp, n_way) should I ???
+#                     print('supp_prob.shape:', supp_prob.shape) # originally (n_way, n_supp, n_way) should I ???
                     supp_prob_each_candidate.append(supp_prob)
                 else: # testing without loopccv
                     n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
