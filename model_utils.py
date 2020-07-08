@@ -116,7 +116,7 @@ def get_model(params, mode):
             if 'ConvS' not in params.recons_decoder:
                 raise ValueError('omniglot / cross_char should use ConvS/HiddenConvS decoder.')
     
-    if mode == 'train':
+#     if mode == 'train':
 #         params.num_classes = n_base_class_map[params.dataset]
     if params.method in ['baseline', 'baseline++'] and mode=='train':
         assert params.num_classes >= n_base_classes[params.dataset]
