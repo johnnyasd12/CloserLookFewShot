@@ -100,7 +100,6 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
         task_datas = [None]*n_episodes # list of dict
         # directly use extracted features
         all_feature_files = get_all_feature_files(params)
-#         feature_file = get_save_feature_filepath(params, checkpoint_dir, params.split)
         
         if params.n_test_candidates is None: # common setting (no candidate)
             feature_file = all_feature_files[0]

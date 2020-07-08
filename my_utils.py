@@ -368,24 +368,45 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         return acc
     
-    def get_result(model, z_all, n_way, n_support, n_query, metric):
+    def get_cand_prob_diversities(supp_prob_each_candidate):
+        '''
+        Args:
+            supp_prob_each_candidate (list): of prob arrays with shape: (n_way, n_shot, n_way) (or (n_way*n_shot, n_way))
+        '''
+        # TODO:
+        
+        
+        for supp_prob in supp_prob_each_candidate:
+            pass
+        
+        
+    
+    def get_result(model, z_all, n_way, n_support, n_query, metric, return_prob=False):
         
         # make model can parse feature correctly
         model.n_support = n_support
         model.n_query = n_query
         
+        forward_outputs = get_forward_outputs(model, z_all)
+        prob = model.forwardout2prob(forward_outputs).data.cpu().numpy()
+        pred = prob.argmax(axis = 1)
+        
         if metric == 'acc':
-            pred = get_pred(model, z_all)
+#             pred = get_pred(model, z_all)
             y = np.repeat(range( n_way ), model.n_query )
             result = np.mean(pred == y)*100
         elif metric == 'loss':
-            forward_outputs = get_forward_outputs(model, z_all)
+#             forward_outputs = get_forward_outputs(model, z_all)
             result = model.forwardout2loss(forward_outputs)
         else:
             raise ValueError('Unknown metric: %s'%(metric))
-        return result
+        
+        if return_prob:
+            return result, prob
+        else:
+            return result
     
-    def get_result_loocv(model, z_all, n_way, metric, the_one='val'):
+    def get_result_loocv(model, z_all, n_way, metric, the_one='val', return_all_probs=False):
         '''
         Actually not really leave-one-out but "leave-one-out per-class"!!!
         Args:
@@ -409,35 +430,42 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         result_cv = [0]*k_fold
         original_ids = [k for k in range(k_fold)]
         
+#         cv_probs = [[None]*n_data_per_class for _ in range(n_way)] # (n_way, n_data_per_class, n_classes(=n_way))
+        cv_probs = np.zeros((n_way, n_data_per_class, n_way)) # (n_way, n_data_per_class, n_classes(=n_way))
+#         print('cv_probs:', cv_probs)
+        
         for k in range(k_fold):
             # get swapped features
             swapped_ids = original_ids.copy()
             swapped_ids[swap_the_one_per_class] = k
             swapped_ids[k] = swap_the_one_per_class
             z_swapped = torch.index_select(z_all, 1, torch.LongTensor(swapped_ids).cuda())
-#             z_swapped = z_swapped.contiguous() # try to fix bug but failed
         
-            result = get_result(
+            result, prob = get_result(
                 model=model, z_all=z_swapped, 
                 n_way=n_way, n_support=n_support_cv, n_query=n_query_cv, 
-                metric=metric
+                metric=metric, return_prob = True
             )
             result_cv[k]=result
+#             print('get_result_loocv()/prob.shape:', prob.shape) # shape: (n_data(=n_way), n_classes(=n_way))
+            for n in range(n_way):
+                cv_probs[n, k, :] = prob[n]
+#         print('cv_probs after loop:', cv_probs)
+#         print('cv_probs.sum(axis=2) after loop:', cv_probs.sum(axis=2)) # sum is 1, no problem
         
-        return sum(result_cv)/k_fold
-    
-    
-#     task_data = {} # stores all info, e.g. acc, img_path, img_is_correct, etc.
+        if return_all_probs:
+            return sum(result_cv)/k_fold, cv_probs
+        else:
+            return sum(result_cv)/k_fold
     
     class_list = cl_feature_each_candidate[0].keys()
     select_class = random.sample(class_list,n_way)
     
     # get shuffled data idx in each class (of all features?)
     perm_ids_dict = {} # store the permutation indices of each class
-    tmp_cl_feature_dict = cl_feature_each_candidate[0] # i think all candidates have the same n_data
+    tmp_cl_feature_dict = cl_feature_each_candidate[0] # to compute n_data (all candidates should have the same n_data)
     for cl in select_class:
         img_feats = tmp_cl_feature_dict[cl]
-        # I think len(img_feats) is always n_support+n_query so i don't write len(img_feats) NONONO BUGBUGBUG
         n_data = len(img_feats)
         perm_ids = np.random.permutation(n_data).tolist()
         perm_ids_dict[cl] = perm_ids
@@ -458,7 +486,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         # here should be acc
         # TODO: 5/7 
-        if cl_filepath is None:
+        if cl_filepath is None: # no need to draw tasks???
             acc = get_result(
                 model=model, z_all=z_all, 
                 n_way=n_way, n_support=n_support, n_query=n_query, metric='acc')
@@ -466,7 +494,6 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             # make model can parse feature correctly
             model.n_support = n_support
             model.n_query = n_query
-            n_data_per_class = n_support + n_query
             # get prediction
             pred_prob = get_pred(model, z_all = z_all, prob = True)
             record_task_pred(pred_prob = pred_prob, task_data = task_data)
@@ -482,6 +509,10 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             # validate sub-performance to choose from candidates
             # here seems took most of the time cost
             sub_result_each_candidate = [] # store sub_query set result of each candidate
+            
+            supp_prob_each_candidate = [] # 7/7 store each support data (as sub-query) prediction of each candidate
+            query_prob_each_candidate = [] # 7/7 store query set prediction of each candidate
+            
             for n in range(params.n_test_candidates): # for each candidate
                 cl_feature_dict = cl_feature_each_candidate[n] # features of the candidate
 
@@ -492,8 +523,15 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 model.n_support = n_support
                 model.n_query = n_query
                 z_support, z_query  = model.parse_feature(z_all,is_feature=True)# shape:(n_way, n_data, *feature_dims)
-                z_support   = z_support.contiguous() # TODO: what this means???
-    #             z_support_cpu = z_support.data.cpu().numpy()
+                
+                # 7/7 to get query prob at the same time
+#                 if params.method == 'protonet':
+#                     query_scores = model.splitfeat_set_forward(z_support=z_support,z_query=z_query)
+#                     query_prob = model.forwardout2prob()
+#                 else:
+#                     raise ValueError('Unsupport method to test???')
+                
+                z_support   = z_support.contiguous()
 
                 if model.change_way:
                     model.n_way  = z_support.size(0)
@@ -501,8 +539,13 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 # leave-one-out (per-class) cross validation
                 loopccv_the_one = 'val' # None, 'train', 'val'
                 if loopccv_the_one is not None:
-                    sub_result = get_result_loocv(model=model, z_all=z_support, 
-                                            n_way=n_way, the_one=loopccv_the_one, metric=params.candidate_metric)
+                    sub_result, supp_prob = get_result_loocv(
+                        model=model, z_all=z_support, 
+                        n_way=n_way, the_one=loopccv_the_one, 
+                        metric=params.candidate_metric, return_all_probs=True)
+                    supp_prob = supp_prob.reshape(n_way*n_support, n_way)
+                    print('supp_prob.shape:', supp_prob.shape) # originally (n_way, n_supp, n_way) should I ???
+                    supp_prob_each_candidate.append(supp_prob)
                 else: # testing without loopccv
                     n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
                     n_sub_query = n_support - n_sub_support # those who are rest
@@ -521,6 +564,11 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 sorted_candidate_ids = np.argsort(-sub_result_each_candidate) # in descent order
             elif params.candidate_metric == 'loss':
                 sorted_candidate_ids = np.argsort(sub_result_each_candidate) # in ascent order
+            elif params.candidate_metric == 'div_abs':
+                # TODO
+                diversity_each_candidate = get_cand_prob_diversities(supp_prob_each_candidate)
+                
+                
             else:
                 raise ValueError('Unknown candidate_metric: %s'%(metric))
             elected_ids = sorted_candidate_ids[:n_ensemble]
