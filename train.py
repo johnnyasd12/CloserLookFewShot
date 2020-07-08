@@ -132,6 +132,9 @@ def get_train_val_filename(params):
     elif params.dataset == 'cross_base80cl':
         base_file = configs.data_dir['miniImagenet'] + 'all_80classes.json' 
         val_file   = configs.data_dir['CUB'] + 'val.json' 
+    elif params.dataset == 'cross_base40cl':
+        base_file = configs.data_dir['miniImagenet'] + 'all_40classes.json' 
+        val_file   = configs.data_dir['CUB'] + 'val.json' 
     elif params.dataset == 'cross_base20cl':
         base_file = configs.data_dir['miniImagenet'] + 'all_20classes.json' 
         val_file   = configs.data_dir['CUB'] + 'val.json' 
@@ -163,6 +166,8 @@ def get_source_val_filename(params):
         raise ValueError('There is no source_val data for \'cross\' dataset.')
 #         source_val_file = configs.data_dir['miniImagenet'] + 'val.json'
     elif params.dataset == 'cross_base80cl':
+        source_val_file = configs.data_dir['miniImagenet'] + 'novel.json'
+    elif params.dataset == 'cross_base40cl':
         source_val_file = configs.data_dir['miniImagenet'] + 'novel.json'
     elif params.dataset == 'cross_base20cl':
         source_val_file = configs.data_dir['miniImagenet'] + 'novel.json'
@@ -201,7 +206,7 @@ def set_default_stop_epoch(params):
                 params.stop_epoch = 5
             elif params.dataset in ['CUB']:
                 params.stop_epoch = 200 # This is different as stated in the open-review paper. However, using 400 epoch in baseline actually lead to over-fitting
-            elif params.dataset in ['miniImagenet', 'cross', 'cross_base80cl', 'cross_base20cl']:
+            elif params.dataset in ['miniImagenet', 'cross', 'cross_base80cl', 'cross_base40cl', 'cross_base20cl']:
                 params.stop_epoch = 400
             else:
                 params.stop_epoch = 400 #default

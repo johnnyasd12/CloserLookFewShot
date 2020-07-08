@@ -120,7 +120,7 @@ def parse_args(script, parse_str=None):
         parser.add_argument('--adaptation'  , action='store_true', help='further adaptation in test time or not')
         # CustomDropout parameter
         parser.add_argument('--frac_ensemble', default=None, type=float, help='the final fraction of dropout subnets ensemble. (default only 1 subnet, no ensemble)')
-        parser.add_argument('--candidate_metric', default='acc', choices=['acc', 'loss'], type=str, help='To choose the ensemble subnets, according to  which metric of sub-validation set. (if None then "acc")')
+        parser.add_argument('--candidate_metric', default='acc', choices=['acc', 'loss', 'diversity_abs'], type=str, help='To choose the ensemble subnets, according to  which metric of sub-validation set. (if None then "acc")')
         parser.add_argument('--ensemble_strategy', default='vote', choices=['vote', 'avg_prob'], type=str, help='How to get the prediction of networks ensemble, only available when argument "frac_ensemble" is assigned.') # originally default None, but causes BUGGGGGG so modified to 'vote'. 
         
         
@@ -362,6 +362,11 @@ def get_loadfile_path(params, split):
     elif params.dataset == 'cross_base80cl':
         if split == 'base':
             loadfile = configs.data_dir['miniImagenet'] + 'all_80classes.json' 
+        else:
+            loadfile   = configs.data_dir['CUB'] + split +'.json'
+    elif params.dataset == 'cross_base40cl':
+        if split == 'base':
+            loadfile = configs.data_dir['miniImagenet'] + 'all_40classes.json' 
         else:
             loadfile   = configs.data_dir['CUB'] + split +'.json'
     elif params.dataset == 'cross_base20cl':
