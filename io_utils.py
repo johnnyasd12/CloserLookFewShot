@@ -148,7 +148,49 @@ def parse_args(script, parse_str=None):
     # sanity check
 #     if params.dropout_block_id is not None and params.dropout_block_id != 'all':
 #         params.dropout_block_id = int(params.dropout_block_id)
+    
+    args_sanity_check(params=params, script=script)
+#     if script=='save_features' or script=='test':
         
+# #         if params.test_dropout_bid is not None and params.test_dropout_bid != 'all':
+# #             params.test_dropout_bid = int(params.test_dropout_bid)
+
+#         if params.finetune_dropout_p is not None:
+#             if params.method not in ['baseline', 'baseline++']:
+#                 raise ValueError('finetune_dropout_p and method not match.')
+        
+#         if (params.test_dropout_p is None) ^ (params.test_dropout_bid is None):
+#             raise ValueError('test_dropout_p and test_dropout_bid not match.')
+#         if params.test_dropout_p is not None and params.n_test_candidates is None:
+#             raise ValueError('test_dropout_p and n_test_candidates not match.')
+            
+#         if params.n_test_candidates is not None: # both should be True or False
+            
+#             if False:
+#                 if params.dropout_p == 0:
+#                     raise ValueError('dropout_p and n_test_candidates not match.')
+#                 if params.test_dropout_p is None:
+#                     raise ValueError('test_dropout_p and n_test_candidates not match.')
+#             # should be like this, but why above code can pass when doing experiments before???
+#             if params.dropout_p == 0 and params.test_dropout_p is None:
+#                 raise ValueError('dropout_p/test_dropout_p and n_test_candidates not match.')
+            
+#             if params.method in ['baseline', 'baseline++']:
+#                 if params.n_test_candidates > 10:
+#                     raise ValueError('too many test candidates for baseline.')
+#                 if params.frac_ensemble != 1:
+#                     raise ValueError('frac_ensemble for baseline methods should be 1.')
+#     if (params.aug_type==None)^(params.aug_target==None):
+#         raise ValueError('aug_type & aug_target not match.')
+#     if (params.recons_decoder==None)^(params.recons_lambda==0):
+#         raise ValueError('recons_decoder & recons_lambda not match. ')
+#     if script == 'save_features':
+#         if params.method in ['maml' , 'maml_approx']:
+#             raise ValueError('MAML does not support save_features')
+
+    return params
+
+def args_sanity_check(params, script):
     if script=='save_features' or script=='test':
         
 #         if params.test_dropout_bid is not None and params.test_dropout_bid != 'all':
@@ -186,8 +228,6 @@ def parse_args(script, parse_str=None):
     if script == 'save_features':
         if params.method in ['maml' , 'maml_approx']:
             raise ValueError('MAML does not support save_features')
-
-    return params
 
 def get_checkpoint_dir(params):
     checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, params.method)
