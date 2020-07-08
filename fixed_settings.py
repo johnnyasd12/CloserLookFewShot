@@ -9,3 +9,19 @@ n_base_classes = {
     'cross':100, 'cross_base80cl':80, 'cross_base20cl':20, # val:50, novel:50
 }
 
+stop_epoch = {
+    'baseline':100, 
+    'protonet':1000, 
+    'relationnet':1000, 
+}
+
+patience = {
+    'baseline':10, 
+    'protonet':70, 
+    'relationnet':70, 
+}
+
+should_aug_datasets = [
+    'CUB', 'miniImagenet', 
+    'cross', 'cross_base80cl', 'cross_base40cl', 'cross_base20cl'
+]
