@@ -5,7 +5,7 @@ n_base_classes = {
     'CUB':100, # val:50, novel:50
     'miniImagenet':64, # val:16, novel:20
     'cross_char':1597, 'cross_char_half':758, 'cross_char_quarter':350, # val:31, novel:31
-    'cross_char_base3lang':69, 'cross_char_base1lang':20, # val:31, novel:31
+    'cross_char_base12lang':350, 'cross_char_base3lang':69, 'cross_char_base1lang':20, # val:31, novel:31
     'cross':100, 'cross_base80cl':80, 'cross_base20cl':20, # val:50, novel:50
 }
 
