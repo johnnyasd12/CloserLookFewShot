@@ -16,6 +16,7 @@ class ProtoNet(MetaTemplate):
     def __init__(self, model_func,  n_way, n_support):
         super(ProtoNet, self).__init__( model_func,  n_way, n_support)
         self.loss_fn = nn.CrossEntropyLoss()
+        self.loss_fn_wo_reduce = nn.CrossEntropyLoss(reduction='none')
 
 
     def set_forward(self,x,is_feature = False):
@@ -41,6 +42,19 @@ class ProtoNet(MetaTemplate):
         y_query = Variable(y_query.cuda())
         scores = self.set_forward(x)
         return self.loss_fn(scores, y_query )
+    
+    def splitfeat_set_forward(self,z_support,z_query):
+        ''' get the last output (scores of query set) from split embeddings (.cuda())
+        Returns:
+            shape: (n_way*n_query, n_way)
+        '''
+#         z_support, z_query  = self.parse_feature(x,is_feature)
+        z_support   = z_support.contiguous()
+        z_proto     = z_support.view(self.n_way, self.n_support, -1 ).mean(1) #the shape of z is [n_data, n_dim]
+        z_query     = z_query.contiguous().view(self.n_way* self.n_query, -1 )
+        dists = euclidean_dist(z_query, z_proto)
+        scores = -dists
+        return scores
     
     def forwardout2prob(self, forward_outputs):
         '''

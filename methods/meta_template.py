@@ -89,11 +89,16 @@ class MetaTemplate(nn.Module):
         '''
         pass
 
-    def forwardout2loss(self, scores):
+    def forwardout2loss(self, scores, return_respective=False):
         y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
         y_query = Variable(y_query.cuda())
         loss = self.loss_fn(scores, y_query )
-        return loss
+        
+        if return_respective:
+            sample_losses = self.loss_fn_wo_reduce(scores, y_query)
+            return loss, sample_losses
+        else:
+            return loss
     
     def forward(self,x):
         ''' get feature embedding Tensor???

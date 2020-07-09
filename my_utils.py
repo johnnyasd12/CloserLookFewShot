@@ -368,21 +368,24 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         return acc
     
-    def get_cand_prob_diversities(supp_prob_each_candidate, measure):
+    def get_cand_prob_diversities(candidate_supp_prob, measure):
         '''
         Args:
-            supp_prob_each_candidate (list): of prob arrays with shape: (n_way, n_shot, n_way) (or (n_way*n_shot, n_way))
-            measure (str): 'abs_diff', 'cross_entropy'
+            candidate_supp_prob (ndarray): candidate prob arrays with shape: (n_test_candidates, n_way, n_shot, n_way)
+            measure (str): 'abs_diff', 'abs_diff_ignore_true_class', 'cross_entropy'
         '''
-        # TODO:
+        candidate_probs = candidate_supp_prob.reshape(params.n_test_candidates, n_way*n_shot*n_way)
         
         
-        for supp_prob in supp_prob_each_candidate:
-            pass
+        for i, supp_prob in enumerate(candidate_probs):
+            i_candidate_diff = candidate_probs - supp_prob
+            print('i_candidate_diff:', i_candidate_diff)
+            hohohoho
         
         
     
-    def get_result(model, z_all, n_way, n_support, n_query, metric, return_prob=False):
+    def get_result(model, z_all, n_way, n_support, n_query, metric, 
+                   return_prob=False):
         
         # make model can parse feature correctly
         model.n_support = n_support
@@ -395,17 +398,26 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         if metric == 'acc':
 #             pred = get_pred(model, z_all)
             y = np.repeat(range( n_way ), model.n_query )
-            result = np.mean(pred == y)*100
+#             result = np.mean(pred == y)*100
+            sample_accs = (pred == y)*100
+            acc = np.mean(sample_accs)
+            respective = sample_accs
+            result = acc
         elif metric == 'loss':
-#             forward_outputs = get_forward_outputs(model, z_all)
-            result = model.forwardout2loss(forward_outputs)
+#             result = model.forwardout2loss(forward_outputs)
+            loss, sample_losses = model.forwardout2loss(forward_outputs, return_respective=True)
+            respective = sample_losses
+            result = loss
         else:
             raise ValueError('Unknown metric: %s'%(metric))
         
+        ##### debug
+#         print('my_utils/get_result()/respective:', type(respective), respective)
+        
         if return_prob:
-            return result, prob
+            return result, respective, prob
         else:
-            return result
+            return result, respective
     
     def get_result_loocv(model, z_all, n_way, metric, the_one='val', return_all_probs=False):
         '''
@@ -414,6 +426,11 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             z_all (torch.Tensor): shape=(n_way, n_data, feature_dim) contain sub_support & sub_query set
             metric (str): 'acc' or 'loss'
         '''
+        
+        if 'loss' in metric: # 'loss_bagging'
+            metric = 'loss'
+        elif 'acc' in metric:
+            metric = 'acc'
         
         n_data_per_class = z_all.size(1) # not sure lol, usually 5, also n_fold
         k_fold = n_data_per_class
@@ -431,31 +448,44 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         result_cv = [0]*k_fold
         original_ids = [k for k in range(k_fold)]
         
-#         cv_probs = [[None]*n_data_per_class for _ in range(n_way)] # (n_way, n_data_per_class, n_classes(=n_way))
-        cv_probs = np.zeros((n_way, n_data_per_class, n_way)) # (n_way, n_data_per_class, n_classes(=n_way))
-#         print('cv_probs:', cv_probs)
+#         supp_probs = [[None]*n_data_per_class for _ in range(n_way)] # (n_way, n_data_per_class, n_classes(=n_way))
+        supp_probs = np.zeros((n_way, n_data_per_class, n_way)) # (n_way, n_data_per_class, n_classes(=n_way))
+        supp_results = np.zeros((n_way, n_data_per_class))
+#         print('supp_probs:', supp_probs)
         
-        for k in range(k_fold):
+        for k in range(k_fold): # k_fold = n_data_per_class
             # get swapped features
             swapped_ids = original_ids.copy()
             swapped_ids[swap_the_one_per_class] = k
             swapped_ids[k] = swap_the_one_per_class
             z_swapped = torch.index_select(z_all, 1, torch.LongTensor(swapped_ids).cuda())
         
-            result, prob = get_result(
-                model=model, z_all=z_swapped, 
-                n_way=n_way, n_support=n_support_cv, n_query=n_query_cv, 
-                metric=metric, return_prob = True
-            )
+            if return_all_probs:
+                result, sample_results, prob = get_result(
+                    model=model, z_all=z_swapped, 
+                    n_way=n_way, n_support=n_support_cv, n_query=n_query_cv, 
+                    metric=metric, return_prob = True
+                )
+            else:
+                result, sample_results = get_result(
+                    model=model, z_all=z_swapped, 
+                    n_way=n_way, n_support=n_support_cv, n_query=n_query_cv, 
+                    metric=metric, return_prob = False
+                )
             result_cv[k]=result
 #             print('get_result_loocv()/prob.shape:', prob.shape) # shape: (n_data(=n_way), n_classes(=n_way))
             for n in range(n_way):
-                cv_probs[n, k, :] = prob[n]
-#         print('cv_probs after loop:', cv_probs)
-#         print('cv_probs.sum(axis=2) after loop:', cv_probs.sum(axis=2)) # sum is 1, no problem
+                supp_probs[n, k, :] = prob[n]
+                supp_results[n, k] = sample_results[n]
+
+#         print('supp_results after loop:', supp_results)
+#         print('supp_probs after loop:', supp_probs)
+#         print('supp_probs.sum(axis=2) after loop:', supp_probs.sum(axis=2)) # sum is 1, no problem
         
         if return_all_probs:
-            return sum(result_cv)/k_fold, cv_probs
+            return supp_results, supp_probs
+#             return supp_results.sum()/(n_way*n_data_per_class), supp_probs
+#             return sum(result_cv)/k_fold, supp_probs
         else:
             return sum(result_cv)/k_fold
     
@@ -511,6 +541,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             # here seems took most of the time cost
             sub_result_each_candidate = [] # store sub_query set result of each candidate
             
+            candidate_sample_results = np.zeros((params.n_test_candidates, n_way, n_support))
             supp_prob_each_candidate = [] # 7/7 store each support data (as sub-query) prediction of each candidate
             query_prob_each_candidate = [] # 7/7 store query set prediction of each candidate
             
@@ -540,14 +571,18 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 # leave-one-out (per-class) cross validation
                 loopccv_the_one = 'val' # None, 'train', 'val'
                 if loopccv_the_one is not None:
-                    sub_result, supp_prob = get_result_loocv(
+                    supp_sample_results, supp_prob = get_result_loocv(
                         model=model, z_all=z_support, 
                         n_way=n_way, the_one=loopccv_the_one, 
                         metric=params.candidate_metric, return_all_probs=True)
-                    supp_prob = supp_prob.reshape(n_way*n_support, n_way)
+#                     supp_prob = supp_prob.reshape(n_way*n_support, n_way)
                     # originally (n_way, n_supp, n_way) should I change to (n_way*n_support, n_way)???
 #                     print('supp_prob.shape:', supp_prob.shape) 
+                    
+                    candidate_sample_results[n] = supp_sample_results
+                    sub_result = supp_sample_results.sum() / (n_way*n_support)
                     supp_prob_each_candidate.append(supp_prob)
+                    
                 else: # testing without loopccv
                     n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
                     n_sub_query = n_support - n_sub_support # those who are rest
@@ -564,16 +599,31 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             sub_result_each_candidate = np.array(sub_result_each_candidate)
             if params.candidate_metric == 'acc':
                 sorted_candidate_ids = np.argsort(-sub_result_each_candidate) # in descent order
+                elected_ids = sorted_candidate_ids[:n_ensemble]
+                
             elif params.candidate_metric == 'loss':
                 sorted_candidate_ids = np.argsort(sub_result_each_candidate) # in ascent order
+                elected_ids = sorted_candidate_ids[:n_ensemble]
+                
+            elif params.candidate_metric == 'loss_bagging':
+                candidate_sample_results = candidate_sample_results.reshape(params.n_test_candidates, n_way*n_support)
+                elected_ids = -np.ones(n_ensemble).astype(int)
+                for i in range(n_ensemble):
+                    resampled_ids = np.random.choice(n_way*n_support, n_way*n_support, replace=True)
+                    candidate_resampled_sample_results = candidate_sample_results[:, resampled_ids]
+                    candidate_resampled_result = candidate_resampled_sample_results.mean(axis=1)
+                    elected_id = np.argmin(candidate_resampled_result)
+                    elected_ids[i] = elected_id
+                
             elif params.candidate_metric == 'diversity_abs':
                 # TODO
-                diversity_each_candidate = get_cand_prob_diversities(supp_prob_each_candidate, measure='abs_diff')
+                candidate_supp_prob = np.asarray(supp_prob_each_candidate) # shape: (n_test_candidates, n_way, n_shot, n_classes(=n_way))
+                diversity_each_candidate = get_cand_prob_diversities(candidate_supp_prob, measure='abs_diff')
                 
                 
             else:
                 raise ValueError('Unknown candidate_metric: %s'%(metric))
-            elected_ids = sorted_candidate_ids[:n_ensemble]
+            
         
         
         ################### do the ensemble ###################
