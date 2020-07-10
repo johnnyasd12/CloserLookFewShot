@@ -121,7 +121,7 @@ def parse_args(script, parse_str=None):
         # CustomDropout parameter
         parser.add_argument('--frac_ensemble', default=None, type=float, help='the final fraction of dropout subnets ensemble. (default only 1 subnet, no ensemble)')
         parser.add_argument('--candidate_metric', default='acc', choices=['acc', 'loss', 'diversity_abs'], type=str, help='To choose the ensemble subnets, according to  which metric of sub-validation set. (if None then "acc")')
-        parser.add_argument('--ensemble_strategy', default='vote', choices=['vote', 'avg_prob'], type=str, help='How to get the prediction of networks ensemble, only available when argument "frac_ensemble" is assigned.') # originally default None, but causes BUGGGGGG so modified to 'vote'. 
+        parser.add_argument('--ensemble_strategy', default='vote', choices=['vote', 'avg_prob', 'bagging'], type=str, help='How to get the prediction of networks ensemble, only available when argument "frac_ensemble" is assigned.') # originally default None, but causes BUGGGGGG so modified to 'vote'. 
         
         
     elif script == 'draw_features':

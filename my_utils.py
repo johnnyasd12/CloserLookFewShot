@@ -401,30 +401,31 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
 #             result = np.mean(pred == y)*100
             sample_accs = (pred == y)*100
             acc = np.mean(sample_accs)
-            respective = sample_accs
+            sample_results = sample_accs
             result = acc
         elif metric == 'loss':
 #             result = model.forwardout2loss(forward_outputs)
             loss, sample_losses = model.forwardout2loss(forward_outputs, return_respective=True)
-            respective = sample_losses
+            sample_results = sample_losses
             result = loss
         else:
             raise ValueError('Unknown metric: %s'%(metric))
         
         ##### debug
-#         print('my_utils/get_result()/respective:', type(respective), respective)
+#         print('my_utils/get_result()/sample_results:', type(sample_results), sample_results)
         
         if return_prob:
-            return result, respective, prob
+            return result, sample_results, prob
         else:
-            return result, respective
+            return result, sample_results
     
-    def get_result_loocv(model, z_all, n_way, metric, the_one='val', return_all_probs=False):
+    def get_result_loocv(model, z_all, n_way, metric, the_one='loopccv_one_val', return_all_probs=False):
         '''
         Actually not really leave-one-out but "leave-one-out per-class"!!!
         Args:
             z_all (torch.Tensor): shape=(n_way, n_data, feature_dim) contain sub_support & sub_query set
-            metric (str): 'acc' or 'loss'
+            metric (str): 'acc'|'loss'|'loss_bagging'
+            the_one (str): 'loopccv_one_val'|'loopccv_one_train'
         '''
         
         if 'loss' in metric: # 'loss_bagging'
@@ -436,10 +437,10 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         k_fold = n_data_per_class
 #         n_way = z_all.size(0)
         
-        n_support_cv = 1 if the_one=='train' else n_data_per_class - 1
+        n_support_cv = 1 if the_one=='loopccv_one_train' else n_data_per_class - 1
         n_query_cv = n_data_per_class - n_support_cv
         
-        swap_the_one_per_class = 0 if the_one=='train' else n_data_per_class-1 # first or last
+        swap_the_one_per_class = 0 if the_one=='loopccv_one_train' else n_data_per_class-1 # first or last
         # TODO: NO NEED THIS if all use get_results. (make model can parse feature correctly)
         # TODO: or NO NEED function args "n_support" & "n_query" if already here
         model.n_support = n_support_cv
@@ -474,9 +475,9 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 )
             result_cv[k]=result
 #             print('get_result_loocv()/prob.shape:', prob.shape) # shape: (n_data(=n_way), n_classes(=n_way))
-            for n in range(n_way):
-                supp_probs[n, k, :] = prob[n]
-                supp_results[n, k] = sample_results[n]
+            for way in range(n_way):
+                supp_probs[way, k, :] = prob[way]
+                supp_results[way, k] = sample_results[way]
 
 #         print('supp_results after loop:', supp_results)
 #         print('supp_probs after loop:', supp_probs)
@@ -539,14 +540,37 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         else: 
             # validate sub-performance to choose from candidates
             # here seems took most of the time cost
+            n_ensemble = 1 if params.frac_ensemble == None else int(params.frac_ensemble*params.n_test_candidates)
+            ensemble_strategy = params.ensemble_strategy # 'avg_prob', 'bagging', 'vote'
+            
+            if ensemble_strategy == 'bagging':
+                
+                candidate_resample_results = [] # size: (n_cands, n_ensemble)
+                
+                n_sub_support_each_resampling = []
+                resampled_ids_each_resample = []
+                for _ in range(n_ensemble):
+                    n_sub_support = n_support-1 #np.random.choice(n_support-1) + 1 # 1 ~ n_support-1 or fixed as n_support-1???
+                    n_sub_support_each_resampling.append(n_sub_support)
+                    resampled_id_each_way = []
+                    for way in range(n_way):
+                        resampled_id = np.arange(n_support)
+                        resampled_sub_support_id = np.random.choice(n_sub_support, n_sub_support, replace=True)
+                        resampled_id[:n_sub_support] = resampled_sub_support_id
+                        resampled_id_each_way.append(resampled_id)
+                    resampled_ids_each_resample.append(resampled_id_each_way)
+                ##### debug
+#                 print('resampled_ids_each_resample:\n', resampled_ids_each_resample)
+                    
+            
             sub_result_each_candidate = [] # store sub_query set result of each candidate
             
             candidate_sample_results = np.zeros((params.n_test_candidates, n_way, n_support))
             supp_prob_each_candidate = [] # 7/7 store each support data (as sub-query) prediction of each candidate
             query_prob_each_candidate = [] # 7/7 store query set prediction of each candidate
             
-            for n in range(params.n_test_candidates): # for each candidate
-                cl_feature_dict = cl_feature_each_candidate[n] # features of the candidate
+            for cand_id in range(params.n_test_candidates): # for each candidate
+                cl_feature_dict = cl_feature_each_candidate[cand_id] # features of the candidate
 
                 z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
                 z_all = torch.from_numpy(z_all) # z_support & z_query
@@ -569,60 +593,83 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                     model.n_way  = z_support.size(0)
                 # TODO: tunable n_sub_support
                 # leave-one-out (per-class) cross validation
-                loopccv_the_one = 'val' # None, 'train', 'val'
-                if loopccv_the_one is not None:
-                    supp_sample_results, supp_prob = get_result_loocv(
-                        model=model, z_all=z_support, 
-                        n_way=n_way, the_one=loopccv_the_one, 
-                        metric=params.candidate_metric, return_all_probs=True)
-#                     supp_prob = supp_prob.reshape(n_way*n_support, n_way)
-                    # originally (n_way, n_supp, n_way) should I change to (n_way*n_support, n_way)???
-#                     print('supp_prob.shape:', supp_prob.shape) 
+                
+                
+                
+                val_mode = 'loopccv_one_val' # None, 'train', 'val'
+                
+                if ensemble_strategy in ['avg_prob', 'vote']:
+                    if 'loopccv_one' in val_mode:
+                        supp_cv_sample_results, supp_prob = get_result_loocv(
+                            model=model, z_all=z_support, 
+                            n_way=n_way, the_one=val_mode, 
+                            metric=params.candidate_metric, return_all_probs=True)
+    #                     supp_prob = supp_prob.reshape(n_way*n_support, n_way)
+                        # originally (n_way, n_supp, n_way) should I change to (n_way*n_support, n_way)???
+    #                     print('supp_prob.shape:', supp_prob.shape) 
+
+                        candidate_sample_results[cand_id] = supp_cv_sample_results
+                        sub_result = supp_cv_sample_results.sum() / (n_way*n_support)
+                        supp_prob_each_candidate.append(supp_prob)
+                    else: # testing without loopccv
+                        n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
+                        n_sub_query = n_support - n_sub_support # those who are rest
+                        sub_result = get_result(
+                            model=model, z_all=z_support, 
+                            n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
+                            metric=params.candidate_metric)
+
+                    sub_result_each_candidate.append(sub_result)
+
+                elif ensemble_strategy == 'bagging':
                     
-                    candidate_sample_results[n] = supp_sample_results
-                    sub_result = supp_sample_results.sum() / (n_way*n_support)
-                    supp_prob_each_candidate.append(supp_prob)
+                    result_each_resample = []
+                    ##### debug
+#                     print('cand_id:', cand_id)
+                    for resample_num in range(n_ensemble):
+#                         n_sub_support = np.random.choice(n_support-1) + 1 # 1 ~ n_support-1
+                        n_sub_support = n_sub_support_each_resampling[resample_num]
+                        n_sub_query = n_support - n_sub_support # TODO: maybe can use all (n_support)???
+                        
+                        z_support_resampled = z_support.data.cpu().numpy() # shape: (n_way, n_support, *n_dim)
+#                         print('resample_num:', resample_num, ', n_sub_support:', n_sub_support)
+                        resampled_id_each_way = resampled_ids_each_resample[resample_num]
+                        for way in range(n_way): 
+                            # sample sub_support set (with replacement) for each class
+                            # other samples should be query data in each class
+                            resampled_id = resampled_id_each_way[way]
+#                             print('resampled_id:', resampled_id)
+                            z_support_resampled[way] = z_support_resampled[way][resampled_id]
+                            
+                        
+                        z_support_resampled = torch.from_numpy(z_support_resampled)
+                        result, sample_results = get_result(
+                            model=model, z_all=z_support_resampled, 
+                            n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
+                            metric=params.candidate_metric, return_prob=False)
+                        result_each_resample.append(result)
                     
-                else: # testing without loopccv
-                    n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
-                    n_sub_query = n_support - n_sub_support # those who are rest
-                    sub_result = get_result(
-                        model=model, z_all=z_support, 
-                        n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
-                        metric=params.candidate_metric)
+                    candidate_resample_results.append(result_each_resample)
 
-                sub_result_each_candidate.append(sub_result)
+            ##### get ensemble ids #####
+            if params.ensemble_strategy in ['avg_prob', 'vote']:
+                sub_result_each_candidate = np.array(sub_result_each_candidate)
+                if params.candidate_metric == 'acc':
+                    sorted_candidate_ids = np.argsort(-sub_result_each_candidate) # in descent order
+                    elected_ids = sorted_candidate_ids[:n_ensemble]
 
-            n_ensemble = 1 if params.frac_ensemble == None else int(params.frac_ensemble*params.n_test_candidates)
+                elif params.candidate_metric == 'loss':
+                    sorted_candidate_ids = np.argsort(sub_result_each_candidate) # in ascent order
+                    elected_ids = sorted_candidate_ids[:n_ensemble]
 
-            # get ensemble ids
-            sub_result_each_candidate = np.array(sub_result_each_candidate)
-            if params.candidate_metric == 'acc':
-                sorted_candidate_ids = np.argsort(-sub_result_each_candidate) # in descent order
-                elected_ids = sorted_candidate_ids[:n_ensemble]
-                
-            elif params.candidate_metric == 'loss':
-                sorted_candidate_ids = np.argsort(sub_result_each_candidate) # in ascent order
-                elected_ids = sorted_candidate_ids[:n_ensemble]
-                
-            elif params.candidate_metric == 'loss_bagging':
-                candidate_sample_results = candidate_sample_results.reshape(params.n_test_candidates, n_way*n_support)
-                elected_ids = -np.ones(n_ensemble).astype(int)
-                for i in range(n_ensemble):
-                    resampled_ids = np.random.choice(n_way*n_support, n_way*n_support, replace=True)
-                    candidate_resampled_sample_results = candidate_sample_results[:, resampled_ids]
-                    candidate_resampled_result = candidate_resampled_sample_results.mean(axis=1)
-                    elected_id = np.argmin(candidate_resampled_result)
-                    elected_ids[i] = elected_id
-                
-            elif params.candidate_metric == 'diversity_abs':
-                # TODO
-                candidate_supp_prob = np.asarray(supp_prob_each_candidate) # shape: (n_test_candidates, n_way, n_shot, n_classes(=n_way))
-                diversity_each_candidate = get_cand_prob_diversities(candidate_supp_prob, measure='abs_diff')
-                
-                
-            else:
-                raise ValueError('Unknown candidate_metric: %s'%(metric))
+                else:
+                    raise ValueError('Unknown candidate_metric: %s'%(metric))
+            elif params.ensemble_strategy == 'bagging':
+                candidate_resample_results = np.asarray(candidate_resample_results) # shape: (n_test_candidates, n_ensemble)
+                if params.candidate_metric == 'loss':
+                    elected_ids = candidate_resample_results.argmin(axis=0)
+                elif params.candidate_metric == 'acc':
+                    elected_ids = candidate_resample_results.argmax(axis=0)
             
         
         
@@ -643,6 +690,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             elif params.ensemble_strategy=='vote':
                 raise ValueError('stop using ensemble_strategy: vote.')
                 pred = get_pred(model, z_all)
+            elif params.ensemble_strategy=='bagging':
+                pred = get_pred(model, z_all, prob=True)
             else:
                 raise ValueError('Invalid ensemble_strategy: %s'%(params.ensemble_strategy))
             all_preds.append(pred)
@@ -656,7 +705,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             all_preds = all_preds.T # shape:(n_query*n_way, n_ensemble) for 'vote'
             ensemble_preds = [np.argmax(np.bincount(preds)) for preds in all_preds]
             ensemble_preds = np.array(ensemble_preds)
-        elif params.ensemble_strategy=='avg_prob':
+        elif params.ensemble_strategy in ['avg_prob', 'bagging']:
             ensemble_probs = all_preds.mean(axis=0) # shape=(n_query*n_way, n_way)
 #             print('avg_prob/ensemble_preds.shape (after mean)', ensemble_preds.shape)
             ensemble_preds = np.argmax(ensemble_probs, axis=1) # shape=(n_query*n_way)
