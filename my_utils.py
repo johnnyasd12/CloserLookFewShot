@@ -619,19 +619,27 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 z_all = torch.from_numpy(z_all) # z_support & z_query
 
                 # reset back
+                ################### do the ensemble ###################
+                elected_probs = []
+
+                # reset back
                 model.n_support = n_support
                 model.n_query = n_query
-                z_support, z_query  = model.parse_feature(z_all,is_feature=True)
-                # z_support.shape:(n_way, n_support, *feature_dims)
-                # z_query.shape:(n_way, n_query, *feature_dims)
-                z_support   = z_support.contiguous()
+                # repeat procedure of common setting to get query prediction
+                ensemble_probs = np.zeros((n_way*n_query, n_way)) # shape
+                for t in range(n_ensemble):
+                    elected_id = elected_ids[t]
+                    cl_feature_dict = cl_feature_each_candidate[elected_id]
+                    z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
+                    z_all = torch.from_numpy(z_all) # z_support & z_query
+                    prob = get_pred(model, z_all, prob=True)
+                    elected_probs.append(prob)
+                    ensemble_probs += alphas[t] * prob
 
-                if model.change_way:
-                    model.n_way  = z_support.size(0)
+                # elected_probs shape=(n_ensemble, n_query*n_way) for 'vote'
+                # elected_probs shape=(n_ensemble, n_query*n_way, n_way) for 'avg_prob'
+                elected_probs = np.array(elected_probs)
                 
-                result, sample_results, sample_probs = get_result(
-                    model=model, z_all=z_all, n_way=n_way, n_support=n_support, n_query=n_query, 
-                    metric=params.candidate_metric, return_prob=True)
                 
         
         elif ensemble_strategy in ['avg_prob', 'vote', 'bagging']:
