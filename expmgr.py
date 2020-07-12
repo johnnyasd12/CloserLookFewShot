@@ -291,6 +291,11 @@ class ExpManager:
                     if mode != 'tmp_pkl':
                         print('Saving record to:', csv_path)
                         record_to_csv(final_test_args, write_record, csv_path=csv_path)
+                        
+                        print('='*20, 'Current Experiments', '='*20)
+                        choose_by = 'val_acc_mean'
+                        top_k = None
+                        self.sum_up_results(choose_by, top_k)
                     
                     write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
                     self.results_pkl.append(write_record)
