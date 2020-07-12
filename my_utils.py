@@ -231,8 +231,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         return task_paths
     
-#     def record_task_pred(z_all, task_data):
-    def record_task_pred(pred_prob, task_data):
+#     def record_acc_and_task_pred(z_all, task_data):
+    def record_acc_and_task_pred(pred_prob, task_data):
 #         # make model can parse feature correctly
 #         model.n_support = n_support
 #         model.n_query = n_query
@@ -386,7 +386,10 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
     
     def get_result(model, z_all, n_way, n_support, n_query, metric, 
                    return_prob=False):
-        
+        '''
+        Returns:
+            prob (ndarray): shape=(n_way*n_query, n_way)???
+        '''
         # make model can parse feature correctly
         model.n_support = n_support
         model.n_query = n_query
@@ -449,8 +452,9 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         result_cv = [0]*k_fold
         original_ids = [k for k in range(k_fold)]
         
-#         supp_probs = [[None]*n_data_per_class for _ in range(n_way)] # (n_way, n_data_per_class, n_classes(=n_way))
-        supp_probs = np.zeros((n_way, n_data_per_class, n_way)) # (n_way, n_data_per_class, n_classes(=n_way))
+        if return_all_probs:
+    #         supp_probs = [[None]*n_data_per_class for _ in range(n_way)] # (n_way, n_data_per_class, n_classes(=n_way))
+            supp_probs = np.zeros((n_way, n_data_per_class, n_way)) # (n_way, n_data_per_class, n_classes(=n_way))
         supp_results = np.zeros((n_way, n_data_per_class))
 #         print('supp_probs:', supp_probs)
         
@@ -476,7 +480,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             result_cv[k]=result
 #             print('get_result_loocv()/prob.shape:', prob.shape) # shape: (n_data(=n_way), n_classes(=n_way))
             for way in range(n_way):
-                supp_probs[way, k, :] = prob[way]
+                if return_all_probs:
+                    supp_probs[way, k, :] = prob[way]
                 supp_results[way, k] = sample_results[way]
 
 #         print('supp_results after loop:', supp_results)
@@ -489,6 +494,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
 #             return sum(result_cv)/k_fold, supp_probs
         else:
             return sum(result_cv)/k_fold
+    
+    
     
     class_list = cl_feature_each_candidate[0].keys()
     select_class = random.sample(class_list,n_way)
@@ -528,25 +535,117 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             model.n_query = n_query
             # get prediction
             pred_prob = get_pred(model, z_all = z_all, prob = True)
-            record_task_pred(pred_prob = pred_prob, task_data = task_data)
+            record_acc_and_task_pred(pred_prob = pred_prob, task_data = task_data)
     
     else: # n_test_candidates setting
         assert params.n_test_candidates == len(cl_feature_each_candidate), "features & params mismatch."
         
         ################### choose those subnets to ensemble ###################
-        if params.frac_ensemble == 1:
-            # just use all the candidates, so no need to compute sub-performance
-            elected_ids = np.array(range(params.n_test_candidates))
-        else: 
-            # validate sub-performance to choose from candidates
-            # here seems took most of the time cost
-            n_ensemble = 1 if params.frac_ensemble == None else int(params.frac_ensemble*params.n_test_candidates)
-            ensemble_strategy = params.ensemble_strategy # 'avg_prob', 'bagging', 'vote'
+        
+        ensemble_strategy = params.ensemble_strategy # 'avg_prob', 'bagging', 'adaboost', 'vote'
+        n_ensemble = 1 if params.frac_ensemble == None else int(params.frac_ensemble*params.n_test_candidates)
+        
+        if ensemble_strategy == 'adaboost':
+            ##### initialize data for adaboost #####
+            elected_ids = [-1]*n_ensemble
+            epsilons = [-1]*n_ensemble
+            factors = [-1]*n_ensemble
+            alphas = [-1]*n_ensemble
+            
+            candidate_sample_results = np.zeros((params.n_test_candidates, n_way, n_support))
+            
+            for cand_id in range(params.n_test_candidates): # for each candidate
+                cl_feature_dict = cl_feature_each_candidate[cand_id] # features of the candidate
+
+                z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
+                z_all = torch.from_numpy(z_all) # z_support & z_query
+
+                # reset back
+                model.n_support = n_support
+                model.n_query = n_query
+                z_support, z_query  = model.parse_feature(z_all,is_feature=True)
+                # z_support.shape:(n_way, n_support, *feature_dims)
+                # z_query.shape:(n_way, n_query, *feature_dims)
+                z_support   = z_support.contiguous()
+
+                if model.change_way:
+                    model.n_way  = z_support.size(0)
+                
+                split_sub_query = True
+                
+                if split_sub_query:
+                    sample_results, sample_probs = get_result_loocv(
+                        model=model, z_all=z_support, 
+                        n_way=n_way, the_one='loopccv_one_val', 
+                        metric=params.candidate_metric, return_all_probs=True) # to get sample_results
+                    
+                else: # use whole support set as sub_support set & sub_query set (acc too high to adaboost)
+                    z_support_doubled = z_support.repeat(1,2,1) # copy alone n_shot dimension
+                    n_sub_support = n_support # 1 | n_support-1 | n_support//2, 1 seems better?
+                    n_sub_query = n_support # those who are rest
+                    sub_result, sample_results = get_result(
+                        model=model, z_all=z_support_doubled, 
+                        n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
+                        metric=params.candidate_metric, return_prob=False)
+                
+                # sample_results.shape = (n_way*n_sub_query)(=(n_way*n_support))
+                candidate_sample_results[cand_id] = sample_results.reshape(n_way,n_support)
+                
+            data_weights = np.ones((n_way, n_support)) * 1/(n_way*n_support) # initialize as 1/N_data
+            if params.candidate_metric == 'acc': # should be acc
+                # originally 100 or 0, transfer to 0/1 error
+                candidate_sample_errors = 1 - candidate_sample_results/candidate_sample_results.max()
+            else:
+                raise ValueError('Unsupported candidate_metric for adaboost ensemble.')
+            
+            for t in range(n_ensemble):
+                # broadcast!!!
+                candidate_weighted_sample_errors = candidate_sample_errors * data_weights / data_weights.sum()
+                candidate_weighted_error = candidate_weighted_sample_errors.sum(axis=(1,2))
+                elected_ids[t] = candidate_weighted_error.argmin(axis=0)
+                elected_sample_errors = candidate_sample_errors[elected_ids[t]]
+                epsilons[t] = candidate_weighted_error[elected_ids[t]] # weighted error rate
+
+                factors[t] = np.sqrt((1-epsilons[t])/epsilons[t])
+                alphas[t] = np.log(factors[t])
+                multiply_weights = np.zeros_like(elected_sample_errors)
+                multiply_weights[elected_sample_errors==1] = factors[t] # error
+                multiply_weights[elected_sample_errors==0] = 1/factors[t] # correct
+                data_weights = data_weights*multiply_weights
+                
+                # TODO: CHANGE cand_id to be elected_ids[t]
+                cl_feature_dict = cl_feature_each_candidate[elected_ids[t]] # features of the candidate
+                z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
+                z_all = torch.from_numpy(z_all) # z_support & z_query
+
+                # reset back
+                model.n_support = n_support
+                model.n_query = n_query
+                z_support, z_query  = model.parse_feature(z_all,is_feature=True)
+                # z_support.shape:(n_way, n_support, *feature_dims)
+                # z_query.shape:(n_way, n_query, *feature_dims)
+                z_support   = z_support.contiguous()
+
+                if model.change_way:
+                    model.n_way  = z_support.size(0)
+                
+                result, sample_results, sample_probs = get_result(
+                    model=model, z_all=z_all, n_way=n_way, n_support=n_support, n_query=n_query, 
+                    metric=params.candidate_metric, return_prob=True)
+                
+        
+        elif ensemble_strategy in ['avg_prob', 'vote', 'bagging']:
+#         if ensemble_strategy in ['avg_prob', 'vote', 'bagging', 'adaboost']:
+            
+#             if ensemble_strategy == 'adaboost':
+#                 ##### initialize data for adaboost #####
+#                 candidate_ids = [-1]*n_ensemble
+#                 epsilons = [-1]*n_ensemble
+#                 alphas = [-1]*n_ensemble
             
             if ensemble_strategy == 'bagging':
-                
-                candidate_resample_results = [] # size: (n_cands, n_ensemble)
-                
+                ##### initialize indices and recorded results for bagging #####
+                candidate_resample_results = [] # recorded result, size: (n_cands, n_ensemble)
                 n_sub_support_each_resampling = []
                 resampled_ids_each_resample = []
                 for _ in range(n_ensemble):
@@ -559,163 +658,153 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                         resampled_id[:n_sub_support] = resampled_sub_support_id
                         resampled_id_each_way.append(resampled_id)
                     resampled_ids_each_resample.append(resampled_id_each_way)
-                ##### debug
-#                 print('resampled_ids_each_resample:\n', resampled_ids_each_resample)
-                    
             
-            sub_result_each_candidate = [] # store sub_query set result of each candidate
-            
-            candidate_sample_results = np.zeros((params.n_test_candidates, n_way, n_support))
-            supp_prob_each_candidate = [] # 7/7 store each support data (as sub-query) prediction of each candidate
-            query_prob_each_candidate = [] # 7/7 store query set prediction of each candidate
-            
-            for cand_id in range(params.n_test_candidates): # for each candidate
-                cl_feature_dict = cl_feature_each_candidate[cand_id] # features of the candidate
+            if params.frac_ensemble == 1 and ensemble_strategy in ['avg_prob', 'vote']:
+                # just use all the candidates, so no need to compute sub-performance
+                elected_ids = np.array(range(params.n_test_candidates))
+            else: 
+                # validate sub-performance to choose from candidates
+                # here seems took most of the time cost
 
+                if ensemble_strategy in ['avg_prob', 'vote']:
+                    sub_performance_each_candidate = [] # store sub_query set result of each candidate
+
+                candidate_sample_results = np.zeros((params.n_test_candidates, n_way, n_support))
+                # the following 2 lists seems useless currently
+                supp_prob_each_candidate = [] # 7/7 store each support data (as sub-query) prediction of each candidate
+                query_prob_each_candidate = [] # 7/7 store query set prediction of each candidate
+
+                for cand_id in range(params.n_test_candidates): # for each candidate
+                    cl_feature_dict = cl_feature_each_candidate[cand_id] # features of the candidate
+
+                    z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
+                    z_all = torch.from_numpy(z_all) # z_support & z_query
+
+                    # reset back
+                    model.n_support = n_support
+                    model.n_query = n_query
+                    z_support, z_query = model.parse_feature(z_all,is_feature=True)
+                    # z_support.shape:(n_way, n_support, *feature_dims)
+                    # z_query.shape:(n_way, n_query, *feature_dims)
+                    z_support   = z_support.contiguous()
+
+                    if model.change_way:
+                        model.n_way  = z_support.size(0)
+                    # TODO: tunable n_sub_support
+                    # leave-one-out (per-class) cross validation
+
+                    if ensemble_strategy in ['avg_prob', 'vote']:
+                        val_mode = 'loopccv_one_val' # None, 'train', 'val'
+                        if 'loopccv_one' in val_mode:
+                            supp_cv_sample_results, supp_prob = get_result_loocv(
+                                model=model, z_all=z_support, 
+                                n_way=n_way, the_one=val_mode, 
+                                metric=params.candidate_metric, return_all_probs=True)
+
+                            candidate_sample_results[cand_id] = supp_cv_sample_results
+                            sub_result = supp_cv_sample_results.sum() / (n_way*n_support)
+                            supp_prob_each_candidate.append(supp_prob) # seems useless currently??
+                        else: # testing without loopccv
+                            n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
+                            n_sub_query = n_support - n_sub_support # those who are rest
+                            sub_result, sample_results = get_result(
+                                model=model, z_all=z_support, 
+                                n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
+                                metric=params.candidate_metric)
+
+                        sub_performance_each_candidate.append(sub_result)
+
+                    elif ensemble_strategy == 'bagging':
+
+                        result_each_resample = []
+                        ##### debug
+    #                     print('cand_id:', cand_id)
+                        for resample_num in range(n_ensemble):
+                            n_sub_support = n_sub_support_each_resampling[resample_num]
+                            n_sub_query = n_support - n_sub_support # TODO: maybe can use all (n_support)???
+
+                            z_support_resampled = z_support.data.cpu().numpy() # shape: (n_way, n_support, *n_dim)
+    #                         print('resample_num:', resample_num, ', n_sub_support:', n_sub_support)
+                            resampled_id_each_way = resampled_ids_each_resample[resample_num]
+                            for way in range(n_way): 
+                                # sample sub_support set (with replacement) for each class
+                                # other samples should be query data in each class
+                                resampled_id = resampled_id_each_way[way]
+    #                             print('resampled_id:', resampled_id)
+                                z_support_resampled[way] = z_support_resampled[way][resampled_id]
+
+
+                            z_support_resampled = torch.from_numpy(z_support_resampled)
+                            result, sample_results = get_result(
+                                model=model, z_all=z_support_resampled, 
+                                n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
+                                metric=params.candidate_metric, return_prob=False)
+                            result_each_resample.append(result)
+
+                        candidate_resample_results.append(result_each_resample)
+
+                ##### get ensemble ids #####
+                if params.ensemble_strategy in ['avg_prob', 'vote']:
+                    sub_performance_each_candidate = np.array(sub_performance_each_candidate)
+                    if params.candidate_metric == 'acc':
+                        sorted_candidate_ids = np.argsort(-sub_performance_each_candidate) # in descent order
+                        elected_ids = sorted_candidate_ids[:n_ensemble]
+
+                    elif params.candidate_metric == 'loss':
+                        sorted_candidate_ids = np.argsort(sub_performance_each_candidate) # in ascent order
+                        elected_ids = sorted_candidate_ids[:n_ensemble]
+
+                    else:
+                        raise ValueError('Unknown candidate_metric: %s'%(metric))
+                elif params.ensemble_strategy == 'bagging':
+                    candidate_resample_results = np.asarray(candidate_resample_results) # shape: (n_test_candidates, n_ensemble)
+                    if params.candidate_metric == 'loss':
+                        elected_ids = candidate_resample_results.argmin(axis=0)
+                    elif params.candidate_metric == 'acc':
+                        elected_ids = candidate_resample_results.argmax(axis=0)
+
+
+
+            ################### do the ensemble ###################
+            all_preds = []
+
+            # reset back
+            model.n_support = n_support
+            model.n_query = n_query
+            # repeat procedure of common setting to get query prediction
+            for elected_id in elected_ids:
+                cl_feature_dict = cl_feature_each_candidate[elected_id]
                 z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
                 z_all = torch.from_numpy(z_all) # z_support & z_query
 
-                # reset back
-                model.n_support = n_support
-                model.n_query = n_query
-                z_support, z_query  = model.parse_feature(z_all,is_feature=True)# shape:(n_way, n_data, *feature_dims)
-                
-                # 7/7 to get query prob at the same time
-#                 if params.method == 'protonet':
-#                     query_scores = model.splitfeat_set_forward(z_support=z_support,z_query=z_query)
-#                     query_prob = model.forwardout2prob()
-#                 else:
-#                     raise ValueError('Unsupport method to test???')
-                
-                z_support   = z_support.contiguous()
-
-                if model.change_way:
-                    model.n_way  = z_support.size(0)
-                # TODO: tunable n_sub_support
-                # leave-one-out (per-class) cross validation
-                
-                
-                
-                val_mode = 'loopccv_one_val' # None, 'train', 'val'
-                
-                if ensemble_strategy in ['avg_prob', 'vote']:
-                    if 'loopccv_one' in val_mode:
-                        supp_cv_sample_results, supp_prob = get_result_loocv(
-                            model=model, z_all=z_support, 
-                            n_way=n_way, the_one=val_mode, 
-                            metric=params.candidate_metric, return_all_probs=True)
-    #                     supp_prob = supp_prob.reshape(n_way*n_support, n_way)
-                        # originally (n_way, n_supp, n_way) should I change to (n_way*n_support, n_way)???
-    #                     print('supp_prob.shape:', supp_prob.shape) 
-
-                        candidate_sample_results[cand_id] = supp_cv_sample_results
-                        sub_result = supp_cv_sample_results.sum() / (n_way*n_support)
-                        supp_prob_each_candidate.append(supp_prob)
-                    else: # testing without loopccv
-                        n_sub_support = 1 # 1 | n_support-1 | n_support//2, 1 seems better?
-                        n_sub_query = n_support - n_sub_support # those who are rest
-                        sub_result = get_result(
-                            model=model, z_all=z_support, 
-                            n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
-                            metric=params.candidate_metric)
-
-                    sub_result_each_candidate.append(sub_result)
-
-                elif ensemble_strategy == 'bagging':
-                    
-                    result_each_resample = []
-                    ##### debug
-#                     print('cand_id:', cand_id)
-                    for resample_num in range(n_ensemble):
-#                         n_sub_support = np.random.choice(n_support-1) + 1 # 1 ~ n_support-1
-                        n_sub_support = n_sub_support_each_resampling[resample_num]
-                        n_sub_query = n_support - n_sub_support # TODO: maybe can use all (n_support)???
-                        
-                        z_support_resampled = z_support.data.cpu().numpy() # shape: (n_way, n_support, *n_dim)
-#                         print('resample_num:', resample_num, ', n_sub_support:', n_sub_support)
-                        resampled_id_each_way = resampled_ids_each_resample[resample_num]
-                        for way in range(n_way): 
-                            # sample sub_support set (with replacement) for each class
-                            # other samples should be query data in each class
-                            resampled_id = resampled_id_each_way[way]
-#                             print('resampled_id:', resampled_id)
-                            z_support_resampled[way] = z_support_resampled[way][resampled_id]
-                            
-                        
-                        z_support_resampled = torch.from_numpy(z_support_resampled)
-                        result, sample_results = get_result(
-                            model=model, z_all=z_support_resampled, 
-                            n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
-                            metric=params.candidate_metric, return_prob=False)
-                        result_each_resample.append(result)
-                    
-                    candidate_resample_results.append(result_each_resample)
-
-            ##### get ensemble ids #####
-            if params.ensemble_strategy in ['avg_prob', 'vote']:
-                sub_result_each_candidate = np.array(sub_result_each_candidate)
-                if params.candidate_metric == 'acc':
-                    sorted_candidate_ids = np.argsort(-sub_result_each_candidate) # in descent order
-                    elected_ids = sorted_candidate_ids[:n_ensemble]
-
-                elif params.candidate_metric == 'loss':
-                    sorted_candidate_ids = np.argsort(sub_result_each_candidate) # in ascent order
-                    elected_ids = sorted_candidate_ids[:n_ensemble]
-
+                if params.ensemble_strategy=='avg_prob':
+                    pred = get_pred(model, z_all, prob=True)
+                elif params.ensemble_strategy=='vote':
+                    raise ValueError('stop using ensemble_strategy: vote.')
+                    pred = get_pred(model, z_all)
+                elif params.ensemble_strategy=='bagging':
+                    pred = get_pred(model, z_all, prob=True)
                 else:
-                    raise ValueError('Unknown candidate_metric: %s'%(metric))
-            elif params.ensemble_strategy == 'bagging':
-                candidate_resample_results = np.asarray(candidate_resample_results) # shape: (n_test_candidates, n_ensemble)
-                if params.candidate_metric == 'loss':
-                    elected_ids = candidate_resample_results.argmin(axis=0)
-                elif params.candidate_metric == 'acc':
-                    elected_ids = candidate_resample_results.argmax(axis=0)
-            
-        
-        
-        ################### do the ensemble ###################
-        all_preds = []
-        
-        # reset back
-        model.n_support = n_support
-        model.n_query = n_query
-        # repeat procedure of common setting to get query prediction
-        for elected_id in elected_ids:
-            cl_feature_dict = cl_feature_each_candidate[elected_id]
-            z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
-            z_all = torch.from_numpy(z_all) # z_support & z_query
-            
-            if params.ensemble_strategy=='avg_prob':
-                pred = get_pred(model, z_all, prob=True)
-            elif params.ensemble_strategy=='vote':
+                    raise ValueError('Invalid ensemble_strategy: %s'%(params.ensemble_strategy))
+                all_preds.append(pred)
+
+            # all_preds shape=(n_ensemble, n_query*n_way) for 'vote'
+            # all_preds shape=(n_ensemble, n_query*n_way, n_way) for 'avg_prob'
+            all_preds = np.array(all_preds)
+
+            if params.ensemble_strategy=='vote':
                 raise ValueError('stop using ensemble_strategy: vote.')
-                pred = get_pred(model, z_all)
-            elif params.ensemble_strategy=='bagging':
-                pred = get_pred(model, z_all, prob=True)
-            else:
-                raise ValueError('Invalid ensemble_strategy: %s'%(params.ensemble_strategy))
-            all_preds.append(pred)
-        
-        # all_preds shape=(n_ensemble, n_query*n_way) for 'vote'
-        # all_preds shape=(n_ensemble, n_query*n_way, n_way) for 'avg_prob'
-        all_preds = np.array(all_preds)
-        
-        if params.ensemble_strategy=='vote':
-            raise ValueError('stop using ensemble_strategy: vote.')
-            all_preds = all_preds.T # shape:(n_query*n_way, n_ensemble) for 'vote'
-            ensemble_preds = [np.argmax(np.bincount(preds)) for preds in all_preds]
-            ensemble_preds = np.array(ensemble_preds)
-        elif params.ensemble_strategy in ['avg_prob', 'bagging']:
-            ensemble_probs = all_preds.mean(axis=0) # shape=(n_query*n_way, n_way)
-#             print('avg_prob/ensemble_preds.shape (after mean)', ensemble_preds.shape)
-            ensemble_preds = np.argmax(ensemble_probs, axis=1) # shape=(n_query*n_way)
-#             print('avg_prob/ensemble_preds.shape (after argmax)', ensemble_preds.shape)
-        record_task_pred(pred_prob = ensemble_probs, task_data = task_data)
-#         y = np.repeat(range( n_way ), n_query )
-#         acc = np.mean(ensemble_preds == y)*100
-    
-#     task_data['acc'] = acc
-#     return acc
+                all_preds = all_preds.T # shape:(n_query*n_way, n_ensemble) for 'vote'
+                ensemble_preds = [np.argmax(np.bincount(preds)) for preds in all_preds]
+                ensemble_preds = np.array(ensemble_preds)
+            elif params.ensemble_strategy in ['avg_prob', 'bagging']:
+                ensemble_probs = all_preds.mean(axis=0) # shape=(n_query*n_way, n_way)
+                ensemble_preds = np.argmax(ensemble_probs, axis=1) # shape=(n_query*n_way)
+            
+            
+            
+        record_acc_and_task_pred(pred_prob = ensemble_probs, task_data = task_data)
+
     return task_data
 
 def set_gpu_id(gpu_id):
