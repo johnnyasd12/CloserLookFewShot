@@ -629,7 +629,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             except TypeError:
                 print('TypeError, alphas:', alphas)
                 alphashaha
-            elected_probs = []
+            
+#             elected_probs = [] # seems useless
 
             # reset back
             model.n_support = n_support
@@ -642,16 +643,16 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
                 z_all = torch.from_numpy(z_all) # z_support & z_query
                 prob = get_pred(model, z_all, prob=True)
-                elected_probs.append(prob)
+#                 elected_probs.append(prob)
                 ensemble_probs += alphas[t] * prob
 
             # elected_probs shape=(n_ensemble, n_query*n_way) for 'vote'
             # elected_probs shape=(n_ensemble, n_query*n_way, n_way) for 'avg_prob'
-            elected_probs = np.array(elected_probs)
+#             elected_probs = np.array(elected_probs) # ????
                 
                 
         
-        elif ensemble_strategy in ['avg_prob', 'vote', 'bagging', 'ada_weight']:
+        elif ensemble_strategy in ['avg_prob', 'vote', 'bagging', 'ada_weight', 'bootstrap_avgrank']:
 #         if ensemble_strategy in ['avg_prob', 'vote', 'bagging', 'adaboost']:
             
 #             if ensemble_strategy == 'adaboost':
@@ -660,21 +661,33 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
 #                 epsilons = [-1]*n_ensemble
 #                 alphas = [-1]*n_ensemble
             
-            if ensemble_strategy == 'bagging':
+            if ensemble_strategy in ['bagging', 'bootstrap_avgrank']:
                 ##### initialize indices and recorded results for bagging #####
-                candidate_resample_results = [] # recorded result, size: (n_cands, n_ensemble)
+                if ensemble_strategy == 'bagging':
+                    n_resample = n_ensemble
+                elif ensemble_strategy == 'bootstrap_avgrank':
+                    n_resample = 100
+                candidate_resample_results = [] # recorded result, size: (n_cands, n_resample)
                 n_sub_support_each_resampling = []
                 resampled_ids_each_resample = []
-                for _ in range(n_ensemble):
-                    n_sub_support = n_support-1 #np.random.choice(n_support-1) + 1 # 1 ~ n_support-1 or fixed as n_support-1???
+                for _ in range(n_resample):
+                    # 1 ~ n_support-1 or fixed as n_support-1???
+                    n_sub_support = n_support-1 #np.random.choice(n_support-1) + 1 
                     n_sub_support_each_resampling.append(n_sub_support)
                     resampled_id_each_way = []
                     for way in range(n_way):
-                        resampled_id = np.arange(n_support)
-                        resampled_sub_support_id = np.random.choice(n_sub_support, n_sub_support, replace=True)
+#                         resampled_id = np.arange(n_support) # TODO: THIS SHOULD BE RANDOMED!!!!
+                        resampled_id = np.random.choice(n_support, n_support, replace=False)
+                        resampled_sub_support_id = np.random.choice(
+                            resampled_id[:n_sub_support], n_sub_support, replace=True)
                         resampled_id[:n_sub_support] = resampled_sub_support_id
                         resampled_id_each_way.append(resampled_id)
                     resampled_ids_each_resample.append(resampled_id_each_way)
+                    ##### debug
+#                     print('resampled_ids_each_resample[i]:', resampled_ids_each_resample[_])
+#                 print('One episode finished.')
+#                 print(yeee)
+                
             
             if params.frac_ensemble == 1 and ensemble_strategy in ['avg_prob', 'vote', 'ada_weight']:
                 # just use all the candidates, so no need to compute sub-performance
@@ -736,22 +749,21 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                         result_each_resample = []
                         ##### debug
     #                     print('cand_id:', cand_id)
-                        for resample_num in range(n_ensemble):
+                        for resample_num in range(n_resample):
                             n_sub_support = n_sub_support_each_resampling[resample_num]
                             n_sub_query = n_support - n_sub_support # TODO: maybe can use all (n_support)???
 
-                            z_support_resampled = z_support.data.cpu().numpy() # shape: (n_way, n_support, *n_dim)
-    #                         print('resample_num:', resample_num, ', n_sub_support:', n_sub_support)
+#                             z_support_resampled = z_support.data.cpu().numpy() # shape: (n_way, n_support, *n_dim) # do not transfer between torch Tensor and numpy array
+                            z_support_resampled = z_support.detach().clone()
                             resampled_id_each_way = resampled_ids_each_resample[resample_num]
                             for way in range(n_way): 
                                 # sample sub_support set (with replacement) for each class
                                 # other samples should be query data in each class
                                 resampled_id = resampled_id_each_way[way]
-    #                             print('resampled_id:', resampled_id)
                                 z_support_resampled[way] = z_support_resampled[way][resampled_id]
 
 
-                            z_support_resampled = torch.from_numpy(z_support_resampled)
+#                             z_support_resampled = torch.from_numpy(z_support_resampled) # do not transfer between torch Tensor and numpy array
                             result, sample_results = get_result(
                                 model=model, z_all=z_support_resampled, 
                                 n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
