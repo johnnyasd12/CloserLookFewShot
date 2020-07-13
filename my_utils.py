@@ -409,8 +409,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         elif metric == 'loss':
 #             result = model.forwardout2loss(forward_outputs)
             loss, sample_losses = model.forwardout2loss(forward_outputs, return_respective=True)
-            sample_results = sample_losses
-            result = loss
+            sample_results = sample_losses.data.cpu().numpy()
+            result = loss.data.cpu().numpy()
         else:
             raise ValueError('Unknown metric: %s'%(metric))
         
@@ -666,7 +666,9 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 if ensemble_strategy == 'bagging':
                     n_resample = n_ensemble
                 elif ensemble_strategy == 'bootstrap_avgrank':
-                    n_resample = 100
+#                     n_resample = 100
+                    ### debug
+                    n_resample = 100 if not params.debug else 3
                 candidate_resample_results = [] # recorded result, size: (n_cands, n_resample)
                 n_sub_support_each_resampling = []
                 resampled_ids_each_resample = []
@@ -744,8 +746,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
 
                         sub_performance_each_candidate.append(sub_result)
 
-                    elif ensemble_strategy == 'bagging':
-
+                    elif ensemble_strategy in ['bagging', 'bootstrap_avgrank']:
+                        ##### get results of each resampling #####
                         result_each_resample = []
                         ##### debug
     #                     print('cand_id:', cand_id)
@@ -788,15 +790,28 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                     else:
                         raise ValueError('Unknown candidate_metric: %s'%(metric))
                     
-                elif params.ensemble_strategy == 'bagging':
+                elif params.ensemble_strategy in ['bagging', 'bootstrap_avgrank']:
                     candidate_resample_results = np.asarray(candidate_resample_results) # shape: (n_test_candidates, n_ensemble)
-                    if params.candidate_metric == 'loss':
-                        elected_ids = candidate_resample_results.argmin(axis=0)
-                    elif params.candidate_metric == 'acc':
-                        elected_ids = candidate_resample_results.argmax(axis=0)
-
-
-
+                    if params.ensemble_strategy == 'bagging':
+                        if params.candidate_metric == 'loss':
+                            elected_ids = candidate_resample_results.argmin(axis=0)
+                        elif params.candidate_metric == 'acc':
+                            elected_ids = candidate_resample_results.argmax(axis=0)
+                    elif params.ensemble_strategy == 'bootstrap_avgrank':
+                        # trick to get order: argsort().argsort()
+                        if params.candidate_metric == 'loss':
+                            resamples_candidate_orders = candidate_resample_results.argsort(0).argsort(0)
+                        elif params.candidate_metric == 'acc':
+                            resamples_candidate_orders = (-candidate_resample_results).argsort(0).argsort(0)
+                        candidate_mean_orders = resamples_candidate_orders.mean(axis=1) # the smaller the better
+                        elected_ids = candidate_mean_orders.argsort(axis=0)[:n_ensemble]
+                        ### debug
+#                         print('candidate_resample_results\n', candidate_resample_results)
+#                         print('resamples_candidate_orders\n', resamples_candidate_orders)
+#                         print('candidate_mean_orders\n', candidate_mean_orders)
+#                         print('elected_ids:', elected_ids)
+#                         hahahaha
+                        
             ################### do the ensemble ###################
             all_preds = []
 
@@ -809,13 +824,13 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
                 z_all = torch.from_numpy(z_all) # z_support & z_query
 
-                if params.ensemble_strategy in ['avg_prob', 'ada_weight']:
+                if params.ensemble_strategy in ['avg_prob', 'ada_weight', 'bagging', 'bootstrap_avgrank']:
                     pred = get_pred(model, z_all, prob=True)
                 elif params.ensemble_strategy=='vote':
                     raise ValueError('stop using ensemble_strategy: vote.')
                     pred = get_pred(model, z_all)
-                elif params.ensemble_strategy=='bagging':
-                    pred = get_pred(model, z_all, prob=True)
+#                 elif params.ensemble_strategy=='bagging':
+#                     pred = get_pred(model, z_all, prob=True)
                 else:
                     raise ValueError('Invalid ensemble_strategy: %s'%(params.ensemble_strategy))
                 all_preds.append(pred)
@@ -829,7 +844,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 all_preds = all_preds.T # shape:(n_query*n_way, n_ensemble) for 'vote'
                 ensemble_preds = [np.argmax(np.bincount(preds)) for preds in all_preds]
                 ensemble_preds = np.array(ensemble_preds)
-            elif params.ensemble_strategy in ['avg_prob', 'bagging']:
+            elif params.ensemble_strategy in ['avg_prob', 'bagging', 'bootstrap_avgrank']:
                 ensemble_probs = all_preds.mean(axis=0) # shape=(n_query*n_way, n_way)
                 ensemble_preds = np.argmax(ensemble_probs, axis=1) # shape=(n_query*n_way)
             elif params.ensemble_strategy == 'ada_weight':
