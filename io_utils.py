@@ -121,7 +121,7 @@ def parse_args(script, parse_str=None):
         # CustomDropout parameter
         parser.add_argument('--frac_ensemble', default=None, type=float, help='the final fraction of dropout subnets ensemble. (default only 1 subnet, no ensemble)')
         parser.add_argument('--candidate_metric', default='acc', choices=['acc', 'loss', 'diversity_abs'], type=str, help='To choose the ensemble subnets, according to  which metric of sub-validation set. (if None then "acc")')
-        parser.add_argument('--ensemble_strategy', default='vote', choices=['vote', 'avg_prob', 'bagging', 'adaboost'], type=str, help='How to get the prediction of networks ensemble, only available when argument "frac_ensemble" is assigned(???).') # originally default None, but causes BUGGGGGG so modified to 'vote'. 
+        parser.add_argument('--ensemble_strategy', default='vote', choices=['vote', 'avg_prob', 'bagging', 'adaboost', 'ada_weight'], type=str, help='How to get the prediction of networks ensemble, only available when argument "frac_ensemble" is assigned(???).') # originally default None, but causes BUGGGGGG so modified to 'vote'. 
         
         
     elif script == 'draw_features':
@@ -150,43 +150,6 @@ def parse_args(script, parse_str=None):
 #         params.dropout_block_id = int(params.dropout_block_id)
     
     args_sanity_check(params=params, script=script)
-#     if script=='save_features' or script=='test':
-        
-# #         if params.test_dropout_bid is not None and params.test_dropout_bid != 'all':
-# #             params.test_dropout_bid = int(params.test_dropout_bid)
-
-#         if params.finetune_dropout_p is not None:
-#             if params.method not in ['baseline', 'baseline++']:
-#                 raise ValueError('finetune_dropout_p and method not match.')
-        
-#         if (params.test_dropout_p is None) ^ (params.test_dropout_bid is None):
-#             raise ValueError('test_dropout_p and test_dropout_bid not match.')
-#         if params.test_dropout_p is not None and params.n_test_candidates is None:
-#             raise ValueError('test_dropout_p and n_test_candidates not match.')
-            
-#         if params.n_test_candidates is not None: # both should be True or False
-            
-#             if False:
-#                 if params.dropout_p == 0:
-#                     raise ValueError('dropout_p and n_test_candidates not match.')
-#                 if params.test_dropout_p is None:
-#                     raise ValueError('test_dropout_p and n_test_candidates not match.')
-#             # should be like this, but why above code can pass when doing experiments before???
-#             if params.dropout_p == 0 and params.test_dropout_p is None:
-#                 raise ValueError('dropout_p/test_dropout_p and n_test_candidates not match.')
-            
-#             if params.method in ['baseline', 'baseline++']:
-#                 if params.n_test_candidates > 10:
-#                     raise ValueError('too many test candidates for baseline.')
-#                 if params.frac_ensemble != 1:
-#                     raise ValueError('frac_ensemble for baseline methods should be 1.')
-#     if (params.aug_type==None)^(params.aug_target==None):
-#         raise ValueError('aug_type & aug_target not match.')
-#     if (params.recons_decoder==None)^(params.recons_lambda==0):
-#         raise ValueError('recons_decoder & recons_lambda not match. ')
-#     if script == 'save_features':
-#         if params.method in ['maml' , 'maml_approx']:
-#             raise ValueError('MAML does not support save_features')
 
     return params
 
@@ -207,6 +170,9 @@ def args_sanity_check(params, script):
             
         if params.n_test_candidates is not None: # both should be True or False
             
+            
+            if params.ensemble_strategy == 'ada_weight':
+                assert params.candidate_metric == 'acc', 'ada_weight should use 0/1 error'
             if params.ensemble_strategy == 'adaboost':
                 assert params.candidate_metric == 'acc', 'adaboost should use 0/1 error'
             

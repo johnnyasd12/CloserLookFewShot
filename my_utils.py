@@ -547,10 +547,10 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         
         if ensemble_strategy == 'adaboost':
             ##### initialize data for adaboost #####
-            elected_ids = [-1]*n_ensemble
-            epsilons = [-1]*n_ensemble
-            factors = [-1]*n_ensemble
-            alphas = [-1]*n_ensemble
+            elected_ids = []
+            epsilons = np.zeros(n_ensemble)
+            factors = np.zeros(n_ensemble)
+            alphas = np.zeros(n_ensemble)
             
             candidate_sample_results = np.zeros((params.n_test_candidates, n_way, n_support))
             
@@ -599,50 +599,59 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 raise ValueError('Unsupported candidate_metric for adaboost ensemble.')
             
             for t in range(n_ensemble):
-                # broadcast!!!
+                # compute new weighted errors (broadcast!!!
                 candidate_weighted_sample_errors = candidate_sample_errors * data_weights / data_weights.sum()
                 candidate_weighted_error = candidate_weighted_sample_errors.sum(axis=(1,2))
-                elected_ids[t] = candidate_weighted_error.argmin(axis=0)
-                elected_sample_errors = candidate_sample_errors[elected_ids[t]]
-                epsilons[t] = candidate_weighted_error[elected_ids[t]] # weighted error rate
-
-                factors[t] = np.sqrt((1-epsilons[t])/epsilons[t])
+                elected_id = candidate_weighted_error.argmin(axis=0)
+                elected_ids.append(elected_id)
+                elected_sample_errors = candidate_sample_errors[elected_id]
+                epsilons[t] = candidate_weighted_error[elected_id] # weighted error rate
+                # TODO: should i ???
+                eps = 1e-9
+                factors[t] = np.sqrt((1-epsilons[t]+eps)/(epsilons[t]+eps))
                 alphas[t] = np.log(factors[t])
+                if epsilons[t] == 0:
+#                     print('get perfect classification (that\'s bad!?)!!! break loop %d.'%(t))
+                    break
+                if 1-epsilons[t] <= 1/n_way:
+                    print('get terrible classification worse than random guess !!! break loop %d.'%(t))
+                    break
+
                 multiply_weights = np.zeros_like(elected_sample_errors)
                 multiply_weights[elected_sample_errors==1] = factors[t] # error
                 multiply_weights[elected_sample_errors==0] = 1/factors[t] # correct
                 data_weights = data_weights*multiply_weights
-                
-                # TODO: CHANGE cand_id to be elected_ids[t]
-                cl_feature_dict = cl_feature_each_candidate[elected_ids[t]] # features of the candidate
+
+            ################### do the ensemble ###################
+            ##### debug
+            try:
+                alphas /= alphas.sum()
+            except TypeError:
+                print('TypeError, alphas:', alphas)
+                alphashaha
+            elected_probs = []
+
+            # reset back
+            model.n_support = n_support
+            model.n_query = n_query
+            # repeat procedure of common setting to get query prediction
+            ensemble_probs = np.zeros((n_way*n_query, n_way)) # shape
+            for t, elected_id in enumerate(elected_ids):
+#                 elected_id = elected_ids[t]
+                cl_feature_dict = cl_feature_each_candidate[elected_id]
                 z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
                 z_all = torch.from_numpy(z_all) # z_support & z_query
+                prob = get_pred(model, z_all, prob=True)
+                elected_probs.append(prob)
+                ensemble_probs += alphas[t] * prob
 
-                # reset back
-                ################### do the ensemble ###################
-                elected_probs = []
-
-                # reset back
-                model.n_support = n_support
-                model.n_query = n_query
-                # repeat procedure of common setting to get query prediction
-                ensemble_probs = np.zeros((n_way*n_query, n_way)) # shape
-                for t in range(n_ensemble):
-                    elected_id = elected_ids[t]
-                    cl_feature_dict = cl_feature_each_candidate[elected_id]
-                    z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
-                    z_all = torch.from_numpy(z_all) # z_support & z_query
-                    prob = get_pred(model, z_all, prob=True)
-                    elected_probs.append(prob)
-                    ensemble_probs += alphas[t] * prob
-
-                # elected_probs shape=(n_ensemble, n_query*n_way) for 'vote'
-                # elected_probs shape=(n_ensemble, n_query*n_way, n_way) for 'avg_prob'
-                elected_probs = np.array(elected_probs)
+            # elected_probs shape=(n_ensemble, n_query*n_way) for 'vote'
+            # elected_probs shape=(n_ensemble, n_query*n_way, n_way) for 'avg_prob'
+            elected_probs = np.array(elected_probs)
                 
                 
         
-        elif ensemble_strategy in ['avg_prob', 'vote', 'bagging']:
+        elif ensemble_strategy in ['avg_prob', 'vote', 'bagging', 'ada_weight']:
 #         if ensemble_strategy in ['avg_prob', 'vote', 'bagging', 'adaboost']:
             
 #             if ensemble_strategy == 'adaboost':
@@ -667,14 +676,14 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                         resampled_id_each_way.append(resampled_id)
                     resampled_ids_each_resample.append(resampled_id_each_way)
             
-            if params.frac_ensemble == 1 and ensemble_strategy in ['avg_prob', 'vote']:
+            if params.frac_ensemble == 1 and ensemble_strategy in ['avg_prob', 'vote', 'ada_weight']:
                 # just use all the candidates, so no need to compute sub-performance
                 elected_ids = np.array(range(params.n_test_candidates))
             else: 
                 # validate sub-performance to choose from candidates
                 # here seems took most of the time cost
 
-                if ensemble_strategy in ['avg_prob', 'vote']:
+                if ensemble_strategy in ['avg_prob', 'vote', 'ada_weight']:
                     sub_performance_each_candidate = [] # store sub_query set result of each candidate
 
                 candidate_sample_results = np.zeros((params.n_test_candidates, n_way, n_support))
@@ -701,7 +710,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                     # TODO: tunable n_sub_support
                     # leave-one-out (per-class) cross validation
 
-                    if ensemble_strategy in ['avg_prob', 'vote']:
+                    if ensemble_strategy in ['avg_prob', 'vote', 'ada_weight']:
                         val_mode = 'loopccv_one_val' # None, 'train', 'val'
                         if 'loopccv_one' in val_mode:
                             supp_cv_sample_results, supp_prob = get_result_loocv(
@@ -752,18 +761,21 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                         candidate_resample_results.append(result_each_resample)
 
                 ##### get ensemble ids #####
-                if params.ensemble_strategy in ['avg_prob', 'vote']:
+                if params.ensemble_strategy in ['avg_prob', 'vote', 'ada_weight']:
                     sub_performance_each_candidate = np.array(sub_performance_each_candidate)
                     if params.candidate_metric == 'acc':
                         sorted_candidate_ids = np.argsort(-sub_performance_each_candidate) # in descent order
                         elected_ids = sorted_candidate_ids[:n_ensemble]
-
+                        ##### debug
+#                         print('sub_performance_each_candidate:', sub_performance_each_candidate)
+#                         print('sorted_candidate_ids:', sorted_candidate_ids)
+                        
                     elif params.candidate_metric == 'loss':
                         sorted_candidate_ids = np.argsort(sub_performance_each_candidate) # in ascent order
                         elected_ids = sorted_candidate_ids[:n_ensemble]
-
                     else:
                         raise ValueError('Unknown candidate_metric: %s'%(metric))
+                    
                 elif params.ensemble_strategy == 'bagging':
                     candidate_resample_results = np.asarray(candidate_resample_results) # shape: (n_test_candidates, n_ensemble)
                     if params.candidate_metric == 'loss':
@@ -785,7 +797,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
                 z_all = torch.from_numpy(z_all) # z_support & z_query
 
-                if params.ensemble_strategy=='avg_prob':
+                if params.ensemble_strategy in ['avg_prob', 'ada_weight']:
                     pred = get_pred(model, z_all, prob=True)
                 elif params.ensemble_strategy=='vote':
                     raise ValueError('stop using ensemble_strategy: vote.')
@@ -808,6 +820,24 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             elif params.ensemble_strategy in ['avg_prob', 'bagging']:
                 ensemble_probs = all_preds.mean(axis=0) # shape=(n_query*n_way, n_way)
                 ensemble_preds = np.argmax(ensemble_probs, axis=1) # shape=(n_query*n_way)
+            elif params.ensemble_strategy == 'ada_weight':
+                elected_sub_performances = sub_performance_each_candidate[elected_ids]
+                if params.candidate_metric == 'acc':
+                    # compute error rate
+                    elected_sub_errors = (100 - elected_sub_performances)/100
+                    ##### debug
+#                     print('n_ensemble:', n_ensemble)
+#                     print('elected_ids:', elected_ids)
+#                     print('elected_sub_performances:', elected_sub_performances)
+#                     print('elected_sub_errors:', elected_sub_errors)
+                    eps = 1e-9
+                    factors = (1-elected_sub_errors+eps)/(elected_sub_errors+eps)
+                    alphas = np.log(factors)
+                    alphas /= alphas.sum()
+                    ensemble_probs = np.average(all_preds, weights=alphas, axis=0) # shape=(n_query*n_way, n_way)
+                    ensemble_preds = np.argmax(ensemble_probs, axis=1) # shape=(n_query*n_way)
+                else:
+                    raise ValueError('Unsupported candidate_metric for ada_weight.')
             
             
             
