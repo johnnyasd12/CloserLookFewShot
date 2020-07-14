@@ -90,8 +90,9 @@ class Timer2:
         
         if self.enabled:
 #         print('since last time:', self.duration)
-            print('Duration from "' + self.duration['from'] + '" to "' + self.duration['to'] +'": ')
+            print('Duration \nfrom \t"' + self.duration['from'] + '" \nto\t"' + self.duration['to'] +'": ')
             print('time:', self.duration['time'], ', process time:', self.duration['process_time'])
+            print()
         self.last_t = self.end_t.copy()
         
     def end(self, summary=False):
@@ -395,8 +396,11 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
         model.n_query = n_query
         
         forward_outputs = get_forward_outputs(model, z_all)
-        prob = model.forwardout2prob(forward_outputs).data.cpu().numpy()
-        pred = prob.argmax(axis = 1)
+        if return_prob:
+            prob = model.forwardout2prob(forward_outputs).data.cpu().numpy()
+            pred = prob.argmax(axis = 1)
+        else:
+            pred = forward_outputs.data.cpu().numpy().argmax(axis=1)
         
         if metric == 'acc':
 #             pred = get_pred(model, z_all)
@@ -431,10 +435,10 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             the_one (str): 'loopccv_one_val'|'loopccv_one_train'
         '''
         
-        if 'loss' in metric: # 'loss_bagging'
-            metric = 'loss'
-        elif 'acc' in metric:
-            metric = 'acc'
+#         if 'loss' in metric: # 'loss_bagging'
+#             metric = 'loss'
+#         elif 'acc' in metric:
+#             metric = 'acc'
         
         n_data_per_class = z_all.size(1) # not sure lol, usually 5, also n_fold
         k_fold = n_data_per_class
@@ -623,14 +627,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 data_weights = data_weights*multiply_weights
 
             ################### do the ensemble ###################
-            ##### debug
-            try:
-                alphas /= alphas.sum()
-            except TypeError:
-                print('TypeError, alphas:', alphas)
-                alphashaha
-            
-#             elected_probs = [] # seems useless
+            alphas /= alphas.sum()
 
             # reset back
             model.n_support = n_support
@@ -643,16 +640,10 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
                 z_all = torch.from_numpy(z_all) # z_support & z_query
                 prob = get_pred(model, z_all, prob=True)
-#                 elected_probs.append(prob)
                 ensemble_probs += alphas[t] * prob
-
-            # elected_probs shape=(n_ensemble, n_query*n_way) for 'vote'
-            # elected_probs shape=(n_ensemble, n_query*n_way, n_way) for 'avg_prob'
-#             elected_probs = np.array(elected_probs) # ????
-                
                 
         
-        elif ensemble_strategy in ['avg_prob', 'vote', 'bagging', 'ada_weight', 'bootstrap_avgrank']:
+        elif ensemble_strategy in ['avg_prob', 'vote', 'ada_weight', 'bagging', 'bootstrap_avgrank']:
 #         if ensemble_strategy in ['avg_prob', 'vote', 'bagging', 'adaboost']:
             
 #             if ensemble_strategy == 'adaboost':
@@ -662,34 +653,47 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
 #                 alphas = [-1]*n_ensemble
             
             if ensemble_strategy in ['bagging', 'bootstrap_avgrank']:
+#                 ### debug
+#                 timer = Timer2(name='bagging start', enabled=True, verbose=1)
+                
                 ##### initialize indices and recorded results for bagging #####
                 if ensemble_strategy == 'bagging':
                     n_resample = n_ensemble
                 elif ensemble_strategy == 'bootstrap_avgrank':
-#                     n_resample = 100
+                    n_resample = 100
                     ### debug
-                    n_resample = 100 if not params.debug else 3
+#                     n_resample = 100 if not params.debug else 3
                 candidate_resample_results = [] # recorded result, size: (n_cands, n_resample)
                 n_sub_support_each_resampling = []
                 resampled_ids_each_resample = []
                 for _ in range(n_resample):
                     # 1 ~ n_support-1 or fixed as n_support-1???
-                    n_sub_support = n_support-1 #np.random.choice(n_support-1) + 1 
+                    if params.bag_n_sub_support is None:
+                        n_sub_support = n_support-1 #np.random.choice(n_support-1) + 1 
+                    elif params.bag_n_sub_support == 0:
+                        n_sub_support = 1 + np.random.choice(n_support-1)
+                    else:
+                        n_sub_support = params.bag_n_sub_support
+                    n_sub_query = n_support - n_sub_support
                     n_sub_support_each_resampling.append(n_sub_support)
                     resampled_id_each_way = []
                     for way in range(n_way):
-#                         resampled_id = np.arange(n_support) # TODO: THIS SHOULD BE RANDOMED!!!!
                         resampled_id = np.random.choice(n_support, n_support, replace=False)
                         resampled_sub_support_id = np.random.choice(
                             resampled_id[:n_sub_support], n_sub_support, replace=True)
+                        resampled_sub_query_id = np.random.choice(
+                            resampled_id[n_sub_support:], n_sub_query, replace=True)
                         resampled_id[:n_sub_support] = resampled_sub_support_id
+                        resampled_id[n_sub_support:] = resampled_sub_query_id
                         resampled_id_each_way.append(resampled_id)
                     resampled_ids_each_resample.append(resampled_id_each_way)
-                    ##### debug
-#                     print('resampled_ids_each_resample[i]:', resampled_ids_each_resample[_])
+                    #### debug
+#                     print('n_sub_support_each_resampling[%d]:'%(_), n_sub_support_each_resampling[_])
+#                     print('resampled_ids_each_resample[%d]:'%(_), resampled_ids_each_resample[_])
 #                 print('One episode finished.')
 #                 print(yeee)
-                
+                ### debug
+#                 timer('after initialize')
             
             if params.frac_ensemble == 1 and ensemble_strategy in ['avg_prob', 'vote', 'ada_weight']:
                 # just use all the candidates, so no need to compute sub-performance
@@ -748,32 +752,66 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
 
                     elif ensemble_strategy in ['bagging', 'bootstrap_avgrank']:
                         ##### get results of each resampling #####
+                        # Here seems consume most of the time
                         result_each_resample = []
+                        
                         ##### debug
     #                     print('cand_id:', cand_id)
                         for resample_num in range(n_resample):
+#                             ### debug
+#                             if params.debug:
+#                                 timer = Timer2(name='candidate%d, redample%d start'%(cand_id,resample_num), enabled=True, verbose=1)
+                            
                             n_sub_support = n_sub_support_each_resampling[resample_num]
                             n_sub_query = n_support - n_sub_support # TODO: maybe can use all (n_support)???
 
 #                             z_support_resampled = z_support.data.cpu().numpy() # shape: (n_way, n_support, *n_dim) # do not transfer between torch Tensor and numpy array
+                            ### debug
+#                             if params.debug:
+#                                 timer('before detach()')
                             z_support_resampled = z_support.detach().clone()
+                            ### debug
+#                             if params.debug:
+#                                 timer('after detach()')
                             resampled_id_each_way = resampled_ids_each_resample[resample_num]
+                            # here consume more time
                             for way in range(n_way): 
                                 # sample sub_support set (with replacement) for each class
                                 # other samples should be query data in each class
                                 resampled_id = resampled_id_each_way[way]
-                                z_support_resampled[way] = z_support_resampled[way][resampled_id]
-
+#                                 if params.debug:
+#                                     timer2 = Timer2(name='before get reidx array', enabled=True, verbose=1)
+                                way_z_resampled = z_support_resampled[way][resampled_id]
+#                                 if params.debug:
+#                                     timer2('after get reidx array')
+                                z_support_resampled[way] = way_z_resampled
+#                                 z_support_resampled.scatter(way, index = torch.LongTensor([]).cuda(), src = way_z_resampled)
+#                                 if params.debug:
+#                                     timer2('after assigned reidx array')
+                            ### debug
+#                             if params.debug:
+#                                 timer('after reassign z_support_resampled idx order')
 
 #                             z_support_resampled = torch.from_numpy(z_support_resampled) # do not transfer between torch Tensor and numpy array
                             result, sample_results = get_result(
                                 model=model, z_all=z_support_resampled, 
                                 n_way=n_way, n_support=n_sub_support, n_query=n_sub_query, 
                                 metric=params.candidate_metric, return_prob=False)
+                            ### debug
+#                             if params.debug:
+#                                 timer('after get_result()')
+#                                 print('='*20)
+#                                 if resample_num >=3:
+#                                     yee
                             result_each_resample.append(result)
 
                         candidate_resample_results.append(result_each_resample)
-
+                
+                ### debug
+#                 if params.debug:
+#                     if ensemble_strategy in ['bagging', 'bootstrap_avgrank']:
+#                         timer('after getting all candidates resampled (sub_support) result')
+                
                 ##### get ensemble ids #####
                 if params.ensemble_strategy in ['avg_prob', 'vote', 'ada_weight']:
                     sub_performance_each_candidate = np.array(sub_performance_each_candidate)
@@ -805,12 +843,15 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                             resamples_candidate_orders = (-candidate_resample_results).argsort(0).argsort(0)
                         candidate_mean_orders = resamples_candidate_orders.mean(axis=1) # the smaller the better
                         elected_ids = candidate_mean_orders.argsort(axis=0)[:n_ensemble]
+                    
                         ### debug
 #                         print('candidate_resample_results\n', candidate_resample_results)
 #                         print('resamples_candidate_orders\n', resamples_candidate_orders)
 #                         print('candidate_mean_orders\n', candidate_mean_orders)
 #                         print('elected_ids:', elected_ids)
 #                         hahahaha
+                    ### debug
+#                     timer('after computing elected_ids')
                         
             ################### do the ensemble ###################
             all_preds = []
@@ -834,6 +875,11 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 else:
                     raise ValueError('Invalid ensemble_strategy: %s'%(params.ensemble_strategy))
                 all_preds.append(pred)
+            
+            ### debug
+#             if params.ensemble_strategy in ['bagging', 'bootstrap_avgrank']:
+#                 timer('after computing all elected prediction')
+#                 yeee
 
             # all_preds shape=(n_ensemble, n_query*n_way) for 'vote'
             # all_preds shape=(n_ensemble, n_query*n_way, n_way) for 'avg_prob'
