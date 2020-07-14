@@ -175,6 +175,12 @@ class ExpManager:
             else:
                 if mode == 'draw_tasks':
                     print('NO need to train when draw_tasks.')
+                elif mode == 'resume':
+                    print('NO need to train since already trained in record:', csv_path)
+                    print('Summing up current record...')
+                    choose_by = 'val_acc_mean'
+                    top_k = None
+                    self.sum_up_results(choose_by=choose_by, top_k=top_k)
                 else:
                     print('NO need to train since already trained in record:', csv_path)
             
