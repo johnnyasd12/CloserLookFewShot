@@ -660,7 +660,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                 if ensemble_strategy == 'bagging':
                     n_resample = n_ensemble
                 elif ensemble_strategy == 'bootstrap_avgrank':
-                    n_resample = 100
+                    n_resample = params.boot_n_resample if params.boot_n_resample is not None else 100
                     ### debug
 #                     n_resample = 100 if not params.debug else 3
                 candidate_resample_results = [] # recorded result, size: (n_cands, n_resample)
