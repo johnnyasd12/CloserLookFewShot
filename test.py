@@ -122,50 +122,32 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
             print('loaded from %d epoch model.' %(load_epoch))
             print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(n_episodes, acc_mean, 1.96* acc_std/np.sqrt(n_episodes)))
         else: # n_test_candidates settings
-            
-            # should it ??? (to make it work commonly when input is float
-            is_float_none_frac = isinstance(params.frac_ensemble, float) or params.frac_ensemble==1 or params.frac_ensemble is None
-            is_str_single_frac = isinstance(params.frac_ensemble, str) and ',' not in params.frac_ensemble
-            is_single_exp = is_float_none_frac or is_str_single_frac
-            
-            if is_str_single_frac:
-                params.frac_ensemble = frac_ensemble_str2var(params.frac_ensemble)
                 
-            # maybe should be judge in expmgr.py first ???
-#             is_single_exp = not isinstance(params.frac_ensemble, list) in expmgr.py
+            candidate_cl_feature = [] # features of each class of each candidates
+            print('Loading features of %s candidates into dictionaries...' %(params.n_test_candidates))
+            for n in tqdm(range(params.n_test_candidates)):
+                nth_feature_file = all_feature_files[n]
+                cl_feature, cl_filepath = feat_loader.init_loader(nth_feature_file, return_path=True)
+                candidate_cl_feature.append(cl_feature)
+
+            print('Evaluating...')
             
-            if is_single_exp: # common cases (None, 0.05, ...)
-                
-                candidate_cl_feature = [] # features of each class of each candidates
-                print('Loading features of %s candidates into dictionaries...' %(params.n_test_candidates))
-                for n in tqdm(range(params.n_test_candidates)):
-                    nth_feature_file = all_feature_files[n]
-                    cl_feature, cl_filepath = feat_loader.init_loader(nth_feature_file, return_path=True)
-                    candidate_cl_feature.append(cl_feature)
+            for i in tqdm(range(n_episodes)):
+                # TODO: fix data list? can only fix class list?
 
-                print('Evaluating...')
-                # TODO: aggregate this and upper part of for loop, only cl_feature are different
-                for i in tqdm(range(n_episodes)):
-                    # TODO: fix data list? can only fix class list?
+                task_data = feature_evaluation(
+                    candidate_cl_feature, model, params=params, n_query=15, **few_shot_params, 
+                    cl_filepath=cl_filepath,
+                )
+                acc = task_data['acc']
+                acc_all.append(acc)
+                task_datas[i] = task_data
 
-                    task_data = feature_evaluation(
-                        candidate_cl_feature, model, params=params, n_query=15, **few_shot_params, 
-                        cl_filepath=cl_filepath,
-                    )
-                    acc = task_data['acc']
-                    acc_all.append(acc)
-                    task_datas[i] = task_data
-
-                acc_all  = np.asarray(acc_all)
-                acc_mean = np.mean(acc_all)
-                acc_std  = np.std(acc_all)
-                print('loaded from %d epoch model.' %(load_epoch))
-                print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(n_episodes, acc_mean, 1.96* acc_std/np.sqrt(n_episodes)))
-            else:
-                frac_ensembles = params.frac_ensemble.split(',')
-                params.frac_ensemble = list(map(frac_ensembles, frac_ensemble_str2var))
-                
-        
+            acc_all  = np.asarray(acc_all)
+            acc_mean = np.mean(acc_all)
+            acc_std  = np.std(acc_all)
+            print('loaded from %d epoch model.' %(load_epoch))
+            print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(n_episodes, acc_mean, 1.96* acc_std/np.sqrt(n_episodes)))
     
     torch.cuda.empty_cache()
     
