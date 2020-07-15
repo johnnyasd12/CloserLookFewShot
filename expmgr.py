@@ -348,7 +348,7 @@ class ExpManager:
                                 else:
                                     print('Need to do testing for frac_ensemble: %f since there\'s NO experiment in data.'%(frac))
                         
-                        ########## do exps for frac_ensemble ##########
+                        ########## do exps for multi-frac_ensemble ##########
                         if len(frac_ls) > 0:
                             final_test_args.frac_ensemble = frac_ls
                             
@@ -380,7 +380,7 @@ class ExpManager:
                                 print('data split:', split)
                                 n_episodes = 10 if split_final_test_args.debug or mode=='draw_tasks' else 600
                                 
-                                ########## (haven't modify) testing and record to dict ##########
+                                ########## testing and record to dict ##########
                                 
                                 ##### return n_frac exps results #####
                                 frac_exp_records, frac_task_datas = exp_test(
@@ -389,7 +389,6 @@ class ExpManager:
                                 for frac_id, frac in enumerate(frac_ls):
                                     frac_write_record = frac_write_records[i]
                                     exp_record = frac_exp_records[i]
-                                    # TODO test.py: should modify exp_record['frac_ensemble']
                                     frac_write_record['frac_ensemble'] = exp_record['frac_ensemble']
                                     frac_write_record['epoch'] = exp_record['epoch']
                                     frac_write_record[split+'_acc_mean'] = exp_record['acc_mean']
@@ -397,7 +396,7 @@ class ExpManager:
 
                                 torch.cuda.empty_cache()
 
-                                ########## (haven't modify) record n_frac exps to csv ##########
+                                ########## record n_frac exps to csv ##########
                                 if mode in ['from_scratch', 'resume']:
                                     print('Saving record to:', csv_path)
                                     for frac_id, frac in enumerate(frac_ls):
@@ -411,7 +410,7 @@ class ExpManager:
                                     top_k = None
                                     self.sum_up_results(choose_by, top_k)
 
-                                ########## (haven't modify) record n_frac exps to pickle ##########
+                                ########## record n_frac exps to pickle ##########
                                 for frac_id, frac in enumerate(frac_ls):
                                     frac_write_record = frac_write_records[i]
                                 frac_write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
@@ -423,7 +422,6 @@ class ExpManager:
                         else:
                             print('all frac_ensemble exps had been done before.')
 
-                
                 torch.cuda.empty_cache()
         
         ########## sum up results ##########
@@ -470,7 +468,16 @@ class ExpManager:
         del_keys(important_fixed_params, self.possible_params['general'].keys())
         del_keys(important_fixed_params, self.possible_params['test'].keys())
         
-        all_possible_params = {**self.possible_params['general'], **self.possible_params['test']}
+        # for multi-frac_ensemble
+        test_possible_params = copy.deepcopy(self.possible_params['test'])
+        if 'frac_ensemble' in test_possible_params.keys():
+            frac_param = test_possible_params['frac_ensemble']
+            if len(frac_param)==1 and ',' in frac_param[0]:
+                frac_ls = frac_param[0].split(',')
+                frac_ls = list(map(frac_ensemble_str2var, frac_ls))
+                test_possible_params['frac_ensemble'] = frac_ls
+        
+        all_possible_params = {**self.possible_params['general'], **test_possible_params}
         
         matched_df = get_matched_df(important_fixed_params, record_df, possible_params=all_possible_params)
         
