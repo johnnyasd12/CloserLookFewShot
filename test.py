@@ -47,23 +47,21 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
 
     model = get_model(params, 'test')
     
-    few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
+    ########## get settings ##########
     
+    few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
     if params.gpu_id:
         model = model.cuda()
     else:
         model = to_device(model)
-
     checkpoint_dir = get_checkpoint_dir(params)
-    
-    # load model
     print('loading from:',checkpoint_dir)
-
     if params.save_iter != -1:
         modelfile   = get_assigned_file(checkpoint_dir, params.save_iter)
     else:
         modelfile   = get_best_file(checkpoint_dir)
     
+    ########## load model ##########
     if modelfile is not None:
         if params.gpu_id is None:
             tmp = torch.load(modelfile)
@@ -81,7 +79,8 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
         else:
             print('No need to load model for baseline/baseline++ when testing.')
         load_epoch = int(tmp['epoch'])
-        
+    
+    ########## testing ##########
     if params.method in ['maml', 'maml_approx']: #maml do not support testing with feature
         image_size = get_img_size(params)
         load_file = get_loadfile_path(params, params.split)
@@ -93,21 +92,41 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
             model.task_update_num = 100 #We perform adaptation on MAML simply by updating more times.
         model.eval()
         acc_mean, acc_std = model.test_loop( novel_loader, return_std = True)
+        
+        ########## last record and post-process ##########
+        torch.cuda.empty_cache()
+        timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+        # TODO afterward: compute this
+        acc_str = '%4.2f%% +- %4.2f%%' % (acc_mean, 1.96* acc_std/np.sqrt(n_episodes))
+        # writing settings into csv
+        acc_mean_str = '%4.2f' % (acc_mean)
+        acc_std_str = '%4.2f' %(acc_std)
+        # record beyond params
+        extra_record = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str, 'epoch':load_epoch}
+        if should_del_features:
+            del_features(params)
+        end_time = datetime.datetime.now()
+        print('exp_test() start at', start_time, ', end at', end_time, '.\n')
+        print('exp_test() totally took:', end_time-start_time)
+        return extra_record, task_datas
 
     else: # not MAML
         acc_all = []
-        # draw_task: initialize task acc(actually can replace acc_all), img_path, img_is_correct, etc.
-        task_datas = [None]*n_episodes # list of dict
+#         # draw_task: initialize task acc(actually can replace acc_all), img_path, img_is_correct, etc.
+#         task_datas = [None]*n_episodes # list of dict
         # directly use extracted features
         all_feature_files = get_all_feature_files(params)
         
         if params.n_test_candidates is None: # common setting (no candidate)
+            # draw_task: initialize task acc(actually can replace acc_all), img_path, img_is_correct, etc.
+            task_datas = [None]*n_episodes # list of dict
+            
             feature_file = all_feature_files[0]
             cl_feature, cl_filepath = feat_loader.init_loader(feature_file, return_path=True)
             cl_feature_single = [cl_feature]
             
             for i in tqdm(range(n_episodes)):
-                # TODO: fix data list? can only fix class list?
+                # TODO afterward: fix data list? can only fix class list?
                 task_data = feature_evaluation(
                     cl_feature_single, model, params=params, n_query=15, **few_shot_params, 
                     cl_filepath=cl_filepath,
@@ -121,6 +140,23 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
             acc_std  = np.std(acc_all)
             print('loaded from %d epoch model.' %(load_epoch))
             print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(n_episodes, acc_mean, 1.96* acc_std/np.sqrt(n_episodes)))
+            
+            ########## last record and post-process ##########
+            torch.cuda.empty_cache()
+            timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+            # TODO afterward: compute this
+            acc_str = '%4.2f%% +- %4.2f%%' % (acc_mean, 1.96* acc_std/np.sqrt(n_episodes))
+            # writing settings into csv
+            acc_mean_str = '%4.2f' % (acc_mean)
+            acc_std_str = '%4.2f' %(acc_std)
+            # record beyond params
+            extra_record = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str, 'epoch':load_epoch}
+            if should_del_features:
+                del_features(params)
+            end_time = datetime.datetime.now()
+            print('exp_test() start at', start_time, ', end at', end_time, '.\n')
+            print('exp_test() totally took:', end_time-start_time)
+            return extra_record, task_datas
         else: # n_test_candidates settings
                 
             candidate_cl_feature = [] # features of each class of each candidates
@@ -132,42 +168,105 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
 
             print('Evaluating...')
             
-            for i in tqdm(range(n_episodes)):
-                # TODO: fix data list? can only fix class list?
+            # TODO: frac_acc_all
+            is_single_exp = not isinstance(params.frac_ensemble, list)
+            if is_single_exp:
+                # draw_task: initialize task acc(actually can replace acc_all), img_path, img_is_correct, etc.
+                task_datas = [None]*n_episodes # list of dict
+                ########## test and record acc ##########
+                for i in tqdm(range(n_episodes)):
+                    # TODO afterward: fix data list? can only fix class list?
 
-                task_data = feature_evaluation(
-                    candidate_cl_feature, model, params=params, n_query=15, **few_shot_params, 
-                    cl_filepath=cl_filepath,
-                )
-                acc = task_data['acc']
-                acc_all.append(acc)
-                task_datas[i] = task_data
+                    task_data = feature_evaluation(
+                        candidate_cl_feature, model, params=params, n_query=15, **few_shot_params, 
+                        cl_filepath=cl_filepath,
+                    )
+                    acc = task_data['acc']
+                    acc_all.append(acc)
+                    task_datas[i] = task_data
 
-            acc_all  = np.asarray(acc_all)
-            acc_mean = np.mean(acc_all)
-            acc_std  = np.std(acc_all)
-            print('loaded from %d epoch model.' %(load_epoch))
-            print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(n_episodes, acc_mean, 1.96* acc_std/np.sqrt(n_episodes)))
-    
-    torch.cuda.empty_cache()
-    
-    timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-    acc_str = '%4.2f%% +- %4.2f%%' % (acc_mean, 1.96* acc_std/np.sqrt(n_episodes))
-    
-    # writing settings into csv
-    acc_mean_str = '%4.2f' % (acc_mean)
-    acc_std_str = '%4.2f' %(acc_std)
-    # beyond params
-    extra_record = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str, 'epoch':load_epoch}
-    
-    if should_del_features:
-        del_features(params)
-    
-    end_time = datetime.datetime.now()
-    print('exp_test() start at', start_time, ', end at', end_time, '.\n')
-    print('exp_test() totally took:', end_time-start_time)
-    
-    return extra_record, task_datas
+                acc_all  = np.asarray(acc_all)
+                acc_mean = np.mean(acc_all)
+                acc_std  = np.std(acc_all)
+                print('loaded from %d epoch model.' %(load_epoch))
+                print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(n_episodes, acc_mean, 1.96* acc_std/np.sqrt(n_episodes)))
+
+                ########## last record and post-process ##########
+                torch.cuda.empty_cache()
+                timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+                # TODO afterward: compute this
+                acc_str = '%4.2f%% +- %4.2f%%' % (acc_mean, 1.96* acc_std/np.sqrt(n_episodes))
+                # writing settings into csv
+                acc_mean_str = '%4.2f' % (acc_mean)
+                acc_std_str = '%4.2f' %(acc_std)
+                # record beyond params
+                extra_record = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str, 'epoch':load_epoch}
+                if should_del_features:
+                    del_features(params)
+                end_time = datetime.datetime.now()
+                print('exp_test() start at', start_time, ', end at', end_time, '.\n')
+                print('exp_test() totally took:', end_time-start_time)
+                return extra_record, task_datas
+            else: ########## multi-frac_ensemble exps ##########
+                
+                ########## (haven't modified) test and record acc ##########
+                n_fracs = len(params.frac_ensemble)
+                
+                ##### initialize frac_data #####
+                frac_acc_alls = [[0]*n_episodes]*n_fracs
+                frac_acc_means = [None]*n_fracs
+                frac_acc_stds = [None]*n_fracs
+                # draw_task: initialize task acc(actually can replace acc_all), img_path, img_is_correct, etc.
+                frac_task_datas = [[None]*n_episodes]*n_fracs # list of list of dict
+
+                for ep_id in tqdm(range(n_episodes)):
+                    # TODO afterward: fix data list? can only fix class list?
+                    
+                    # TODO my_utils.py: feature_eval return frac_task_datas
+                    frac_task_data = feature_evaluation(
+                        candidate_cl_feature, model, params=params, n_query=15, **few_shot_params, 
+                        cl_filepath=cl_filepath,
+                    )
+                    for frac_id in range(n_fracs):
+                        task_data = frac_task_data[frac_id]
+                        acc_all = frac_acc_alls[frac_id]
+                        acc = task_data['acc']
+                        acc_all[ep_id] = acc
+                        frac_task_datas[frac_id][ep_id] = task_data
+                
+                for frac_id in range(n_fracs):
+                    frac_acc_alls[frac_id]  = np.asarray(frac_acc_alls[frac_id])
+                    acc_all = frac_acc_alls[frac_id]
+                    acc_mean = np.mean(acc_all)
+                    acc_std = np.std(acc_all)
+                    frac_acc_means[frac_id] = acc_mean
+                    frac_acc_stds[frac_id]  = acc_std
+                    print('loaded from %d epoch model, frac_ensemble: %f.' %(load_epoch, params.frac_ensemble[frac_id]))
+                    print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(n_episodes, acc_mean, 1.96* acc_std/np.sqrt(n_episodes)))
+                
+                ########## (haven't modified) last record and post-process ##########
+                torch.cuda.empty_cache()
+                timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+                # TODO afterward: compute this
+#                 acc_str = '%4.2f%% +- %4.2f%%' % (acc_mean, 1.96* acc_std/np.sqrt(n_episodes))
+                frac_extra_records = []
+                for frac_id in range(n_fracs):
+                    # writing settings into csv
+                    acc_mean = frac_acc_means[frac_id]
+                    acc_std = frac_acc_stds[frac_id]
+                    acc_mean_str = '%4.2f' % (acc_mean)
+                    acc_std_str = '%4.2f' %(acc_std)
+                    # record beyond params
+                    extra_record = {'time':timestamp, 'acc_mean':acc_mean_str, 'acc_std':acc_std_str, 'epoch':load_epoch}
+                    frac_extra_records.append(extra_record)
+                
+                if should_del_features:
+                    del_features(params)
+                end_time = datetime.datetime.now()
+                print('exp_test() start at', start_time, ', end at', end_time, '.\n')
+                print('exp_test() totally took:', end_time-start_time)
+                
+                return frac_extra_records, frac_task_datas
 
 def frac_ensemble_str2var(frac_ensemble):
     if frac_ensemble.lower() == 'none':
