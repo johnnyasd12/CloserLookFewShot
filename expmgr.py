@@ -32,7 +32,7 @@ from matplotlib import pyplot as plt # to draw in notebook? (refer to draw_utils
 import matplotlib.cm as cm
 # from matplotlib import cm
 
-# to draw task
+# to draw task, and frac_ensemble multi-exps
 import copy
 
 class ExpManager:
@@ -196,30 +196,18 @@ class ExpManager:
                     print('test_params:', test_params)
                     check_df = loaded_df.copy()
                     constrained_param = {**self.base_params, **general_params, **test_params}
-                    # BUGFIX: add default params, delete useless params & dependent variables (result)
                     
+                    # add default params, delete useless params & dependent variables (result)
                     default_args = parse_args('test', parse_str='')
                     default_param = vars(default_args)
                     check_param = {**default_param, **constrained_param}
-                    
-                    ##### debug
-#                     print('='*20)
-#                     print('constrained_param:', constrained_param)
-#                     print('='*20)
-#                     print('default_param:', default_param)
-#                     print('='*20)
-#                     print('check_param:', check_param)
                     
                     # delete vars not for checking
                     del_vars = self.negligible_vars + self.dependent_vars
                     for var in del_vars:
                         if var in check_param:
                             del check_param[var]
-                    
-                    ##### debug
-#                     print('='*20)
-#                     print('check_param after deleted:', check_param)
-                    
+
                     check_df = get_matched_df(check_param, loaded_df)
                     num_test_experiments = len(check_df)
                     if num_test_experiments>0: # already experiments
@@ -260,63 +248,181 @@ class ExpManager:
                         check_df = loaded_df.copy()
                         check_df = get_matched_df({**self.base_params, **general_params}, check_df)
                         write_record['train_acc_mean'] = check_df['train_acc_mean'].iloc[0]
-#                 elif mode == 'from_scratch':
-#                     write_record['train_acc_mean'] = train_result['train_acc']
                 
                 ########## save_features & test ##########
                 if mode in ['from_scratch', 'resume', 'tmp_pkl']:
-                    splits = ['val', 'novel'] # temporary no 'train'
-                    for split in splits: # val, novel
+                
+                    ########### judge if should do several exp for frac_ensemble ###########
+                    tmp = final_test_args # to make variable name shorter
+                    is_str_single_frac = isinstance(tmp.frac_ensemble, str) and ',' not in tmp.frac_ensemble
+                    is_float_none_frac = isinstance(tmp.frac_ensemble, float) or tmp.frac_ensemble==1 or tmp.frac_ensemble is None
+                    is_single_exp = is_float_none_frac or is_str_single_frac
+                    if is_str_single_frac:
+                        final_test_args.frac_ensemble = frac_ensemble_str2var(params.frac_ensemble)
 
-                        split_final_test_args = copy_args(final_test_args)
-                        split_final_test_args.split = split
-                        print('\n', '='*20, 'Saving Features', '='*20)
-                        print('general_params:', general_params)
-                        print('test_params:', test_params)
-                        print('data split:', split)
-                        
-                        args_sanity_check(split_final_test_args, script='save_features')
-                        args_sanity_check(split_final_test_args, script='test')
-                        
-                        ### debug
-#                         if not split_final_test_args.debug:
-                        exp_save_features(copy_args(split_final_test_args))
-                        
-                        print('\n', '='*20, 'Testing', '='*20)
-                        print('general_params:', general_params)
-                        print('test_params:', test_params)
-                        print('data split:', split)
-                        n_episodes = 10 if split_final_test_args.debug or mode=='draw_tasks' else 600
-                        
-                        tmp = split_final_test_args # to make variable name short
-                        is_str_single_frac = isinstance(tmp.frac_ensemble, str) and ',' not in tmp.frac_ensemble
-                        is_float_none_frac = isinstance(tmp.frac_ensemble, float) or tmp.frac_ensemble==1 or tmp.frac_ensemble is None
-                        is_single_exp = is_float_none_frac or is_str_single_frac
-                        
-                        exp_record, task_datas = exp_test(copy_args(split_final_test_args), n_episodes=n_episodes, should_del_features=True)#, show_data=show_data)
-                        write_record['epoch'] = exp_record['epoch']
-                        write_record[split+'_acc_mean'] = exp_record['acc_mean']
-                        write_record[split+'_acc_std'] = exp_record['acc_std']
-                        
-                        torch.cuda.empty_cache()
+                    if is_single_exp: # common frac_ensemble
                     
-                    ########## record to csv ##########
-                    if mode in ['from_scratch', 'resume']:
-                        print('Saving record to:', csv_path)
-                        record_to_csv(final_test_args, write_record, csv_path=csv_path)
+                        splits = ['val', 'novel'] # temporary no 'train'
+                        for split in splits: # val, novel
+
+                            ##### get args #####
+                            split_final_test_args = copy_args(final_test_args)
+                            split_final_test_args.split = split
+                            print('\n', '='*20, 'Saving Features', '='*20)
+                            print('general_params:', general_params)
+                            print('test_params:', test_params)
+                            print('data split:', split)
+
+                            args_sanity_check(split_final_test_args, script='save_features')
+                            args_sanity_check(split_final_test_args, script='test')
+                            
+                            ########## save features ##########
+                            exp_save_features(copy_args(split_final_test_args))
+
+                            print('\n', '='*20, 'Testing', '='*20)
+                            print('general_params:', general_params)
+                            print('test_params:', test_params)
+                            print('data split:', split)
+                            n_episodes = 10 if split_final_test_args.debug or mode=='draw_tasks' else 600
+
+                            ########## testing and record to dict ##########
+                            exp_record, task_datas = exp_test(
+                                copy_args(split_final_test_args), n_episodes=n_episodes, should_del_features=True)#, show_data=show_data)
+                            write_record['epoch'] = exp_record['epoch']
+                            write_record[split+'_acc_mean'] = exp_record['acc_mean']
+                            write_record[split+'_acc_std'] = exp_record['acc_std']
+
+                            torch.cuda.empty_cache()
+                            
+                            ########## record to csv ##########
+                            if mode in ['from_scratch', 'resume']:
+                                print('Saving record to:', csv_path)
+                                record_to_csv(final_test_args, write_record, csv_path=csv_path)
+
+                                print('='*20, 'Current Experiments', '='*20)
+                                choose_by = 'val_acc_mean'
+                                top_k = None
+                                self.sum_up_results(choose_by, top_k)
+
+                            ########## record to pickle ##########
+                            write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
+                            self.results_pkl.append(write_record)
+                            print('Saving self.results_pkl into:', pkl_path)
+                            with open(pkl_path, 'wb') as handle:
+                                pickle.dump(self.results_pkl, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                            
+                    else: ########## multiple frac_ensemble ##########
+                        # make frac_ensemble list
+                        frac_ls = final_test_args.frac_ensemble.split(',')
+                        frac_ls = list(map(frac_ensemble_str2var, frac_ls))
+                        print('frac_ls:', frac_ls)
                         
-                        print('='*20, 'Current Experiments', '='*20)
-                        choose_by = 'val_acc_mean'
-                        top_k = None
-                        self.sum_up_results(choose_by, top_k)
-                    
-                    
-                    ########## record to pickle ##########
-                    write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
-                    self.results_pkl.append(write_record)
-                    print('Saving self.results_pkl into:', pkl_path)
-                    with open(pkl_path, 'wb') as handle:
-                        pickle.dump(self.results_pkl, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                        ########## check if each frac_ensemble already done in exps ##########
+                        if mode == 'resume':
+                            for frac in frac_ls.copy():
+                                print('\n', '='*20, 'Checking if already did "frac_ensemble" experiments', '='*20)
+                                print('general_params:', general_params)
+                                print('test_params:', test_params)
+                                check_df = loaded_df.copy()
+                                constrained_param = {**self.base_params, **general_params, **test_params}
+                                # only add this line different from before
+                                constrained_param['frac_ensemble'] = frac
+
+                                # add default params, delete useless params & dependent variables (result)
+                                default_args = parse_args('test', parse_str='')
+                                default_param = vars(default_args)
+                                check_param = {**default_param, **constrained_param}
+
+                                # delete vars not for checking
+                                del_vars = self.negligible_vars + self.dependent_vars
+                                for var in del_vars:
+                                    if var in check_param:
+                                        del check_param[var]
+
+                                check_df = get_matched_df(check_param, loaded_df)
+                                num_test_experiments = len(check_df)
+                                if num_test_experiments>0: # already experiments
+                                    print('NO need to test since already tested %s times in record: %s'%(num_test_experiments, csv_path))
+                                    print(check_df)
+                                    frac_ls.remove(frac)
+                                else:
+                                    print('Need to do testing for frac_ensemble: %f since there\'s NO experiment in data.'%(frac))
+                        
+                        ########## do exps for frac_ensemble ##########
+                        if len(frac_ls) > 0:
+                            final_test_args.frac_ensemble = frac_ls
+                            
+                            ##### initialize record for different frac #####
+                            frac_write_records = [copy.deepcopy(write_record)]*len(frac_ls)
+                            
+                            ##### start exps #####
+                            splits = ['val', 'novel']
+                            for split in splits: # val, novel
+                                
+                                ##### get args #####
+                                split_final_test_args = copy_args(final_test_args)
+                                split_final_test_args.split = split
+                                print('\n', '='*20, 'Saving Features', '='*20)
+                                print('general_params:', general_params)
+                                print('test_params:', test_params)
+                                print('data split:', split)
+                                
+                                ##### sanity check #####
+                                args_sanity_check(split_final_test_args, script='save_features')
+                                args_sanity_check(split_final_test_args, script='test')
+                                
+                                ########## save features ##########
+                                exp_save_features(copy_args(split_final_test_args))
+
+                                print('\n', '='*20, 'Testing', '='*20)
+                                print('general_params:', general_params)
+                                print('test_params:', test_params)
+                                print('data split:', split)
+                                n_episodes = 10 if split_final_test_args.debug or mode=='draw_tasks' else 600
+                                
+                                ########## (haven't modify) testing and record to dict ##########
+                                
+                                ##### return n_frac exps results #####
+                                frac_exp_records, frac_task_datas = exp_test(
+                                    copy_args(split_final_test_args), n_episodes=n_episodes, should_del_features=True)
+                                
+                                for frac_id, frac in enumerate(frac_ls):
+                                    frac_write_record = frac_write_records[i]
+                                    exp_record = frac_exp_records[i]
+                                    # TODO test.py: should modify exp_record['frac_ensemble']
+                                    frac_write_record['frac_ensemble'] = exp_record['frac_ensemble']
+                                    frac_write_record['epoch'] = exp_record['epoch']
+                                    frac_write_record[split+'_acc_mean'] = exp_record['acc_mean']
+                                    frac_write_record[split+'_acc_std'] = exp_record['acc_std']
+
+                                torch.cuda.empty_cache()
+
+                                ########## (haven't modify) record n_frac exps to csv ##########
+                                if mode in ['from_scratch', 'resume']:
+                                    print('Saving record to:', csv_path)
+                                    for frac_id, frac in enumerate(frac_ls):
+                                        frac_write_record = frac_write_records[i]
+                                        tmp_test_args = copy_args(final_test_args)
+                                        tmp_test_args.frac_ensemble = frac
+                                        record_to_csv(tmp_test_args, frac_write_record, csv_path=csv_path)
+
+                                    print('='*20, 'Current Experiments', '='*20)
+                                    choose_by = 'val_acc_mean'
+                                    top_k = None
+                                    self.sum_up_results(choose_by, top_k)
+
+                                ########## (haven't modify) record n_frac exps to pickle ##########
+                                for frac_id, frac in enumerate(frac_ls):
+                                    frac_write_record = frac_write_records[i]
+                                frac_write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
+                                self.results_pkl.append(frac_write_record)
+                                print('Saving self.results_pkl into:', pkl_path)
+                                with open(pkl_path, 'wb') as handle:
+                                    pickle.dump(self.results_pkl, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                                
+                        else:
+                            print('all frac_ensemble exps had been done before.')
+
                 
                 torch.cuda.empty_cache()
         
@@ -403,6 +509,11 @@ class ExpManager:
         '''
         pass
 
+def frac_ensemble_str2var(frac_ensemble):
+    if frac_ensemble.lower() == 'none':
+        return None
+    else:
+        return float(frac_ensemble)
 
 def draw_both_worst_tasks(pkl_path1, pkl_path2, n_tasks, save_img_folder, exp1_postfix, exp2_postfix):
     best_exp1_all_task = get_best_all_tasks(pkl_path1)
