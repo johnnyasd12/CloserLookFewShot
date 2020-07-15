@@ -124,7 +124,8 @@ def parse_args(script, parse_str=None):
         parser.add_argument('--candidate_metric', default='acc', choices=['acc', 'loss', 'diversity_abs'], type=str, help='To choose the ensemble subnets, according to  which metric of sub-validation set. (if None then "acc")')
         parser.add_argument('--ensemble_strategy', default='vote', choices=['vote', 'avg_prob', 'bagging', 'adaboost', 'ada_weight', 'bootstrap_avgrank'], type=str, help='How to get the prediction of networks ensemble, only available when argument "frac_ensemble" is assigned(???).') # originally default None, but causes BUGGGGGG so modified to 'vote'. 
         parser.add_argument('--bag_n_sub_support', default=None, type=int, help='can be None, 0, 1,... (if None, default n_support-1; if 0, then random each resampling)')
-        # TODO: n_resample !!!!!!!!!!
+        parser.add_argument('--boot_n_resample', default=None, type=int, help='can be None, 200,... (if None, default 100.)')
+
         
         
     elif script == 'draw_features':
