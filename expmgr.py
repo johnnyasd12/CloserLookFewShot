@@ -278,6 +278,8 @@ class ExpManager:
                         args_sanity_check(split_final_test_args, script='save_features')
                         args_sanity_check(split_final_test_args, script='test')
                         
+                        ### debug
+#                         if not split_final_test_args.debug:
                         exp_save_features(copy_args(split_final_test_args))
                         
                         print('\n', '='*20, 'Testing', '='*20)
@@ -285,6 +287,11 @@ class ExpManager:
                         print('test_params:', test_params)
                         print('data split:', split)
                         n_episodes = 10 if split_final_test_args.debug or mode=='draw_tasks' else 600
+                        
+                        tmp = split_final_test_args # to make variable name short
+                        is_str_single_frac = isinstance(tmp.frac_ensemble, str) and ',' not in tmp.frac_ensemble
+                        is_float_none_frac = isinstance(tmp.frac_ensemble, float) or tmp.frac_ensemble==1 or tmp.frac_ensemble is None
+                        is_single_exp = is_float_none_frac or is_str_single_frac
                         
                         exp_record, task_datas = exp_test(copy_args(split_final_test_args), n_episodes=n_episodes, should_del_features=True)#, show_data=show_data)
                         write_record['epoch'] = exp_record['epoch']
@@ -294,7 +301,7 @@ class ExpManager:
                         torch.cuda.empty_cache()
                     
                     ########## record to csv ##########
-                    if mode != 'tmp_pkl':
+                    if mode in ['from_scratch', 'resume']:
                         print('Saving record to:', csv_path)
                         record_to_csv(final_test_args, write_record, csv_path=csv_path)
                         
@@ -303,10 +310,10 @@ class ExpManager:
                         top_k = None
                         self.sum_up_results(choose_by, top_k)
                     
-                    write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
-                    self.results_pkl.append(write_record)
                     
                     ########## record to pickle ##########
+                    write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
+                    self.results_pkl.append(write_record)
                     print('Saving self.results_pkl into:', pkl_path)
                     with open(pkl_path, 'wb') as handle:
                         pickle.dump(self.results_pkl, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -320,15 +327,6 @@ class ExpManager:
                 # read csv to compare results
                 top_k = None
                 self.sum_up_results(choose_by, top_k)
-        
-        # TODO: 5/12 save task_datas in file
-        # directly save self.results_pkl in file 'csv_name.pkl'????????????
-        # TODO: CANNOT just save to csv_path.pkl since different expmgr might have the same csv_path
-        
-#         if mode in ['from_scratch', 'resume']:
-#             print('saving self.results_pkl into:', pkl_path)
-#             with open(pkl_path, 'wb') as handle:
-#                 pickle.dump(self.results_pkl, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
         if mode == 'draw_tasks':
             print('loading self.results_pkl from:', pkl_path)
