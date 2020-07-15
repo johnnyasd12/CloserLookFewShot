@@ -294,22 +294,22 @@ class ExpManager:
 
                             torch.cuda.empty_cache()
                             
-                            ########## record to csv ##########
-                            if mode in ['from_scratch', 'resume']:
-                                print('Saving record to:', csv_path)
-                                record_to_csv(final_test_args, write_record, csv_path=csv_path)
+                        ########## record to csv ##########
+                        if mode in ['from_scratch', 'resume']:
+                            print('Saving record to:', csv_path)
+                            record_to_csv(final_test_args, write_record, csv_path=csv_path)
 
-                                print('='*20, 'Current Experiments', '='*20)
-                                choose_by = 'val_acc_mean'
-                                top_k = None
-                                self.sum_up_results(choose_by, top_k)
+                            print('='*20, 'Current Experiments', '='*20)
+                            choose_by = 'val_acc_mean'
+                            top_k = None
+                            self.sum_up_results(choose_by, top_k)
 
-                            ########## record to pickle ##########
-                            write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
-                            self.results_pkl.append(write_record)
-                            print('Saving self.results_pkl into:', pkl_path)
-                            with open(pkl_path, 'wb') as handle:
-                                pickle.dump(self.results_pkl, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                        ########## record to pickle ##########
+                        write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
+                        self.results_pkl.append(write_record)
+                        print('Saving self.results_pkl into:', pkl_path)
+                        with open(pkl_path, 'wb') as handle:
+                            pickle.dump(self.results_pkl, handle, protocol=pickle.HIGHEST_PROTOCOL)
                             
                     else: ########## multiple frac_ensemble ##########
                         # make frac_ensemble list
@@ -346,14 +346,14 @@ class ExpManager:
                                     print(check_df)
                                     frac_ls.remove(frac)
                                 else:
-                                    print('Need to do testing for frac_ensemble: %f since there\'s NO experiment in data.'%(frac))
+                                    print('Need to do testing for frac_ensemble:', frac,'since there\'s NO experiment in data.')
                         
                         ########## do exps for multi-frac_ensemble ##########
                         if len(frac_ls) > 0:
                             final_test_args.frac_ensemble = frac_ls
                             
                             ##### initialize record for different frac #####
-                            frac_write_records = [copy.deepcopy(write_record)]*len(frac_ls)
+                            frac_write_records = [copy.deepcopy(write_record) for _ in range(len(frac_ls))]
                             
                             ##### start exps #####
                             splits = ['val', 'novel']
@@ -387,37 +387,37 @@ class ExpManager:
                                     copy_args(split_final_test_args), n_episodes=n_episodes, should_del_features=True)
                                 
                                 for frac_id, frac in enumerate(frac_ls):
-                                    frac_write_record = frac_write_records[i]
-                                    exp_record = frac_exp_records[i]
-                                    frac_write_record['frac_ensemble'] = exp_record['frac_ensemble']
+                                    frac_write_record = frac_write_records[frac_id]
+                                    exp_record = frac_exp_records[frac_id]
+                                    frac_write_record['frac_ensemble'] = frac
                                     frac_write_record['epoch'] = exp_record['epoch']
                                     frac_write_record[split+'_acc_mean'] = exp_record['acc_mean']
                                     frac_write_record[split+'_acc_std'] = exp_record['acc_std']
 
                                 torch.cuda.empty_cache()
 
-                                ########## record n_frac exps to csv ##########
-                                if mode in ['from_scratch', 'resume']:
-                                    print('Saving record to:', csv_path)
-                                    for frac_id, frac in enumerate(frac_ls):
-                                        frac_write_record = frac_write_records[i]
-                                        tmp_test_args = copy_args(final_test_args)
-                                        tmp_test_args.frac_ensemble = frac
-                                        record_to_csv(tmp_test_args, frac_write_record, csv_path=csv_path)
-
-                                    print('='*20, 'Current Experiments', '='*20)
-                                    choose_by = 'val_acc_mean'
-                                    top_k = None
-                                    self.sum_up_results(choose_by, top_k)
-
-                                ########## record n_frac exps to pickle ##########
+                            ########## record n_frac exps to csv ##########
+                            if mode in ['from_scratch', 'resume']:
+                                print('Saving record to:', csv_path)
                                 for frac_id, frac in enumerate(frac_ls):
-                                    frac_write_record = frac_write_records[i]
-                                frac_write_record['novel_task_datas'] = task_datas # currently ignore val_task_datas
+                                    frac_write_record = frac_write_records[frac_id]
+                                    tmp_test_args = copy_args(final_test_args)
+                                    tmp_test_args.frac_ensemble = frac
+                                    record_to_csv(tmp_test_args, frac_write_record, csv_path=csv_path)
+
+                                print('='*20, 'Current Experiments', '='*20)
+                                choose_by = 'val_acc_mean'
+                                top_k = None
+                                self.sum_up_results(choose_by, top_k)
+
+                            ########## record n_frac exps to pickle ##########
+                            for frac_id, frac in enumerate(frac_ls):
+                                frac_write_record = frac_write_records[frac_id]
+                                frac_write_record['novel_task_datas'] = frac_task_datas[frac_id] # currently ignore val_task_datas
                                 self.results_pkl.append(frac_write_record)
-                                print('Saving self.results_pkl into:', pkl_path)
-                                with open(pkl_path, 'wb') as handle:
-                                    pickle.dump(self.results_pkl, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                            print('Saving self.results_pkl into:', pkl_path)
+                            with open(pkl_path, 'wb') as handle:
+                                pickle.dump(self.results_pkl, handle, protocol=pickle.HIGHEST_PROTOCOL)
                                 
                         else:
                             print('all frac_ensemble exps had been done before.')

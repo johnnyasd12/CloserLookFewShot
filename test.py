@@ -213,27 +213,29 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
                 n_fracs = len(params.frac_ensemble)
                 
                 ##### initialize frac_data #####
-                frac_acc_alls = [[0]*n_episodes]*n_fracs
+                frac_acc_alls = [[0]*n_episodes for _ in range(n_fracs)]
                 frac_acc_means = [None]*n_fracs
                 frac_acc_stds = [None]*n_fracs
                 # draw_task: initialize task acc(actually can replace acc_all), img_path, img_is_correct, etc.
-                frac_task_datas = [[None]*n_episodes]*n_fracs # list of list of dict
+                ep_task_data_each_frac = [[None]*n_episodes for _ in range(n_fracs)] # list of list of dict
 
                 for ep_id in tqdm(range(n_episodes)):
                     # TODO afterward: fix data list? can only fix class list?
                     
-                    # TODO my_utils.py: feature_eval return frac_task_datas
+                    # TODO my_utils.py: feature_eval return frac_task_data
                     frac_task_data = feature_evaluation(
                         candidate_cl_feature, model, params=params, n_query=15, **few_shot_params, 
                         cl_filepath=cl_filepath,
                     )
                     for frac_id in range(n_fracs):
                         task_data = frac_task_data[frac_id]
-                        acc_all = frac_acc_alls[frac_id]
+                        # TODO: i think here's the problem???
                         acc = task_data['acc']
-                        acc_all[ep_id] = acc
-                        frac_task_datas[frac_id][ep_id] = task_data
-                
+                        frac_acc_alls[frac_id][ep_id] = acc
+                        ep_task_data_each_frac[frac_id][ep_id] = task_data
+                ### debug
+#                 print('frac_acc_alls:', frac_acc_alls)
+#                 yee
                 for frac_id in range(n_fracs):
                     frac_acc_alls[frac_id]  = np.asarray(frac_acc_alls[frac_id])
                     acc_all = frac_acc_alls[frac_id]
@@ -241,7 +243,7 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
                     acc_std = np.std(acc_all)
                     frac_acc_means[frac_id] = acc_mean
                     frac_acc_stds[frac_id]  = acc_std
-                    print('loaded from %d epoch model, frac_ensemble: %f.' %(load_epoch, params.frac_ensemble[frac_id]))
+                    print('loaded from %d epoch model, frac_ensemble:'%(load_epoch), params.frac_ensemble[frac_id])
                     print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(n_episodes, acc_mean, 1.96* acc_std/np.sqrt(n_episodes)))
                 
                 ########## (haven't modified) last record and post-process ##########
@@ -266,7 +268,7 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
                 print('exp_test() start at', start_time, ', end at', end_time, '.\n')
                 print('exp_test() totally took:', end_time-start_time)
                 
-                return frac_extra_records, frac_task_datas
+                return frac_extra_records, ep_task_data_each_frac
 
 def frac_ensemble_str2var(frac_ensemble):
     if frac_ensemble.lower() == 'none':

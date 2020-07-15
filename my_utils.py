@@ -697,8 +697,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                         if frac is None:
                             n_ensemble_ls.append(1)
                         else:
-                            n_ensemble_ls.append(frac*params.n_test_candidates)
-                    params.frac_ensemble.sort()
+                            n_ensemble_ls.append(int(frac*params.n_test_candidates))
+#                     params.frac_ensemble.sort()
                     n_ensemble_ls.sort()
 #                     n_ensemble_ls = [frac*params.n_test_candidates for frac in params.frac_ensemble]
                     
@@ -827,7 +827,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             model.n_support = n_support
             model.n_query = n_query
             # repeat procedure of common setting to get query prediction
-            selected_ids = elected_ids if not is_single_exp else sorted_candidate_ids
+            selected_ids = elected_ids if is_single_exp else sorted_candidate_ids
             for elected_id in selected_ids:
                 cl_feature_dict = cl_feature_each_candidate[elected_id]
                 z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
@@ -863,7 +863,10 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
                     exp_ensemble_probs = [None]*n_frac_exps
                     for frac_exp_id in range(n_frac_exps):
                         n_ensemble = n_ensemble_ls[frac_exp_id]
+#                         try:
                         ensemble_probs = all_preds[:n_ensemble].mean(axis=0) # shape=(n_query*n_way, n_way)
+#                         except TypeError:
+#                             print('n_ensemble:', n_ensemble)
                         ensemble_preds = np.argmax(ensemble_probs, axis=1) # shape=(n_query*n_way) # useless???
                         exp_ensemble_probs[frac_exp_id] = ensemble_probs
                         
