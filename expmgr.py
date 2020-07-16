@@ -472,10 +472,11 @@ class ExpManager:
         test_possible_params = copy.deepcopy(self.possible_params['test'])
         if 'frac_ensemble' in test_possible_params.keys():
             frac_param = test_possible_params['frac_ensemble']
-            if len(frac_param)==1 and ',' in frac_param[0]:
-                frac_ls = frac_param[0].split(',')
-                frac_ls = list(map(frac_ensemble_str2var, frac_ls))
-                test_possible_params['frac_ensemble'] = frac_ls
+            if len(frac_param)==1 and isinstance(frac_param[0],str):
+                if ',' in frac_param[0]:
+                    frac_ls = frac_param[0].split(',')
+                    frac_ls = list(map(frac_ensemble_str2var, frac_ls))
+                    test_possible_params['frac_ensemble'] = frac_ls
         
         all_possible_params = {**self.possible_params['general'], **test_possible_params}
         
