@@ -827,7 +827,7 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             model.n_support = n_support
             model.n_query = n_query
             # repeat procedure of common setting to get query prediction
-            selected_ids = elected_ids if is_single_exp else sorted_candidate_ids
+            selected_ids = elected_ids if is_single_exp else sorted_candidate_ids[:np.max(n_ensemble_ls)]
             for elected_id in selected_ids:
                 cl_feature_dict = cl_feature_each_candidate[elected_id]
                 z_all = get_all_perm_features(select_class=select_class, cl_feature_dict=cl_feature_dict, perm_ids_dict=perm_ids_dict)
