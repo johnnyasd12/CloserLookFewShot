@@ -10,7 +10,7 @@ n_base_classes = {
 }
 
 stop_epoch = {
-    'baseline':200, 
+    'baseline':500, 
     'protonet':1000, 
     'relationnet':1000, 
 }
