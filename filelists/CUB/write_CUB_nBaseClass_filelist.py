@@ -39,7 +39,7 @@ for i, classfile_list in enumerate(classfile_list_all):
         if count_n_base_class == n_base_class:
             break
 
-dataset = 'base_%dcl'%(n_base_class)
+dataset = 'base%dcl'%(n_base_class)
 fo = open(savedir + dataset + ".json", "w")
 fo.write('{"label_names": [')
 fo.writelines(['"%s",' % item  for item in folder_list])

@@ -537,6 +537,10 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             # get prediction
             pred_prob = get_pred(model, z_all = z_all, prob = True)
             record_acc_and_task_pred(pred_prob = pred_prob, task_data = task_data)
+            
+            return task_data
+    
+    
     
     else: # n_test_candidates setting
         assert params.n_test_candidates == len(cl_feature_each_candidate), "features & params mismatch."

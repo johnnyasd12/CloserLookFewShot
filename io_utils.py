@@ -349,13 +349,11 @@ def get_loadfile_path(params, split):
             loadfile   = configs.data_dir['CUB'] + split +'.json'
     elif params.dataset == 'CUB_base25cl':
         if split == 'base':
-            else:
             loadfile   = configs.data_dir['CUB'] + 'base_25cl.json'
         else:
             loadfile   = configs.data_dir['CUB'] + split +'.json'
     elif params.dataset == 'CUB_base50cl':
         if split == 'base':
-            else:
             loadfile   = configs.data_dir['CUB'] + 'base_50cl.json'
         else:
             loadfile   = configs.data_dir['CUB'] + split +'.json'
