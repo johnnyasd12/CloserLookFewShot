@@ -48,7 +48,7 @@ def parse_args(script, parse_str=None):
     parser = argparse.ArgumentParser(description= 'few-shot script %s' %(script))
     
     # expmgr.py, train.py, save_features.py, test.py
-    parser.add_argument('--dataset'     , default=None, choices=['CUB','miniImagenet','cross','omniglot','cross_char','cross_char_half', 'cross_char_quarter', 'cross_char_quarter_10shot', 'cross_char_base3lang', 'cross_char_base1lang', 'cross_base80cl', 'cross_base20cl'])#, required=True)
+    parser.add_argument('--dataset'     , default=None, choices=['CUB','miniImagenet','cross','omniglot','cross_char','cross_char_half', 'cross_char_quarter', 'cross_char_quarter_10shot', 'cross_char_base3lang', 'cross_char_base1lang', 'cross_base80cl', 'cross_base20cl', 'CUB_base25cl', 'CUB_base50cl'])#, required=True)
     parser.add_argument('--model'       , default=None,      help='model: Conv{4|6} / ResNet{10|18|34|50|101}') # 50 and 101 are not used in the paper
     parser.add_argument('--method'      , default=None,   help='baseline/baseline++/protonet/matchingnet/relationnet{_softmax}/maml{_approx}') #relationnet_softmax replace L2 norm with softmax to expedite training, maml_approx use first-order approximation in the gradient for efficiency
     parser.add_argument('--train_n_way' , default=5, type=int,  help='class num to classify for training') #baseline and baseline++ would ignore this parameter
@@ -345,6 +345,18 @@ def get_loadfile_path(params, split):
     elif params.dataset == 'cross_base20cl':
         if split == 'base':
             loadfile = configs.data_dir['miniImagenet'] + 'all_20classes.json' 
+        else:
+            loadfile   = configs.data_dir['CUB'] + split +'.json'
+    elif params.dataset == 'CUB_base25cl':
+        if split == 'base':
+            else:
+            loadfile   = configs.data_dir['CUB'] + 'base_25cl.json'
+        else:
+            loadfile   = configs.data_dir['CUB'] + split +'.json'
+    elif params.dataset == 'CUB_base50cl':
+        if split == 'base':
+            else:
+            loadfile   = configs.data_dir['CUB'] + 'base_50cl.json'
         else:
             loadfile   = configs.data_dir['CUB'] + split +'.json'
     else: 

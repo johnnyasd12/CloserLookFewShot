@@ -156,6 +156,12 @@ def get_train_val_filename(params):
     elif params.dataset == 'cross_char_base1lang':
         base_file = configs.data_dir['omniglot'] + 'noLatin_1lang.json' 
         val_file  = configs.data_dir['emnist'] + 'val.json' # sure????
+    elif params.dataset == 'CUB_base25cl':
+        base_file = configs.data_dir['CUB'] + 'base25cl.json' 
+        val_file  = configs.data_dir['CUB'] + 'val.json'
+    elif params.dataset == 'CUB_base50cl':
+        base_file = configs.data_dir['CUB'] + 'base50cl.json' 
+        val_file  = configs.data_dir['CUB'] + 'val.json'
     else:
         base_file = configs.data_dir[params.dataset] + 'base.json' 
         val_file   = configs.data_dir[params.dataset] + 'val.json'
@@ -174,24 +180,6 @@ def get_source_val_filename(params):
     elif 'cross_char' in params.dataset:
         # in ['cross_char','cross_char_half','cross_char_base3lang', 'cross_char_base1lang']
         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
-#     elif params.dataset == 'cross_char':
-#         # TODO?????
-#         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
-# #         source_val_file = configs.data_dir['omniglot'] + 'cross_char_source_val_180.json'
-# #         source_val_file = configs.data_dir['omniglot'] + 'val.json'
-#     elif params.dataset == 'cross_char_half': # equals to 25lang
-#         # TODO
-#         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
-# #         source_val_file = configs.data_dir['omniglot'] + 'cross_char_source_val_180.json'
-#     elif params.dataset == 'cross_char_quarter': # equals to 12lang
-#         # TODO
-#         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
-#     elif params.dataset == 'cross_char_quarter_10shot': # equals to 12lang
-#         # TODO
-#         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
-#     elif params.dataset == 'cross_char_base3lang':
-#         # TODO
-#         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
     else:
         raise ValueError('Cannot return source_val_file when dataset =', params.dataset)
         
@@ -204,7 +192,7 @@ def set_default_stop_epoch(params):
             if params.dataset == 'omniglot' or 'cross_char' in params.dataset:
 #             if params.dataset in ['omniglot', 'cross_char', 'cross_char_half', 'cross_char_quarter']:
                 params.stop_epoch = 5
-            elif params.dataset in ['CUB']:
+            elif params.dataset in ['CUB', 'CUB_base25cl', 'CUB_base50cl']:
                 params.stop_epoch = 200 # This is different as stated in the open-review paper. However, using 400 epoch in baseline actually lead to over-fitting
             elif params.dataset in ['miniImagenet', 'cross', 'cross_base80cl', 'cross_base40cl', 'cross_base20cl']:
                 params.stop_epoch = 400
