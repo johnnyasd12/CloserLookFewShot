@@ -67,35 +67,8 @@ def get_matched_df(params, df, possible_params={}):
                     df_k_fillna = df[k].fillna('nan', inplace=False)
                     cond = df_k_fillna==v
                 else:
-                    ##### debug #####
-#                     print('k:%s, v:%s'%(k,v))
-#                     if k == 'dropout_block_id':
-#                         print('df[k].dtype:', df[k].dtype)
-#                         print('type(v):', type(v))
-#                         print('df[k].dtype == type(v):', df[k].dtype == type(v))
-#                     if isinstance(v,str):
-#                         cond = df[k].astype(str) == v
-#                     else:
                     cond = df[k]==v
-            ###################### DEBUG (not solved yet) ######################
-#             try:
-#                 cond = df[k]==v if (v!=None and v==v) else df[k]!=df[k]
-#             except TypeError:
-#                 logging.error('TypeError: invalid type comparison.')
-#                 logging.debug('k: %s'%k)
-#                 logging.debug('v: %s'%v)
-#                 logging.debug('df[%s]: \n%s'%(k,df[k]))
-#                 # there is nan in df[k], and v is str
-#                 yeee
-            ###################### DEBUG ######################
-            
             base_cond = base_cond&cond if base_cond is not None else cond
-            
-            ###################### DEBUG (seems no problem?) ######################
-#             print('get_matched_df/k,v:', k, v)
-#             print('get_matched_df/cond:\n', cond)
-#             print('get_matched_df/base_cond:\n', base_cond)
-            ###################### DEBUG ######################
         else:
             logging.warning('param_utils/get_matched_df/"%s" not in df.columns'%(k))
     
