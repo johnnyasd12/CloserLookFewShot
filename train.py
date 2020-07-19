@@ -310,7 +310,7 @@ def exp_train_val(params):
 
     source_val = True
     
-    if source_val and 'cross' in params.dataset: # in ['cross', 'cross_char','cross_char_half']:
+    if source_val and 'cross' in params.dataset and params.dataset != 'cross': # in ['cross', 'cross_char','cross_char_half']:
         record['source_val_acc'] = []
         base_loader, val_loader, source_val_loader = get_train_val_loader(params, source_val = True)
     else:
