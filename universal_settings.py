@@ -13,12 +13,14 @@ stop_epoch = {
     'baseline':500, 
     'protonet':1000, 
     'relationnet':1000, 
+    'relationnet_softmax':1000, 
 }
 
 patience = {
     'baseline':10, 
     'protonet':70, 
     'relationnet':70, 
+    'relationnet_softmax':70, 
 }
 
 should_aug_datasets = [

@@ -19,9 +19,11 @@ class RelationNet(MetaTemplate):
         self.relation_module = RelationModule( self.feat_dim , 8, self.loss_type ) #relation net features are not pooled, so self.feat_dim is [dim, w, h] 
 
         if self.loss_type == 'mse':
-            self.loss_fn = nn.MSELoss()  
+            self.loss_fn = nn.MSELoss()
+            self.loss_fn_wo_reduce = nn.MSELoss(reduction='none')
         else:
             self.loss_fn = nn.CrossEntropyLoss()
+            self.loss_fn_wo_reduce = nn.CrossEntropyLoss(reduction='none')
 
     def set_forward(self,x,is_feature = False):
         z_support, z_query  = self.parse_feature(x,is_feature)
