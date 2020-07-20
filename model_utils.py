@@ -82,8 +82,9 @@ def get_backbone_func(params):
             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
         else: # ResNet
             backbone_func = lambda: model_dict[params.model](
-            dropout_p=dropout_p, dropout_block_id=dropout_bid
-            , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
+                flatten=False,
+                dropout_p=dropout_p, dropout_block_id=dropout_bid
+                , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
 
     else: # not RelationNet
         
