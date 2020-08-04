@@ -147,6 +147,18 @@ class ExpManager:
                 # check if ALL test_params has been experimented. if so, then do NOT even train model
                 check_df = loaded_df.copy()
                 check_param = {**base_params, **general_params}
+                
+                # include default columns if param not in dataframe
+                default_train_args = parse_args('train', parse_str='')
+                default_train_param = vars(default_train_args)
+                for param in check_param:
+                    if param not in check_df.columns:
+                        print('param:', param)
+                        if default_train_param[param] is None:
+                            check_df[param] = np.nan
+                        else:
+                            check_df[param] = default_train_param[param]
+                
                 check_df = get_matched_df(check_param, check_df)
                 num_experiments = len(check_df)
                 
@@ -208,7 +220,17 @@ class ExpManager:
                         if var in check_param:
                             del check_param[var]
 
-                    check_df = get_matched_df(check_param, loaded_df)
+                    # include default columns if param not in dataframe
+                    for param in check_param:
+                        if param not in check_df.columns:
+                            print('param:', param)
+                            if default_param[param] is None:
+                                check_df[param] = np.nan
+                            else:
+                                check_df[param] = default_param[param]
+#                             print(check_df)
+#                             yooooo
+                    check_df = get_matched_df(check_param, check_df) # should loaded_df be check_df ???
                     num_test_experiments = len(check_df)
                     if num_test_experiments>0: # already experiments
                         print('NO need to test since already tested %s times in record: %s'%(num_test_experiments, csv_path))
