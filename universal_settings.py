@@ -14,6 +14,7 @@ stop_epoch = {
     'protonet':1000, 
     'relationnet':1000, 
     'relationnet_softmax':1000, 
+    'matchingnet':1000, 
 }
 
 patience = {
@@ -21,6 +22,7 @@ patience = {
     'protonet':70, 
     'relationnet':70, 
     'relationnet_softmax':70, 
+    'matchingnet':70, 
 }
 
 should_aug_datasets = [

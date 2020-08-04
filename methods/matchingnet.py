@@ -17,6 +17,7 @@ class MatchingNet(MetaTemplate):
         super(MatchingNet, self).__init__( model_func,  n_way, n_support)
 
         self.loss_fn    = nn.NLLLoss()
+        self.loss_fn_wo_reduce    = nn.NLLLoss(reduction='none')
 
         self.FCE = FullyContextualEmbedding(self.feat_dim)
         self.G_encoder = nn.LSTM(self.feat_dim, self.feat_dim, 1, batch_first=True, bidirectional=True)
@@ -54,21 +55,30 @@ class MatchingNet(MetaTemplate):
         G, G_normalized = self.encode_training_set( z_support)
 
         y_s         = torch.from_numpy(np.repeat(range( self.n_way ), self.n_support ))
-#         Y_S         = Variable( utils.one_hot(y_s, self.n_way ) ).cuda()
-        Y_S         = to_device(Variable( utils.one_hot(y_s, self.n_way ) ))
+        Y_S         = Variable( utils.one_hot(y_s, self.n_way ) ).cuda()
         f           = z_query
         logprobs = self.get_logprobs(f, G, G_normalized, Y_S)
         return logprobs
 
     def set_forward_loss(self, x):
         y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
-#         y_query = Variable(y_query.cuda())
-        y_query = Variable(to_device(y_query))
+        y_query = Variable(y_query.cuda())
 
         logprobs = self.set_forward(x)
 
         return self.loss_fn(logprobs, y_query )
 
+    def total_loss(self, x):
+        return self.set_forward_loss(x)
+    
+    def forwardout2prob(self, forward_outputs):
+        '''
+        Args:
+            forward_outputs: shape=(n_way*n_query, n_way)
+        '''
+        probs = forward_outputs.exp()
+        return probs
+    
     def cuda(self): # BUGFIX
         super(MatchingNet, self).cuda()
         self.FCE = self.FCE.cuda()

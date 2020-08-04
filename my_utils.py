@@ -13,6 +13,7 @@ from methods.protonet import ProtoNet
 from methods.relationnet import RelationNet
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
+from methods.matchingnet import MatchingNet
 # global_datasets = [] # for multi-processsing
 import logging
 
@@ -314,6 +315,8 @@ def feature_evaluation(cl_feature_each_candidate, model, params, n_way = 5, n_su
             raise ValueError('not support Baseline. ')
             forward_outputs = model.forward() # only support original data (not feature)
         elif isinstance(model, RelationNet):
+            forward_outputs = model.set_forward(z_all, is_feature = True)
+        elif isinstance(model, MatchingNet):
             forward_outputs = model.set_forward(z_all, is_feature = True)
         else:
             raise ValueError('Unsupported method.')
