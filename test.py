@@ -34,6 +34,8 @@ from tqdm import tqdm
 from model_utils import get_few_shot_params, get_model
 import datetime
 
+import gc
+
 def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
     start_time = datetime.datetime.now()
     print('exp_test() started at',start_time)
@@ -48,8 +50,8 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
     model = get_model(params, 'test')
     
     ########## get settings ##########
-    
-    few_shot_params = dict(n_way = params.test_n_way , n_support = params.n_shot)
+    n_shot = params.test_n_shot if params.test_n_shot is not None else params.n_shot
+    few_shot_params = dict(n_way = params.test_n_way , n_support = n_shot)
     if params.gpu_id:
         model = model.cuda()
     else:
@@ -184,13 +186,18 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
                     acc = task_data['acc']
                     acc_all.append(acc)
                     task_datas[i] = task_data
+                    
+                    collected = gc.collect()
+#                     print("Garbage collector: collected %d objects." % (collected))
 
                 acc_all  = np.asarray(acc_all)
                 acc_mean = np.mean(acc_all)
                 acc_std  = np.std(acc_all)
                 print('loaded from %d epoch model.' %(load_epoch))
                 print('%d episodes, Test Acc = %4.2f%% +- %4.2f%%' %(n_episodes, acc_mean, 1.96* acc_std/np.sqrt(n_episodes)))
-
+                collected = gc.collect()
+                print("garbage collector: collected %d objects." % (collected))
+                
                 ########## last record and post-process ##########
                 torch.cuda.empty_cache()
                 timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
@@ -233,6 +240,11 @@ def exp_test(params, n_episodes, should_del_features=False):#, show_data=False):
                         acc = task_data['acc']
                         frac_acc_alls[frac_id][ep_id] = acc
                         ep_task_data_each_frac[frac_id][ep_id] = task_data
+                        
+                        collected = gc.collect()
+#                         print("Garbage collector: collected %d objects." % (collected))
+                    collected = gc.collect()
+#                     print("Garbage collector: collected %d objects." % (collected))
                 ### debug
 #                 print('frac_acc_alls:', frac_acc_alls)
 #                 yee

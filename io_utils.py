@@ -125,6 +125,7 @@ def parse_args(script, parse_str=None):
         parser.add_argument('--ensemble_strategy', default='vote', choices=['vote', 'avg_prob', 'bagging', 'adaboost', 'ada_weight', 'bootstrap_avgrank'], type=str, help='How to get the prediction of networks ensemble, only available when argument "frac_ensemble" is assigned(???).') # originally default None, but causes BUGGGGGG so modified to 'vote'. 
         parser.add_argument('--bag_n_sub_support', default=None, type=int, help='can be None, 0, 1,... (if None, default n_support-1; if 0, then random each resampling)')
         parser.add_argument('--boot_n_resample', default=None, type=int, help='can be None, 200,... (if None, default 100.)')
+        parser.add_argument('--test_n_shot'      , default=None, type=int,  help='number of labeled data in each class of each "test episode" (validation episode for earlystop do NOT apply).') #baseline and baseline++ only use this parameter in finetuning
 
         
         
