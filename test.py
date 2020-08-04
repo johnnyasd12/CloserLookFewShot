@@ -31,7 +31,7 @@ from my_utils import set_random_seed
 import pandas as pd
 from tqdm import tqdm
 
-from model_utils import get_few_shot_params, get_model
+from model_utils import get_model
 import datetime
 
 import gc

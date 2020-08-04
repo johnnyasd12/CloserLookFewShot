@@ -25,16 +25,24 @@ from universal_settings import n_base_classes
 
 def get_few_shot_params(params, mode=None):
     '''
-    :param mode: 'train', 'test'
+    :param mode: 'train', 'val', 'test'
     '''
-    few_shot_params = {
-        'train': dict(n_way = params.train_n_way, n_support = params.n_shot), 
-        'test': dict(n_way = params.test_n_way, n_support = params.n_shot) 
-    }
-    if mode is None:
-        return few_shot_params
-    else:
-        return few_shot_params[mode]
+#     few_shot_params = {
+#         'train': dict(n_way = params.train_n_way, n_support = params.n_shot), 
+#         'test': dict(n_way = params.test_n_way, n_support = params.n_shot) # 'test' is actually 'val'???
+#     }
+#     if mode is None:
+#         return few_shot_params
+#     else:
+#         return few_shot_params[mode]
+    
+    if mode == 'train':
+        return dict(n_way = params.train_n_way, n_support = params.n_shot)
+    elif mode == 'val':
+        return dict(n_way = params.test_n_way, n_support = params.n_shot)
+    elif mode == 'test':
+        n_shot = params.test_n_shot if params.test_n_shot is not None else params.n_shot
+        return dict(n_way = params.test_n_way, n_support = n_shot)
 
 def get_backbone_func(params):
     print('get_backbone_func() start...')
@@ -105,8 +113,9 @@ def get_model(params, mode):
         mode: (str), 'train', 'test'
     '''
     print('get_model() start...')
-    few_shot_params_d = get_few_shot_params(params, None)
-    few_shot_params = few_shot_params_d[mode]
+#     few_shot_params_d = get_few_shot_params(params, None)
+#     few_shot_params = few_shot_params_d[mode]
+    few_shot_params = get_few_shot_params(params, mode)
     
     if params.dataset == 'omniglot' or 'cross_char' in params.dataset:
 #     if params.dataset in ['omniglot', 'cross_char', 'cross_char_half', 'cross_char_quarter', ...]:
