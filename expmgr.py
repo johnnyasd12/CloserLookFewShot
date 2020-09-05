@@ -477,6 +477,20 @@ class ExpManager:
                     cols.remove(col)
             return df[cols]
         
+        def del_all_the_same_cols(df):
+            if len(df.index) != 1:
+                df = df[[col for col in df if not df[col].nunique()==1]]
+            else:
+                pass
+            return df
+        
+        def replace_std_with_conf(df):
+            n_episodes = 600
+            df2 = df.copy()
+            df2['novel_acc_95%CI'] = 1.96*df2['novel_acc_std']/np.sqrt(n_episodes)
+            del df2['novel_acc_std']
+            return df2
+        
         csv_path = os.path.join(self.record_folder, self.fixed_params['test']['csv_name'])
         print('sum_up_results/Reading file:', csv_path)
         record_df = pd.read_csv(csv_path)
@@ -514,12 +528,18 @@ class ExpManager:
             sorted_df = matched_df.sort_values(by=choose_by, ascending=False)
             compare_cols = list(self.possible_params['general'].keys())+list(self.possible_params['test'].keys())
 #             compare_cols = compare_cols + ['epoch', 'train_acc_mean', 'val_acc_mean', 'novel_acc_mean']
-            compare_cols = compare_cols + ['epoch', 'train_acc_mean', 'source_val_acc', 'val_acc_mean', 'novel_acc_mean']
+            compare_cols = compare_cols + ['epoch', 'train_acc_mean', 'source_val_acc', 'val_acc_mean', 'novel_acc_mean','novel_acc_std']
             print()
             print('Best Test Acc: %s, selected by %s'%(sorted_df['novel_acc_mean'].iloc[0], choose_by))
+            
+            show_df = select_cols_if_exists(sorted_df, compare_cols)
+            show_df = del_all_the_same_cols(show_df)
+            if 'novel_acc_std' in show_df.columns:
+#                 print('computing 95% confidence interval...')
+                show_df = replace_std_with_conf(show_df)
+            
             print()
             print('='*20,'Top %s/%s results sorted by: %s'%(top_k, len(matched_df), choose_by), '='*20)
-            show_df = select_cols_if_exists(sorted_df, compare_cols)
             print(show_df.head(top_k))
 #             print(sorted_df[compare_cols].head(top_k))
         else:
