@@ -1,7 +1,7 @@
 
 
 n_base_classes = {
-    'omniglot':4112, # val:688, novel:1692
+    'omniglot':4112, 'omniglot_400cl':400, 'omniglot_40cl':40, # val:688, novel:1692
     'CUB':100, 'CUB_base50cl':50, 'CUB_base25cl':25, # val:50, novel:50
     'miniImagenet':64, # val:16, novel:20
     'cross_char':1597, 'cross_char_half':758, 'cross_char_quarter':350, # val:31, novel:31
@@ -12,7 +12,7 @@ n_base_classes = {
 stop_epoch = {
     'baseline':500, 
     'protonet':1000, 
-    'relationnet':1000, 
+#     'relationnet':1000, 
     'relationnet_softmax':1000, 
     'matchingnet':1000, 
 }
@@ -20,7 +20,7 @@ stop_epoch = {
 patience = {
     'baseline':10, 
     'protonet':70, 
-    'relationnet':70, 
+#     'relationnet':70, 
     'relationnet_softmax':70, 
     'matchingnet':70, 
 }

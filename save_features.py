@@ -33,7 +33,7 @@ def exp_save_features(params):
     
     image_size = get_img_size(params)
     
-    if params.dataset == 'omniglot' or 'cross_char' in params.dataset:
+    if 'omniglot' in params.dataset or 'cross_char' in params.dataset:
 #     if params.dataset in ['omniglot', 'cross_char', 'cross_char_half', 'cross_char_quarter']:
         # not sure if the following assertion useful...
 #         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'

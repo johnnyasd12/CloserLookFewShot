@@ -162,6 +162,12 @@ def get_train_val_filename(params):
     elif params.dataset == 'CUB_base50cl':
         base_file = configs.data_dir['CUB'] + 'base50cl.json' 
         val_file  = configs.data_dir['CUB'] + 'val.json'
+    elif params.dataset == 'omniglot_base40cl':
+        base_file = configs.data_dir['omniglot'] + 'base_40cl.json'
+        val_file  = configs.data_dir['omniglot'] + 'val.json'
+    elif params.dataset == 'omniglot_base400cl':
+        base_file = configs.data_dir['omniglot'] + 'base_400cl.json'
+        val_file  = configs.data_dir['omniglot'] + 'val.json'
     else:
         base_file = configs.data_dir[params.dataset] + 'base.json' 
         val_file   = configs.data_dir[params.dataset] + 'val.json'
@@ -189,7 +195,7 @@ def get_source_val_filename(params):
 def set_default_stop_epoch(params):
     if params.stop_epoch == -1: 
         if params.method in ['baseline', 'baseline++'] :
-            if params.dataset == 'omniglot' or 'cross_char' in params.dataset:
+            if 'omniglot' in params.dataset or 'cross_char' in params.dataset:
 #             if params.dataset in ['omniglot', 'cross_char', 'cross_char_half', 'cross_char_quarter']:
                 params.stop_epoch = 5
             elif params.dataset in ['CUB', 'CUB_base25cl', 'CUB_base50cl']:

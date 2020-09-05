@@ -117,7 +117,7 @@ def get_model(params, mode):
 #     few_shot_params = few_shot_params_d[mode]
     few_shot_params = get_few_shot_params(params, mode)
     
-    if params.dataset == 'omniglot' or 'cross_char' in params.dataset:
+    if 'omniglot' in params.dataset or 'cross_char' in params.dataset:
 #     if params.dataset in ['omniglot', 'cross_char', 'cross_char_half', 'cross_char_quarter', ...]:
 #         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
         assert 'Conv4' in params.model and not params.train_aug ,'omniglot/cross_char only support Conv4 without augmentation'
@@ -239,7 +239,7 @@ def get_model(params, mode):
         backbone.BottleneckBlock.maml = True
         backbone.ResNet.maml = True
         model           = MAML(  backbone_func, approx = (params.method == 'maml_approx') , **few_shot_params )
-        if params.dataset == 'omniglot' or 'cross_char' in params.dataset:
+        if 'omniglot' in params.dataset or 'cross_char' in params.dataset:
 #         if params.dataset in ['omniglot', 'cross_char', 'cross_char_half']: #maml use different parameter in omniglot
             model.n_task     = 32
             model.task_update_num = 1
