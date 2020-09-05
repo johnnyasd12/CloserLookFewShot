@@ -479,7 +479,8 @@ class ExpManager:
         
         def del_all_the_same_cols(df):
             if len(df.index) != 1:
-                df = df[[col for col in df if not df[col].nunique()==1]]
+#                 df = df[[col for col in df if not df[col].nunique()==1]]
+                df = df[[col for col in df if not len(set(df[col]))==1]] # when only 2 unique and one is nan then this would work
             else:
                 pass
             return df
