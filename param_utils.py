@@ -70,9 +70,9 @@ def get_matched_df(params, df, possible_params={}):
                         df_k_fillna = df[k].fillna('nan', inplace=False)
                         cond = df_k_fillna==v
                     else:
-                        print('k:', k)
-                        print('v:', v)
-                        print('df:\n', df)
+#                         print('k:', k)
+#                         print('v:', v)
+#                         print('df:\n', df)
                         cond = df[k]==v
                 base_cond = base_cond&cond if base_cond is not None else cond
             else:
