@@ -55,35 +55,40 @@ def get_matched_df(params, df, possible_params={}):
     Args:
         possible_params (dict): dictionary of list
     '''
-    base_cond = None
-    for k,v in params.items():
-        if k in list(df.columns):
-            if v==None or v!=v: # v is None or nan
-                cond = df[k]!=df[k]
-            else: # v is not None or nan
-                contains_nan = df[k].isnull().values.any()
-                if contains_nan and isinstance(v, str):
-                    # BUGFIX: if there is nan in col and v is str, then would ERROR: Invalid Comparison. 
-                    df_k_fillna = df[k].fillna('nan', inplace=False)
-                    cond = df_k_fillna==v
-                else:
-                    cond = df[k]==v
-            base_cond = base_cond&cond if base_cond is not None else cond
-        else:
-            logging.warning('param_utils/get_matched_df/"%s" not in df.columns'%(k))
-    
-    df = df[base_cond]
-    
-    if len(possible_params)!=0:
-        for k, possible_values in possible_params.items():
+    if len(df.index) == 0:
+        return df
+    else:
+        base_cond = None
+        for k,v in params.items():
             if k in list(df.columns):
-                k_cond = None
-                for value in possible_values:
-                    cond = df[k]==value if value != None else df[k]!=df[k]
-                    k_cond = k_cond|cond if k_cond is not None else cond
-                df = df[k_cond]
+                if v==None or v!=v: # v is None or nan
+                    cond = df[k]!=df[k]
+                else: # v is not None or nan
+                    contains_nan = df[k].isnull().values.any()
+                    if contains_nan and isinstance(v, str):
+                        # BUGFIX: if there is nan in col and v is str, then would ERROR: Invalid Comparison. 
+                        df_k_fillna = df[k].fillna('nan', inplace=False)
+                        cond = df_k_fillna==v
+                    else:
+                        print('k:', k)
+                        print('v:', v)
+                        print('df:\n', df)
+                        cond = df[k]==v
+                base_cond = base_cond&cond if base_cond is not None else cond
             else:
-                logging.warning('"%s" not in df.columns'%(k))
-                # TODO: add column filled with default value
+                logging.warning('param_utils/get_matched_df/"%s" not in df.columns'%(k))
 
-    return df
+        df = df[base_cond]
+
+        if len(possible_params)!=0:
+            for k, possible_values in possible_params.items():
+                if k in list(df.columns):
+                    k_cond = None
+                    for value in possible_values:
+                        cond = df[k]==value if value != None else df[k]!=df[k]
+                        k_cond = k_cond|cond if k_cond is not None else cond
+                    df = df[k_cond]
+                else:
+                    logging.warning('"%s" not in df.columns'%(k))
+                    # TODO: add column filled with default value
+        return df
