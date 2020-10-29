@@ -36,7 +36,10 @@ for dataset in dataset_list:
                 file_list = file_list + classfile_list
                 label_list = label_list + np.repeat(i, len(classfile_list)).tolist()
 
-    fo = open(savedir + 'ori_emnist_' + dataset + ".json", "w")
+    out_fname = savedir + 'ori_emnist_' + dataset + ".json"
+    print("out_fname:", out_fname)
+    
+    fo = open(out_fname, "w")
     fo.write('{"label_names": [')
     fo.writelines(['"%s",' % item  for item in folder_list])
     fo.seek(0, os.SEEK_END) 
@@ -56,4 +59,5 @@ for dataset in dataset_list:
     fo.write(']}')
 
     fo.close()
+    
     print("%s -OK" %dataset)
