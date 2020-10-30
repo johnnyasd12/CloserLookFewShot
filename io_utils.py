@@ -48,7 +48,7 @@ def parse_args(script, parse_str=None):
     parser = argparse.ArgumentParser(description= 'few-shot script %s' %(script))
     
     # expmgr.py, train.py, save_features.py, test.py
-    parser.add_argument('--dataset'     , default=None, choices=['CUB','miniImagenet','cross','omniglot','cross_char','cross_char_half', 'cross_char_quarter', 'cross_char_quarter_10shot', 'cross_char_base3lang', 'cross_char_base1lang', 'cross_base80cl', 'cross_base20cl', 'CUB_base25cl', 'CUB_base50cl', 'omniglot_base400cl', 'omniglot_base40cl'])#, required=True)
+    parser.add_argument('--dataset'     , default=None, choices=['CUB','miniImagenet','cross','omniglot','cross_char','cross_char_half', 'cross_char_quarter', 'cross_char_quarter_10shot', 'cross_char_base3lang', 'cross_char_base1lang', 'cross_base80cl', 'cross_base20cl', 'CUB_base25cl', 'CUB_base50cl', 'cross_char2', 'cross_char2_quarter', 'cross_char2_base3lang', 'cross_char2_base1lang', 'omniglot_base400cl', 'omniglot_base40cl'])#, required=True)
     parser.add_argument('--model'       , default=None,      help='model: Conv{4|6} / ResNet{10|18|34|50|101}') # 50 and 101 are not used in the paper
     parser.add_argument('--method'      , default=None,   help='baseline/baseline++/protonet/matchingnet/relationnet{_softmax}/maml{_approx}') #relationnet_softmax replace L2 norm with softmax to expedite training, maml_approx use first-order approximation in the gradient for efficiency
     parser.add_argument('--train_n_way' , default=5, type=int,  help='class num to classify for training') #baseline and baseline++ would ignore this parameter
@@ -280,8 +280,15 @@ def params2df(params, extra_dict):
 
 
 def get_img_size(params):
+#     if 'Conv' in params.model:
+#         if params.dataset in ['omniglot', 'cross_char']:
+#             image_size = 28
+#         else:
+#             image_size = 84 
+#     else:
+#         image_size = 224
     if 'Conv' in params.model:
-        if 'omniglot' in params.dataset or 'cross_char' in params.dataset:# in ['omniglot', 'cross_char', 'cross_char_half', 'cross_char_quarter', 'cross_char_quarter_10shot']:
+        if 'omniglot' in params.dataset or 'cross_char' in params.dataset:# in ['omniglot', 'cross_char', 'cross_char_half', 'cross_char_quarter', 'cross_char_quarter_10shot', 'cross_char2']:
             image_size = 28 if params.image_size is None else params.image_size
         else:
             image_size = 84 if params.image_size is None else params.image_size
@@ -290,13 +297,6 @@ def get_img_size(params):
     return image_size
 
 def get_loadfile_path(params, split):
-#     if 'Conv' in params.model:
-#         if params.dataset in ['omniglot', 'cross_char']:
-#             image_size = 28
-#         else:
-#             image_size = 84 
-#     else:
-#         image_size = 224
     
     if params.dataset == 'cross':
         if split == 'base':
@@ -333,6 +333,11 @@ def get_loadfile_path(params, split):
             loadfile = configs.data_dir['omniglot'] + 'noLatin_1lang.json' 
         else:
             loadfile  = configs.data_dir['emnist'] + split +'.json' 
+    elif params.dataset == 'cross_char2':
+        if split == 'base':
+            loadfile = configs.data_dir['omniglot'] + 'noLatin.json' 
+        else:
+            loadfile  = configs.data_dir['emnist'] + 'ori_emnist_' + split +'.json' 
     elif params.dataset == 'cross_base80cl':
         if split == 'base':
             loadfile = configs.data_dir['miniImagenet'] + 'all_80classes.json' 

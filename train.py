@@ -156,6 +156,9 @@ def get_train_val_filename(params):
     elif params.dataset == 'cross_char_base1lang':
         base_file = configs.data_dir['omniglot'] + 'noLatin_1lang.json' 
         val_file  = configs.data_dir['emnist'] + 'val.json' # sure????
+    elif params.dataset == 'cross_char2':
+        base_file = configs.data_dir['omniglot'] + 'noLatin.json' 
+        val_file   = configs.data_dir['emnist'] + 'ori_emnist_' + 'val.json'
     elif params.dataset == 'CUB_base25cl':
         base_file = configs.data_dir['CUB'] + 'base25cl.json' 
         val_file  = configs.data_dir['CUB'] + 'val.json'
@@ -316,7 +319,7 @@ def exp_train_val(params):
 
     source_val = True
     
-    if source_val and 'cross' in params.dataset and params.dataset != 'cross': # in ['cross', 'cross_char','cross_char_half']:
+    if source_val and 'cross' in params.dataset and params.dataset != 'cross': # in ['cross_base20cl', 'cross_char','cross_char_half','cross_char2']:
         record['source_val_acc'] = []
         base_loader, val_loader, source_val_loader = get_train_val_loader(params, source_val = True)
     else:
