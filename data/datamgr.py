@@ -303,21 +303,28 @@ class HDF5DataManager(DataManager):
 
         return data_loader
 
-class OrderedDataManager(DataManager):
-    def __init__(self, image_size, batch_size, aug):
-        super(OrderedDataManager, self).__init__()
-        self.batch_size = batch_size
-        self.trans_loader = TransformLoader(image_size)
-        self.aug = aug
-        
-    def get_data_loader(self, data_file):
-#         transform = transforms.ToTensor()
-        transform = self.trans_loader.get_simple_transform(aug=self.aug)
-        dataset = SimpleDataset(data_file, transform=transform, return_path=True)
-        data_loader_params = dict(batch_size = self.batch_size, shuffle = True, num_workers = 12, pin_memory = True) # not sure if should be True when input to a TensorFlow model
-        data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
 
+
+class SetDataManager(DataManager):
+    ''' to get a data_loader
+    '''
+    def __init__(self, image_size, n_way, n_support, n_query, n_episode =100, recons_func = None): # n_episode spell wrong.....
+        super(SetDataManager, self).__init__()
+        self.image_size = image_size
+        self.n_way = n_way
+        self.batch_size = n_support + n_query
+        self.n_episode = n_episode
+
+        self.trans_loader = TransformLoader(image_size)
+
+    def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
+        transform = self.trans_loader.get_composed_transform(aug)
+        dataset = SetDataset( data_file , self.batch_size, transform )
+        sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
+        data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)       
+        data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
         return data_loader
+
 
 class SimpleDataManager(DataManager):
     def __init__(self, image_size, batch_size, recons_func = None):        
@@ -332,6 +339,23 @@ class SimpleDataManager(DataManager):
         ########### DEBUG ###########
 #         data_loader_params['num_workers'] = 0 # set to 0 when debugging
         ########### DEBUG ###########
+        data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
+
+        return data_loader
+
+
+class OrderedDataManager(DataManager):
+    def __init__(self, image_size, batch_size, aug):
+        super(OrderedDataManager, self).__init__()
+        self.batch_size = batch_size
+        self.trans_loader = TransformLoader(image_size)
+        self.aug = aug
+        
+    def get_data_loader(self, data_file):
+#         transform = transforms.ToTensor()
+        transform = self.trans_loader.get_simple_transform(aug=self.aug)
+        dataset = SimpleDataset(data_file, transform=transform, return_path=True)
+        data_loader_params = dict(batch_size = self.batch_size, shuffle = True, num_workers = 12, pin_memory = True) # not sure if should be True when input to a TensorFlow model
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
 
         return data_loader
@@ -414,26 +438,6 @@ class AugSetDataManager(DataManager):
             return torch.utils.data._utils.collate.default_collate(batch)
 #             return torch.utils.data._utils.collate.default_convert(batch)
         return wrapper
-
-class SetDataManager(DataManager):
-    ''' to get a data_loader
-    '''
-    def __init__(self, image_size, n_way, n_support, n_query, n_episode =100, recons_func = None): # n_episode spell wrong.....
-        super(SetDataManager, self).__init__()
-        self.image_size = image_size
-        self.n_way = n_way
-        self.batch_size = n_support + n_query
-        self.n_episode = n_episode
-
-        self.trans_loader = TransformLoader(image_size)
-
-    def get_data_loader(self, data_file, aug): #parameters that would change on train/val set
-        transform = self.trans_loader.get_composed_transform(aug)
-        dataset = SetDataset( data_file , self.batch_size, transform )
-        sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
-        data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)       
-        data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
-        return data_loader
 
 class VAESetDataManager(SetDataManager):
     def __init__(self, image_size, n_way, n_support, n_query, vaegan_exp, vaegan_step, lambda_zlogvar, fake_prob, vaegan_is_train, n_episode =100, recons_func = None):
