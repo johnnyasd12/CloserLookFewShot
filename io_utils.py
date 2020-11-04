@@ -313,14 +313,14 @@ def get_loadfile_path(params, split):
             loadfile = configs.data_dir['omniglot'] + 'noLatin_half.json' 
         else:
             loadfile  = configs.data_dir['emnist'] + split +'.json' 
-    elif params.dataset == 'cross_char_quarter':
-        if split == 'base':
-            loadfile = configs.data_dir['omniglot'] + 'noLatin_quarter.json' 
-        else:
-            loadfile  = configs.data_dir['emnist'] + split +'.json' 
     elif params.dataset == 'cross_char_quarter_10shot':
         if split == 'base':
             loadfile = configs.data_dir['omniglot'] + 'noLatin_quarter_10shot.json' 
+        else:
+            loadfile  = configs.data_dir['emnist'] + split +'.json' 
+    elif params.dataset == 'cross_char_quarter':
+        if split == 'base':
+            loadfile = configs.data_dir['omniglot'] + 'noLatin_quarter.json' 
         else:
             loadfile  = configs.data_dir['emnist'] + split +'.json' 
     elif params.dataset == 'cross_char_base3lang':
@@ -336,6 +336,21 @@ def get_loadfile_path(params, split):
     elif params.dataset == 'cross_char2':
         if split == 'base':
             loadfile = configs.data_dir['omniglot'] + 'noLatin.json' 
+        else:
+            loadfile  = configs.data_dir['emnist'] + 'ori_emnist_' + split +'.json' 
+    elif params.dataset == 'cross_char2_quarter':
+        if split == 'base':
+            loadfile = configs.data_dir['omniglot'] + 'noLatin_quarter.json' 
+        else:
+            loadfile  = configs.data_dir['emnist'] + 'ori_emnist_' + split +'.json' 
+    elif params.dataset == 'cross_char2_base3lang':
+        if split == 'base':
+            loadfile = configs.data_dir['omniglot'] + 'noLatin_3lang.json' 
+        else:
+            loadfile  = configs.data_dir['emnist'] + 'ori_emnist_' + split +'.json' 
+    elif params.dataset == 'cross_char2_base1lang':
+        if split == 'base':
+            loadfile = configs.data_dir['omniglot'] + 'noLatin_1lang.json' 
         else:
             loadfile  = configs.data_dir['emnist'] + 'ori_emnist_' + split +'.json' 
     elif params.dataset == 'cross_base80cl':

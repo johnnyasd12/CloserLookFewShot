@@ -144,11 +144,11 @@ def get_train_val_filename(params):
     elif params.dataset == 'cross_char_half':
         base_file = configs.data_dir['omniglot'] + 'noLatin_half.json' 
         val_file  = configs.data_dir['emnist'] + 'val.json' # sure????
-    elif params.dataset == 'cross_char_quarter':
-        base_file = configs.data_dir['omniglot'] + 'noLatin_quarter.json' 
-        val_file  = configs.data_dir['emnist'] + 'val.json' # sure????
     elif params.dataset == 'cross_char_quarter_10shot':
         base_file = configs.data_dir['omniglot'] + 'noLatin_quarter_10shot.json' 
+        val_file  = configs.data_dir['emnist'] + 'val.json' # sure????
+    elif params.dataset == 'cross_char_quarter':
+        base_file = configs.data_dir['omniglot'] + 'noLatin_quarter.json' 
         val_file  = configs.data_dir['emnist'] + 'val.json' # sure????
     elif params.dataset == 'cross_char_base3lang':
         base_file = configs.data_dir['omniglot'] + 'noLatin_3lang.json' 
@@ -159,6 +159,15 @@ def get_train_val_filename(params):
     elif params.dataset == 'cross_char2':
         base_file = configs.data_dir['omniglot'] + 'noLatin.json' 
         val_file   = configs.data_dir['emnist'] + 'ori_emnist_' + 'val.json'
+    elif params.dataset == 'cross_char2_quarter':
+        base_file = configs.data_dir['omniglot'] + 'noLatin_quarter.json' 
+        val_file  = configs.data_dir['emnist'] + 'ori_emnist_' + 'val.json' # sure????
+    elif params.dataset == 'cross_char2_base3lang':
+        base_file = configs.data_dir['omniglot'] + 'noLatin_3lang.json' 
+        val_file  = configs.data_dir['emnist'] + 'ori_emnist_' + 'val.json' # sure????
+    elif params.dataset == 'cross_char2_base1lang':
+        base_file = configs.data_dir['omniglot'] + 'noLatin_1lang.json' 
+        val_file  = configs.data_dir['emnist'] + 'ori_emnist_' + 'val.json' # sure????
     elif params.dataset == 'CUB_base25cl':
         base_file = configs.data_dir['CUB'] + 'base25cl.json' 
         val_file  = configs.data_dir['CUB'] + 'val.json'
