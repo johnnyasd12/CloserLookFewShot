@@ -31,12 +31,10 @@ def exp_save_features(params):
     if params.gpu_id:
         set_gpu_id(params.gpu_id)
     
+    ########## get model filepath ##########
     image_size = get_img_size(params)
     
     if 'omniglot' in params.dataset or 'cross_char' in params.dataset:
-#     if params.dataset in ['omniglot', 'cross_char', 'cross_char_half', 'cross_char_quarter']:
-        # not sure if the following assertion useful...
-#         assert params.model == 'Conv4' and not params.train_aug ,'omniglot only support Conv4 without augmentation'
         params.model = params.model.replace('Conv4', 'Conv4S')
 
     split = params.split
@@ -56,6 +54,7 @@ def exp_save_features(params):
     outfile = get_save_feature_filepath(params, checkpoint_dir, split) # string type
     print('outfile: %s'%(outfile))
 
+    ########## get data_loader ##########
     if params.aug_type is None:
         datamgr         = SimpleDataManager(image_size, batch_size = 64)
     else:
@@ -63,9 +62,12 @@ def exp_save_features(params):
                                                aug_type=params.aug_type, aug_target='test-sample') # aug_target= 'all' or 'test-sample', NO 'test-batch'
     data_loader      = datamgr.get_data_loader(loadfile, aug = False, shuffle=False, return_path=True)
 
+    
+    ########## get backbone ##########
     backbone_func = get_backbone_func(params)
     backbone_net = backbone_func()
     
+    ########## load backbone ##########
     if params.gpu_id:
         backbone_net = backbone_net.cuda()
         tmp = torch.load(modelfile, map_location='cuda:0')#+str(params.gpu_id))
