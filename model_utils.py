@@ -84,7 +84,12 @@ def get_backbone_func(params):
 #             backbone_func = lambda: backbone.Conv4SNP(
 #             dropout_p=dropout_p, dropout_block_id=dropout_bid
 #             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
-        if 'Conv' in params.model:
+        
+        if 'FC' in params.model:
+            backbone_func = lambda: b_func[params.model](
+            dropout_p=dropout_p, dropout_block_id=dropout_bid
+            , more_to_drop=params.more_to_drop)#, gram_bid = params.gram_bid)
+        elif 'Conv' in params.model:
             backbone_func = lambda: b_func[params.model](
             dropout_p=dropout_p, dropout_block_id=dropout_bid
             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
@@ -95,13 +100,17 @@ def get_backbone_func(params):
                 , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
 
     else: # not RelationNet
-        
-        backbone_func = lambda: model_dict[params.model](
+        if 'FC' in params.model:
+            backbone_func = lambda: b_func[params.model](
             dropout_p=dropout_p, dropout_block_id=dropout_bid
-            , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
-#         backbone_func = lambda: model_dict[params.model](
-#             dropout_p=params.dropout_p, dropout_block_id=params.dropout_block_id
-#             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
+            , more_to_drop=params.more_to_drop)#, gram_bid = params.gram_bid)
+        else:
+            backbone_func = lambda: model_dict[params.model](
+                dropout_p=dropout_p, dropout_block_id=dropout_bid
+                , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
+    #         backbone_func = lambda: model_dict[params.model](
+    #             dropout_p=params.dropout_p, dropout_block_id=params.dropout_block_id
+    #             , more_to_drop=params.more_to_drop, gram_bid = params.gram_bid)
 
     print('get_backbone_func() finished.')
     return backbone_func
