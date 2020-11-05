@@ -12,7 +12,56 @@ import h5py
 from my_utils import *
 
 
+class VirtualSetDataset:
+    def __init__(self, data, batch_size):#, transform): # one item = ONE specific Class, but batch_sampler call this several times at once
+        
+        self.X = data[0]
+        self.y = data[1]
 
+        self.cl_list = np.unique(self.y).tolist()
+
+        self.sub_meta = {} # ALL images, content = class_1: [data_path_1, ..., data_path_n], class_k: [data_path_1, ..., ]
+        for cl in self.cl_list:
+            self.sub_meta[cl] = []
+
+        for feat,label in zip(self.X, self.y):
+            self.sub_meta[label].append(feat)
+
+        self.sub_dataloaders = [] # there're k dataloaders, k is # classes
+        sub_data_loader_params = dict(batch_size = batch_size, # how many data to grab at current category???
+                                  shuffle = True,
+                                  num_workers = 0, #use main thread only or may receive multiple batches
+                                  pin_memory = False)        
+        for cl in self.cl_list:
+            sub_dataset = VirtualSubDataset(self.sub_meta[cl], cl)#, transform = transform )
+            self.sub_dataloaders.append( torch.utils.data.DataLoader(sub_dataset, **sub_data_loader_params) )
+
+    def __getitem__(self,i):
+        return next(iter(self.sub_dataloaders[i]))
+
+    def __len__(self):
+        return len(self.cl_list)
+
+
+class VirtualSubDataset: # one iteration is one image of one class
+    def __init__(self, sub_meta, cl, transform=lambda x:x, target_transform=lambda x:x):
+        self.sub_meta = sub_meta # feature array of certian class
+        self.cl = cl 
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __getitem__(self,i):
+        #print( '%d -%d' %(self.cl,i))
+#         image_path = os.path.join( self.sub_meta[i])
+#         img = Image.open(image_path).convert('RGB')
+#         img = self.transform(img)
+        x = self.sub_meta[i]
+        x = self.transform(x)
+        target = self.target_transform(self.cl)
+        return x, target
+
+    def __len__(self):
+        return len(self.sub_meta)
 
 class SetDataset:
     def __init__(self, data_file, batch_size, transform): # one item = ONE specific Class, but batch_sampler call this several times at once

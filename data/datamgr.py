@@ -325,6 +325,25 @@ class SetDataManager(DataManager):
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
         return data_loader
 
+class VirtualSetDataManager(DataManager):
+    ''' to get a data_loader
+    '''
+    def __init__(self, in_dim, n_way, n_support, n_query, n_episode =100):
+        super(VirtualSetDataManager, self).__init__()
+        self.in_dim = in_dim
+        self.n_way = n_way
+        self.batch_size = n_support + n_query
+        self.n_episode = n_episode
+
+#         self.trans_loader = TransformLoader(image_size)
+
+    def get_data_loader(self, data, aug): #parameters that would change on train/val set
+#         transform = lambda x:x
+        dataset = VirtualSetDataset( data , self.batch_size)#, transform )
+        sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
+        data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)       
+        data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
+        return data_loader
 
 class SimpleDataManager(DataManager):
     def __init__(self, image_size, batch_size, recons_func = None):        
