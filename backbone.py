@@ -584,7 +584,41 @@ class BottleneckBlock(nn.Module): # utilized by ResNet50, ResNet101
         out = self.relu(out)
         return out
 
-
+class FCNet(nn.Module, CustomDropoutNet):
+    def __init__(self, list_of_n_dims, dropout_p=0., dropout_layer_id=2, more_to_drop=None):
+        super(FCNet, self).__init__()
+        n_layers = len(list_of_n_dims) # including input layer
+        self.layers = []
+        for i in range(n_layers):
+            outdim = list_of_n_dims[i]
+            # more_to_drop
+            if more_to_drop=='double' and dropout_cond:
+                outdim = outdim*2
+            
+            if i >= 1: # after input layer
+                indim = list_of_n_dims[i-1]
+                self.layers.append(nn.Linear(indim, outdim))
+                if True:#i != n_layers - 1:
+                    self.layers.append(nn.ReLU(inplace = True))
+            
+            
+            # custom dropout
+            dropout_cond = (dropout_layer_id == -1) or (dropout_layer_id == i)
+            ith_dropout_p = dropout_p if dropout_cond else 0.
+            dropout = CustomDropout(n_features = outdim, p = ith_dropout_p)
+            self.layers.append(dropout)
+            
+            
+        self.trunk = nn.Sequential(*self.layers)
+        self.final_feat_dim = outdim
+        # for CustomDropout
+        self.record_active_dropout()
+        
+    def forward(self,x):
+        out = self.trunk(x)
+        return out
+    
+    
 class ConvNet(nn.Module, CustomDropoutNet, MinGramDropoutNet):
     def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid = None): # CUB/miniImgnet Conv input = 84*84*3
 #     def __init__(self, depth, flatten = True, dropout_p=0., dropout_block_id=3, more_to_drop=None): # CUB/miniImgnet Conv input = 84*84*3
@@ -881,7 +915,9 @@ class ResNet(nn.Module, CustomDropoutNet, MinGramDropoutNet):
 
 # def Conv4():
 #     return ConvNet(4)
-
+def FC100_50_2(dropout_p=0, dropout_layer_id=2, more_to_drop=None):
+    return FCNet(list_of_n_dims=[100,50,2], dropout_p=dropout_p, dropout_layer_id=dropout_layer_id, more_to_drop=more_to_drop)
+    
 def Conv4(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
 # def Conv4(dropout_p=0., dropout_block_id=3, more_to_drop=None):
 #     return ConvNet(4,dropout_p=dropout_p, dropout_block_id=dropout_block_id, more_to_drop=more_to_drop)
