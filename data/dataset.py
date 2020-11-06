@@ -57,6 +57,7 @@ class VirtualSubDataset: # one iteration is one image of one class
 #         img = self.transform(img)
         x = self.sub_meta[i]
         x = self.transform(x)
+        x = torch.from_numpy(x).float() # hack to fix bug
         target = self.target_transform(self.cl)
         return x, target
 

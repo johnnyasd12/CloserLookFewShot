@@ -8,6 +8,7 @@ n_base_classes = {
     'cross_char_base12lang':350, 'cross_char_base3lang':69, 'cross_char_base1lang':20, # val:31, novel:31
     'cross_char2':1597, 'cross_char2_quarter':350, 'cross_char2_base3lang':69, 'cross_char2_base1lang':20, # val:31, novel:31
     'cross':100, 'cross_base80cl':80, 'cross_base40cl':40, 'cross_base20cl':20, # val:50, novel:50
+    'try_virtual_20info_base200cl_50info':200, 
 }
 
 stop_epoch = {

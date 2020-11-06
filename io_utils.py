@@ -289,7 +289,9 @@ def get_img_size(params):
 #             image_size = 84 
 #     else:
 #         image_size = 224
-    if 'Conv' in params.model:
+    if 'FC' in params.model:
+        image_size = 100 # actually not image size, just input size
+    elif 'Conv' in params.model:
         if 'omniglot' in params.dataset or 'cross_char' in params.dataset:# in ['omniglot', 'cross_char', 'cross_char_half', 'cross_char_quarter', 'cross_char_quarter_10shot', 'cross_char2']:
             image_size = 28 if params.image_size is None else params.image_size
         else:
@@ -390,6 +392,12 @@ def get_loadfile_path(params, split):
             loadfile   = configs.data_dir['omniglot'] + 'base_400cl.json'
         else:
             loadfile   = configs.data_dir['omniglot'] + split + '.json'
+    elif params.dataset == 'try_virtual_20info_base200cl_50info':
+        if split == 'base':
+            loadfile   = './filelists/virtual_20info/' + 'try_' + split + '200cl.npz'
+        else:
+            loadfile   = './filelists/virtual_50info/' + 'try_' + split + '.npz'
+        
     else: 
         loadfile    = configs.data_dir[params.dataset] + split + '.json'
     return loadfile

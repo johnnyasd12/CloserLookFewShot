@@ -189,7 +189,7 @@ class CustomDropout(MyDropout):
         mask = mask.repeat(n_samples,1) # shape: (n_samples, n_features)
         return mask
         
-    def forward(self, x):
+    def forward(self, x): # seems CustomDropout2D also call this forward
 #         n_samples = x.shape[0]
         n_features = self.n_features # also equals x.shape[1] as well as dropout2d case
         if not self.training: # eval() mode
@@ -201,7 +201,9 @@ class CustomDropout(MyDropout):
         else: # if train() mode
             mask = self.get_reshaped_random_mask(x) # shape: (n_samples, n_features), dropout2d shape: (N,C,H,W)
             # Multiply output by multiplier as described in the paper [1]
-            return torch.mul(mask,x) * 1/(1-self.p) # inverse dropout
+            masked_out = torch.mul(mask,x) # x and mask should be float
+            scaled_out = masked_out * 1/(1-self.p) # inverse dropout
+            return scaled_out
         
     def set_random_eval_mask(self): # this is the same for ALL examples
         random_mask = self.get_random_mask(n_samples=1)
@@ -602,11 +604,11 @@ class FCNet(nn.Module, CustomDropoutNet):
                     self.layers.append(nn.ReLU(inplace = True))
             
             
-            # custom dropout
-            dropout_cond = (dropout_layer_id == -1) or (dropout_layer_id == i)
-            ith_dropout_p = dropout_p if dropout_cond else 0.
-            dropout = CustomDropout(n_features = outdim, p = ith_dropout_p)
-            self.layers.append(dropout)
+                # custom dropout (if want dropout input layer then unindent, but should make input FloatTensor
+                dropout_cond = (dropout_layer_id == -1) or (dropout_layer_id == i)
+                ith_dropout_p = dropout_p if dropout_cond else 0.
+                dropout = CustomDropout(n_features = outdim, p = ith_dropout_p)
+                self.layers.append(dropout)
             
             
         self.trunk = nn.Sequential(*self.layers)

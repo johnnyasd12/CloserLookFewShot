@@ -26,6 +26,8 @@ import datetime
 
 import logging
 
+import re
+
 def train(base_loader, val_loader, source_val_loader, model, optimization, start_epoch, stop_epoch, params, record):
     '''
     Returns:
@@ -180,6 +182,9 @@ def get_train_val_filename(params):
     elif params.dataset == 'omniglot_base400cl':
         base_file = configs.data_dir['omniglot'] + 'base_400cl.json'
         val_file  = configs.data_dir['omniglot'] + 'val.json'
+    elif params.dataset == 'try_virtual_20info_base200cl_50info':
+        base_file = './filelists/virtual_20info/' + 'try_base200cl.npz'
+        val_file  = './filelists/virtual_50info/' + 'try_val.npz'
     else:
         base_file = configs.data_dir[params.dataset] + 'base.json' 
         val_file   = configs.data_dir[params.dataset] + 'val.json'
@@ -198,6 +203,8 @@ def get_source_val_filename(params):
     elif 'cross_char' in params.dataset:
         # in ['cross_char','cross_char_half','cross_char_base3lang', 'cross_char_base1lang']
         source_val_file = configs.data_dir['omniglot'] + 'LatinROT3.json'
+    elif 'try_virtual_20info' in params.dataset:
+        source_val_file = './filelists/virtual_20info/' + 'try_novel.npz'
     else:
         raise ValueError('Cannot return source_val_file when dataset =', params.dataset)
         
@@ -206,6 +213,7 @@ def get_source_val_filename(params):
 
 def set_default_stop_epoch(params):
     if params.stop_epoch == -1: 
+        virtual_stop_epoch = 1
         if params.method in ['baseline', 'baseline++'] :
             if 'omniglot' in params.dataset or 'cross_char' in params.dataset:
 #             if params.dataset in ['omniglot', 'cross_char', 'cross_char_half', 'cross_char_quarter']:
@@ -214,10 +222,14 @@ def set_default_stop_epoch(params):
                 params.stop_epoch = 200 # This is different as stated in the open-review paper. However, using 400 epoch in baseline actually lead to over-fitting
             elif params.dataset in ['miniImagenet', 'cross', 'cross_base80cl', 'cross_base40cl', 'cross_base20cl']:
                 params.stop_epoch = 400
+            elif 'virtual' in params.dataset:
+                params.stop_epoch = virtual_stop_epoch
             else:
                 params.stop_epoch = 400 #default
         else: #meta-learning methods
-            if params.n_shot == 1:
+            if 'virtual' in params.dataset:
+                params.stop_epoch = virtual_stop_epoch
+            elif params.n_shot == 1:
                 params.stop_epoch = 600
             elif params.n_shot == 5:
                 params.stop_epoch = 400
@@ -226,19 +238,26 @@ def set_default_stop_epoch(params):
 
 def get_train_val_loader(params, source_val):
     # to prevent circular import
-    from data.datamgr import SimpleDataManager, SetDataManager, AugSetDataManager, VAESetDataManager
+    from data.datamgr import SimpleDataManager, SetDataManager, AugSetDataManager, VAESetDataManager, VirtualSetDataManager
     
+#     if 'virtual' in params.dataset:
+#         pattern = re.compile('virtual_(\d+)info') # e.g., virtual_20info
+#         search = pattern.search(params.dataset)
+#         n_informative = int(search.groups()[0]) # e.g., 20
+        
+        
+#     else:
     image_size = get_img_size(params)
     base_file, val_file = get_train_val_filename(params)
     if source_val:
         source_val_file = get_source_val_filename(params)
-    
+
     if params.method in ['baseline', 'baseline++'] :
         base_datamgr    = SimpleDataManager(image_size, batch_size = 16)
         base_loader     = base_datamgr.get_data_loader( base_file , aug = params.train_aug )
 #         val_datamgr     = SimpleDataManager(image_size, batch_size = 64)
 #         val_loader      = val_datamgr.get_data_loader( val_file, aug = False)
-        
+
         # to do fine-tune when validation
         n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
         val_few_shot_params     = get_few_shot_params(params, 'val')
@@ -247,7 +266,7 @@ def get_train_val_loader(params, source_val):
         if source_val:
             source_val_datamgr = SetDataManager(image_size, n_query = n_query, **val_few_shot_params)
             source_val_loader  = val_datamgr.get_data_loader(source_val_file, aug = False)
-        
+
     elif params.method in ['protonet','matchingnet','relationnet', 'relationnet_softmax', 'maml', 'maml_approx']:
         n_query = max(1, int(16* params.test_n_way/params.train_n_way)) #if test_n_way is smaller than train_n_way, reduce n_query to keep batch size small
 
@@ -255,11 +274,12 @@ def get_train_val_loader(params, source_val):
 #         val_few_shot_params     = dict(n_way = params.test_n_way, n_support = params.n_shot) 
         train_few_shot_params    = get_few_shot_params(params, 'train')
         val_few_shot_params     = get_few_shot_params(params, 'val')
-        if params.vaegan_exp is not None:
+
+        if params.vaegan_exp is not None: ##### VAEGAN experiments #####
             # TODO
             is_training = False
             vaegan = restore_vaegan(params.dataset, params.vaegan_exp, params.vaegan_step, is_training=is_training)
-                
+
             base_datamgr            = VAESetDataManager(
                                         image_size, n_query=n_query, 
                                         vaegan_exp = params.vaegan_exp, 
@@ -270,15 +290,20 @@ def get_train_val_loader(params, source_val):
                                         **train_few_shot_params)
             # train_val or val???
             val_datamgr             = SetDataManager(image_size, n_query = n_query, **val_few_shot_params)
-            
-            
-        elif params.aug_target is None: # Common Case
+
+
+        elif params.aug_target is None: ##### Common Case #####
             assert params.aug_type is None
+
+            if 'virtual' in params.dataset:
+                base_datamgr     = VirtualSetDataManager(in_dim = image_size, n_query = n_query,  **train_few_shot_params)
+                val_datamgr     = VirtualSetDataManager(in_dim = image_size, n_query = n_query,  **val_few_shot_params)
             
-            base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)
-            val_datamgr             = SetDataManager(image_size, n_query = n_query, **val_few_shot_params)
-            if source_val:
-                source_val_datamgr  = SetDataManager(image_size, n_query = n_query, **val_few_shot_params)
+            else: ##### common case #####
+                base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)
+                val_datamgr             = SetDataManager(image_size, n_query = n_query, **val_few_shot_params)
+                if source_val:
+                    source_val_datamgr  = SetDataManager(image_size, n_query = n_query, **val_few_shot_params)
         else:
             aug_type = params.aug_type
             assert aug_type is not None
@@ -293,10 +318,10 @@ def get_train_val_loader(params, source_val):
         if source_val:
             source_val_loader   = val_datamgr.get_data_loader(source_val_file, aug = False)
         #a batch for SetDataManager: a [n_way, n_support + n_query, n_channel, w, h] tensor        
-        
+
     else:
         raise ValueError('Unknown method')
-    
+
     if source_val:
         return base_loader, val_loader, source_val_loader
     else:
@@ -360,7 +385,7 @@ def exp_train_val(params):
                 record = tmp['record']
             model.load_state_dict(tmp['state'])
         else:
-            print('resume_file is None!!! Train form scratch!!!')
+            print('Warning: resume_file is None!!! Train form scratch!!!')
     elif params.warmup: #We also support warmup from pretrained baseline feature, but we never used in our paper
         # TODO: checkpoint_dir for resume haven't synchronize
         baseline_checkpoint_dir = '%s/checkpoints/%s/%s_%s' %(configs.save_dir, params.dataset, params.model, 'baseline')

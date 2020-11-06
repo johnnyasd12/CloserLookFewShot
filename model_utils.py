@@ -87,7 +87,7 @@ def get_backbone_func(params):
         
         if 'FC' in params.model:
             backbone_func = lambda: b_func[params.model](
-            dropout_p=dropout_p, dropout_block_id=dropout_bid
+            dropout_p=dropout_p, dropout_layer_id=dropout_bid
             , more_to_drop=params.more_to_drop)#, gram_bid = params.gram_bid)
         elif 'Conv' in params.model:
             backbone_func = lambda: b_func[params.model](
@@ -101,9 +101,12 @@ def get_backbone_func(params):
 
     else: # not RelationNet
         if 'FC' in params.model:
-            backbone_func = lambda: b_func[params.model](
-            dropout_p=dropout_p, dropout_block_id=dropout_bid
-            , more_to_drop=params.more_to_drop)#, gram_bid = params.gram_bid)
+            backbone_func = lambda: model_dict[params.model](
+                dropout_p=dropout_p, dropout_layer_id=dropout_bid
+                , more_to_drop=params.more_to_drop)#, gram_bid = params.gram_bid)
+#             backbone_func = lambda: b_func[params.model](
+#             dropout_p=dropout_p, dropout_block_id=dropout_bid
+#             , more_to_drop=params.more_to_drop)#, gram_bid = params.gram_bid)
         else:
             backbone_func = lambda: model_dict[params.model](
                 dropout_p=dropout_p, dropout_block_id=dropout_bid

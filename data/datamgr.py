@@ -325,6 +325,11 @@ class SetDataManager(DataManager):
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
         return data_loader
 
+def load_dataset(path):
+    assert '.npz' in path, 'load path should be .npz file'
+    data = np.load(path)
+    return data['X'], data['y']
+
 class VirtualSetDataManager(DataManager):
     ''' to get a data_loader
     '''
@@ -337,8 +342,9 @@ class VirtualSetDataManager(DataManager):
 
 #         self.trans_loader = TransformLoader(image_size)
 
-    def get_data_loader(self, data, aug): #parameters that would change on train/val set
+    def get_data_loader(self, filepath, aug): #parameters that would change on train/val set
 #         transform = lambda x:x
+        data = load_dataset(filepath) # X, y tuple
         dataset = VirtualSetDataset( data , self.batch_size)#, transform )
         sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
         data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)       
