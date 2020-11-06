@@ -5,7 +5,7 @@ from PIL import Image
 import numpy as np
 import torchvision.transforms as transforms
 import data.additional_transforms as add_transforms
-from data.dataset import SimpleDataset, SetDataset, EpisodicBatchSampler, HDF5Dataset, AugSetDataset, AugSimpleDataset, VAESetDataset, VirtualSetDataset
+from data.dataset import SimpleDataset, SetDataset, EpisodicBatchSampler, HDF5Dataset, AugSetDataset, AugSimpleDataset, VAESetDataset, VirtualSetDataset, VirtualSimpleDataset
 from abc import abstractmethod
 
 import torchvision.transforms.functional as TF
@@ -349,6 +349,24 @@ class VirtualSetDataManager(DataManager):
         sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
         data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)       
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
+        return data_loader
+
+class VirtualSimpleDataManager(DataManager):
+    def __init__(self, image_size, batch_size, recons_func = None):        
+        super(VirtualSimpleDataManager, self).__init__()
+        self.batch_size = batch_size
+#         self.trans_loader = TransformLoader(image_size)
+
+    def get_data_loader(self, filepath, aug, shuffle=True, num_workers=12):#, return_path=False): #parameters that would change on train/val set
+#         transform = self.trans_loader.get_composed_transform(aug)
+        data = load_dataset(filepath)
+        dataset = VirtualSimpleDataset(data)#, transform, return_path=return_path)
+        data_loader_params = dict(batch_size = self.batch_size, shuffle = shuffle, num_workers = num_workers, pin_memory = True)
+        ########### DEBUG ###########
+#         data_loader_params['num_workers'] = 0 # set to 0 when debugging
+        ########### DEBUG ###########
+        data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
+
         return data_loader
 
 class SimpleDataManager(DataManager):

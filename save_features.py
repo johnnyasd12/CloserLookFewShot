@@ -7,7 +7,7 @@ import h5py
 
 import configs
 import backbone
-from data.datamgr import SimpleDataManager, AugSimpleDataManager
+from data.datamgr import SimpleDataManager, AugSimpleDataManager, VirtualSimpleDataManager
 from methods.baselinetrain import BaselineTrain
 from methods.baselinefinetune import BaselineFinetune
 from methods.protonet import ProtoNet
@@ -55,12 +55,16 @@ def exp_save_features(params):
     print('outfile: %s'%(outfile))
 
     ########## get data_loader ##########
-    if params.aug_type is None:
-        datamgr         = SimpleDataManager(image_size, batch_size = 64)
+    if 'virtual' in params.dataset:
+        datamgr             = VirtualSimpleDataManager(image_size, batch_size = 64)
+        data_loader      = datamgr.get_data_loader(loadfile, aug = False, shuffle=False)#, return_path=True)
     else:
-        datamgr         = AugSimpleDataManager(image_size, batch_size = 64, 
+        if params.aug_type is None: ##### common case #####
+            datamgr         = SimpleDataManager(image_size, batch_size = 64)
+        else:
+            datamgr         = AugSimpleDataManager(image_size, batch_size = 64, 
                                                aug_type=params.aug_type, aug_target='test-sample') # aug_target= 'all' or 'test-sample', NO 'test-batch'
-    data_loader      = datamgr.get_data_loader(loadfile, aug = False, shuffle=False, return_path=True)
+        data_loader      = datamgr.get_data_loader(loadfile, aug = False, shuffle=False, return_path=True)
 
     
     ########## get backbone ##########
@@ -151,7 +155,12 @@ def save_features(feature_net, data_loader, outfile, params):
         count=0
         
         for i, datas in enumerate(tqdm(data_loader)):
-            paths, x, y = datas
+            if len(datas) == 3:
+                paths, x, y = datas
+            else:
+                paths = None
+                x, y = datas
+                
             if params.gpu_id:
                 x = x.cuda()
             else:

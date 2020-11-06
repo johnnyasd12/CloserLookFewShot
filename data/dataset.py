@@ -140,6 +140,21 @@ class HDF5Dataset:
         return self.dataset_len
             
 
+class VirtualSimpleDataset:
+    def __init__(self, data):
+        self.X = data[0]
+        self.y = data[1]
+    
+    def __getitem__(self, i):
+        x = self.X[i]
+        y = self.y[i]
+        x = torch.from_numpy(x).float() # hack to fix bug
+        return x, y
+    
+    def __len__(self):
+        return self.y.shape[0]
+        
+
 class SimpleDataset:
     def __init__(self, data_file, transform, target_transform=identity, return_path=False):
         with open(data_file, 'r') as f:
