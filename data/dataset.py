@@ -13,10 +13,15 @@ from my_utils import *
 
 
 class VirtualSetDataset:
-    def __init__(self, data, batch_size):#, transform): # one item = ONE specific Class, but batch_sampler call this several times at once
+    def __init__(self, data, base_statistics, batch_size):#, transform): # one item = ONE specific Class, but batch_sampler call this several times at once
         
         self.X = data[0]
         self.y = data[1]
+        # TODO: normalize dataset
+        base_X_mean = base_statistics[0]
+        base_X_std  = base_statistics[1]
+        self.X = self.X - base_X_mean
+        self.X = self.X / base_X_std
 
         self.cl_list = np.unique(self.y).tolist()
 
@@ -141,9 +146,14 @@ class HDF5Dataset:
             
 
 class VirtualSimpleDataset:
-    def __init__(self, data):
+    def __init__(self, data, base_statistics):
         self.X = data[0]
         self.y = data[1]
+        # TODO: normalize dataset
+        self.base_X_mean = base_statistics[0]
+        self.base_X_std  = base_statistics[1]
+        self.X = self.X - self.base_X_mean
+        self.X = self.X / self.base_X_std
     
     def __getitem__(self, i):
         x = self.X[i]

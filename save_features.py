@@ -56,8 +56,9 @@ def exp_save_features(params):
 
     ########## get data_loader ##########
     if 'virtual' in params.dataset:
+        basefile = get_loadfile_path(params, 'base') # to get training mean, std
         datamgr             = VirtualSimpleDataManager(image_size, batch_size = 64)
-        data_loader      = datamgr.get_data_loader(loadfile, aug = False, shuffle=False)#, return_path=True)
+        data_loader      = datamgr.get_data_loader(loadfile, basefile, aug = False, shuffle=False)#, return_path=True)
     else:
         if params.aug_type is None: ##### common case #####
             datamgr         = SimpleDataManager(image_size, batch_size = 64)

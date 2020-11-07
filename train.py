@@ -238,7 +238,7 @@ def set_default_stop_epoch(params):
 
 def get_train_val_loader(params, source_val):
     # to prevent circular import
-    from data.datamgr import SimpleDataManager, SetDataManager, AugSetDataManager, VAESetDataManager, VirtualSetDataManager
+    from data.datamgr import SimpleDataManager, SetDataManager, AugSetDataManager, VAESetDataManager, VirtualSetDataManager, load_npz_dataset
     
 #     if 'virtual' in params.dataset:
 #         pattern = re.compile('virtual_(\d+)info') # e.g., virtual_20info
@@ -296,8 +296,11 @@ def get_train_val_loader(params, source_val):
             assert params.aug_type is None
 
             if 'virtual' in params.dataset:
-                base_datamgr     = VirtualSetDataManager(in_dim = image_size, n_query = n_query,  **train_few_shot_params)
-                val_datamgr     = VirtualSetDataManager(in_dim = image_size, n_query = n_query,  **val_few_shot_params)
+                base_data = load_npz_dataset(base_file, return_statistics=True)
+                base_statistics = base_data[2]#.copy() # tuple cannot copy
+                del base_data
+                base_datamgr     = VirtualSetDataManager(in_dim = image_size, n_query = n_query,  **train_few_shot_params, base_statistics = base_statistics)
+                val_datamgr     = VirtualSetDataManager(in_dim = image_size, n_query = n_query,  **val_few_shot_params, base_statistics = base_statistics)
             
             else: ##### common case #####
                 base_datamgr            = SetDataManager(image_size, n_query = n_query,  **train_few_shot_params)

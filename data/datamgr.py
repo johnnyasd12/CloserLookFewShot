@@ -325,27 +325,32 @@ class SetDataManager(DataManager):
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
         return data_loader
 
-def load_dataset(path):
+def load_npz_dataset(path, return_statistics=False):
     assert '.npz' in path, 'load path should be .npz file'
     data = np.load(path)
-    return data['X'], data['y']
+    if return_statistics:
+        X_statistics = (data['X'].mean(axis=0), data['X'].std(axis=0))
+        return data['X'], data['y'], X_statistics
+    else:
+        return data['X'], data['y']
 
 class VirtualSetDataManager(DataManager):
     ''' to get a data_loader
     '''
-    def __init__(self, in_dim, n_way, n_support, n_query, n_episode =100):
+    def __init__(self, in_dim, n_way, n_support, n_query, n_episode =100, base_statistics=None):
         super(VirtualSetDataManager, self).__init__()
         self.in_dim = in_dim
         self.n_way = n_way
         self.batch_size = n_support + n_query
         self.n_episode = n_episode
+        self.base_statistics = base_statistics
 
 #         self.trans_loader = TransformLoader(image_size)
 
     def get_data_loader(self, filepath, aug): #parameters that would change on train/val set
 #         transform = lambda x:x
-        data = load_dataset(filepath) # X, y tuple
-        dataset = VirtualSetDataset( data , self.batch_size)#, transform )
+        data = load_npz_dataset(filepath) # X, y tuple
+        dataset = VirtualSetDataset( data , self.base_statistics, self.batch_size)#, transform )
         sampler = EpisodicBatchSampler(len(dataset), self.n_way, self.n_episode ) # sample classes randomly
         data_loader_params = dict(batch_sampler = sampler,  num_workers = 12, pin_memory = True)       
         data_loader = torch.utils.data.DataLoader(dataset, **data_loader_params)
@@ -357,10 +362,13 @@ class VirtualSimpleDataManager(DataManager):
         self.batch_size = batch_size
 #         self.trans_loader = TransformLoader(image_size)
 
-    def get_data_loader(self, filepath, aug, shuffle=True, num_workers=12):#, return_path=False): #parameters that would change on train/val set
-#         transform = self.trans_loader.get_composed_transform(aug)
-        data = load_dataset(filepath)
-        dataset = VirtualSimpleDataset(data)#, transform, return_path=return_path)
+    def get_data_loader(self, filepath, base_filepath=None, aug=False, shuffle=True, num_workers=12):#, return_path=False): #parameters that would change on train/val set
+        data = load_npz_dataset(filepath)
+        if base_filepath is not None:
+            base_data = load_npz_dataset(base_filepath, return_statistics=True)
+            base_statistics = base_data[2]#.copy() # X, y, statistics
+            del base_data
+        dataset = VirtualSimpleDataset(data, base_statistics)#, transform, return_path=return_path)
         data_loader_params = dict(batch_size = self.batch_size, shuffle = shuffle, num_workers = num_workers, pin_memory = True)
         ########### DEBUG ###########
 #         data_loader_params['num_workers'] = 0 # set to 0 when debugging
