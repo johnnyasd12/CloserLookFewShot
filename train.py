@@ -185,6 +185,14 @@ def get_train_val_filename(params):
     elif params.dataset == 'try_virtual_20info_base200cl_50info':
         base_file = './filelists/virtual_20info/' + 'try_base200cl.npz'
         val_file  = './filelists/virtual_50info/' + 'try_val.npz'
+    elif re.match(r'virtual_info[0-9]+_base[0-9]*(cl)*_info[0-9]+', params.dataset): 
+        # e.g., virtual_info0029_base_info0029 / virtual_info0029_base200cl_info1039
+        s1 = params.dataset.replace('virtual_', '')
+        strs = s1.split('_') # info0029, base200cl, info1039
+        src_datafolder = './filelists/virtual_' + strs[0] + '/'
+        tgt_datafolder = './filelists/virtual_' + strs[2] + '/'
+        base_file = src_datafolder + strs[1] + '.npz'
+        val_file  = tgt_datafolder + 'val.npz'
     else:
         base_file = configs.data_dir[params.dataset] + 'base.json' 
         val_file   = configs.data_dir[params.dataset] + 'val.json'

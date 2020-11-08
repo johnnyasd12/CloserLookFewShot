@@ -6,6 +6,7 @@ import backbone
 
 import configs
 import pandas as pd
+import re
 
 # embedding model architecture
 model_dict = dict(
@@ -50,7 +51,7 @@ def parse_args(script, parse_str=None):
     parser = argparse.ArgumentParser(description= 'few-shot script %s' %(script))
     
     # expmgr.py, train.py, save_features.py, test.py
-    parser.add_argument('--dataset'     , default=None, choices=['CUB','miniImagenet','cross','omniglot','cross_char','cross_char_half', 'cross_char_quarter', 'cross_char_quarter_10shot', 'cross_char_base3lang', 'cross_char_base1lang', 'cross_base80cl', 'cross_base20cl', 'CUB_base25cl', 'CUB_base50cl', 'cross_char2', 'cross_char2_quarter', 'cross_char2_base3lang', 'cross_char2_base1lang', 'omniglot_base400cl', 'omniglot_base40cl'])#, required=True)
+    parser.add_argument('--dataset'     , default=None, choices=['CUB','miniImagenet','cross','omniglot','cross_char','cross_char_half', 'cross_char_quarter', 'cross_char_quarter_10shot', 'cross_char_base3lang', 'cross_char_base1lang', 'cross_base80cl', 'cross_base20cl', 'CUB_base25cl', 'CUB_base50cl', 'cross_char2', 'cross_char2_quarter', 'cross_char2_base3lang', 'cross_char2_base1lang', 'omniglot_base400cl', 'omniglot_base40cl', 'virtual_blabla'])#, required=True)
     parser.add_argument('--model'       , default=None,      help='model: Conv{4|6} / ResNet{10|18|34|50|101}') # 50 and 101 are not used in the paper
     parser.add_argument('--method'      , default=None,   help='baseline/baseline++/protonet/matchingnet/relationnet{_softmax}/maml{_approx}') #relationnet_softmax replace L2 norm with softmax to expedite training, maml_approx use first-order approximation in the gradient for efficiency
     parser.add_argument('--train_n_way' , default=5, type=int,  help='class num to classify for training') #baseline and baseline++ would ignore this parameter
@@ -397,7 +398,17 @@ def get_loadfile_path(params, split):
             loadfile   = './filelists/virtual_20info/' + 'try_' + split + '200cl.npz'
         else:
             loadfile   = './filelists/virtual_50info/' + 'try_' + split + '.npz'
-        
+    elif re.match(r'virtual_info[0-9]+_base[0-9]*(cl)*_info[0-9]+', params.dataset): 
+        # e.g., virtual_info0029_base_info0029 / virtual_info0029_base200cl_info1039
+        s1 = params.dataset.replace('virtual_', '')
+        strs = s1.split('_') # info0029, base200cl, info1039
+        src_datafolder = './filelists/virtual_' + strs[0] + '/'
+        tgt_datafolder = './filelists/virtual_' + strs[2] + '/'
+        base_filename = strs[1]
+        if split == 'base':
+            loadfile   = src_datafolder + base_filename + '.npz'
+        else:
+            loadfile   = tgt_datafolder + split + '.npz'
     else: 
         loadfile    = configs.data_dir[params.dataset] + split + '.json'
     return loadfile
