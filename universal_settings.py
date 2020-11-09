@@ -25,7 +25,7 @@ def get_virtual_n_base_classes(dataset):
     
 
 stop_epoch = {
-    'virtual':50, 
+    'virtual':100, 
     'baseline':500, 
     'protonet':1000, 
 #     'relationnet':1000, 
