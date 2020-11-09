@@ -12,7 +12,20 @@ n_base_classes = {
     'virtual_info0029_base_info0029':400, 'virtual_info0029_base_info1039':400, 'virtual_info0029_base_info2049':400, 'virtual_info0029_base_info3059':400, 
 }
 
+def get_virtual_n_base_classes(dataset):
+    strs = dataset.split('_')
+    base_str = strs[2] # base / base100cl / ...
+    n_cl_str = base_str.replace('base', '')
+    n_str = n_cl_str.replace('cl', '')
+    default_n = 400
+    if n_str == '':
+        return default_n
+    else:
+        return int(n_str)
+    
+
 stop_epoch = {
+    'virtual':50, 
     'baseline':500, 
     'protonet':1000, 
 #     'relationnet':1000, 
@@ -21,6 +34,7 @@ stop_epoch = {
 }
 
 patience = {
+    'virtual':10, 
     'baseline':10, 
     'protonet':70, 
 #     'relationnet':70, 
