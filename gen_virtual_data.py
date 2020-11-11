@@ -48,19 +48,25 @@ class DatasetGenerator:
         n_informative = informative_interval[1] - informative_interval[0] + 1
         distrib_center_info_feat = distrib_center[informative_interval[0]:informative_interval[1]+1]
         distrib_std_info_feat = distrib_std[informative_interval[0]:informative_interval[1]+1] # actually no need that complex currently
+        
+        # TODO: 11/11 make informative_x_centers only n_informative/2 dimensions
         informative_x_centers = np.random.normal(
             loc = distrib_center_info_feat, scale = distrib_std_info_feat, 
-            size = (self.n_all_classes, n_informative)
-        ) # shape: (n_all_classes, n_informative)
-#         print(informative_x_centers.shape)
+            size = (self.n_all_classes, n_informative//2)
+        ) # TODO: 11/11 shape: (n_all_classes, n_informative//2)
+
         X_info = []
         for cl in range(self.n_all_classes):
+            # each class should have different feature intervals. (but all inside informative_interval)
             info_x_center = informative_x_centers[cl]
             cl_X_info = np.random.normal(
                 loc = info_x_center, scale = cls_x_std, 
-                size = (self.n_samples_per_class, n_informative)
+                size = (self.n_samples_per_class, n_informative//2)
 #                 size = (n_informative, self.n_samples_per_class) # this would get error @@
             )
+            # TODO: 11/11 expand cl_X_info to be n_informative dimensional
+            
+            
             X_info.append(cl_X_info)
         X_info = np.concatenate(X_info, axis=0)
         X_noninfo_center = distrib_center[:-n_informative] # hack (actually should be dimensions except informative_interval)
