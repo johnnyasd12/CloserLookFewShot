@@ -46,14 +46,20 @@ class DatasetGenerator:
         ''' generate base100cl, base200cl, base400cl, val, novel datasets
         '''
         n_informative = informative_interval[1] - informative_interval[0] + 1
-        distrib_center_info_feat = distrib_center[informative_interval[0]:informative_interval[1]+1]
-        distrib_std_info_feat = distrib_std[informative_interval[0]:informative_interval[1]+1] # actually no need that complex currently
+#         cl_n_informative = n_informative # // 2 # this is replaced by info_noisy_frac
+        info_noise_frac = 0.2
+        info_noise_std = 10
         
-        # TODO: 11/11 make informative_x_centers only n_informative/2 dimensions
+        distrib_center_info_feat = distrib_center[:n_informative] # hack to easy implement becuz distrib_center all the same currently
+        distrib_std_info_feat = distrib_std[:n_informative] # hack to easy implement becuz distrib_center all the same currently
+#         distrib_center_info_feat = distrib_center[:cl_n_informative] # hack to easy implement becuz distrib_center all the same currently
+#         distrib_std_info_feat = distrib_std[:cl_n_informative] # hack to easy implement becuz distrib_center all the same currently
+        
         informative_x_centers = np.random.normal(
             loc = distrib_center_info_feat, scale = distrib_std_info_feat, 
-            size = (self.n_all_classes, n_informative//2)
-        ) # TODO: 11/11 shape: (n_all_classes, n_informative//2)
+            size = (self.n_all_classes, n_informative)
+#             size = (self.n_all_classes, cl_n_informative)
+        )
 
         X_info = []
         for cl in range(self.n_all_classes):
@@ -61,11 +67,17 @@ class DatasetGenerator:
             info_x_center = informative_x_centers[cl]
             cl_X_info = np.random.normal(
                 loc = info_x_center, scale = cls_x_std, 
-                size = (self.n_samples_per_class, n_informative//2)
+                size = (self.n_samples_per_class, n_informative)
+#                 size = (self.n_samples_per_class, cl_n_informative)
 #                 size = (n_informative, self.n_samples_per_class) # this would get error @@
             )
             # TODO: 11/11 expand cl_X_info to be n_informative dimensional
-            
+            # TODO: add random noise on X_info (column-wise? element-wise?)
+            # column-wise add random noise (different for each class)
+            n_noise_cols = int(n_informative * info_noise_frac)
+            noise_indices = np.random.choice(cl_X_info.shape[1], n_noise_cols, replace = False)
+            cl_X_info[:, noise_indices] += np.random.normal(
+                0, info_noise_std, size = (cl_X_info.shape[0], n_noise_cols))
             
             X_info.append(cl_X_info)
         X_info = np.concatenate(X_info, axis=0)
