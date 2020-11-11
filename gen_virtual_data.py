@@ -1,21 +1,15 @@
 import os
 import numpy as np
 
-n_dims = 100
-n_all_classes = 600 # base max 400 / source_val 100 / source_novel 100
-n_samples_per_class = 100 # i think max 80support + 15query
-n_classes = {
-    'base':400, 'val':100, 'novel':100, 
-    'base25cl':25, 'base50cl':50, 'base100cl':100, 'base200cl':200,}
-distrib_center = np.zeros(n_dims)
-distrib_std = 20 * np.ones(n_dims)
-
-cls_x_std = 4
 
 
-# dataset_informative_intervals = [(0, 29), (10, 39), (20, 49), (30, 59)]
-info_interval = (0, 29)
-datafolder = './virtual'
+def info_interval_2_folder_name(info_interval):
+    info_int_s1 = str(info_interval[0]).zfill(2)
+    info_int_s2 = str(info_interval[1]).zfill(2)
+    datafolder = 'filelists/virtual_info%s%s/'%(info_int_s1, info_int_s2)
+    return datafolder
+
+
 
 # def load_dataset(path):
 #     assert '.npz' in path, 'load path should be .npz file'
@@ -127,25 +121,36 @@ class DatasetGenerator:
         return Xs, ys
 
 
-dataset_generator = DatasetGenerator(
-    n_dims = n_dims, n_all_classes = n_all_classes, n_classes = n_classes, 
-    n_samples_per_class = n_samples_per_class)#, datafolder = datafolder)
+if __name__ == '__main__':
+    
+    n_dims = 100
+    n_all_classes = 600 # base max 400 / source_val 100 / source_novel 100
+    n_samples_per_class = 100 # i think max 80support + 15query
+    n_classes = {
+        'base':400, 'val':100, 'novel':100, 
+        'base25cl':25, 'base50cl':50, 'base100cl':100, 'base200cl':200,}
+    distrib_center = np.zeros(n_dims)
+    distrib_std = 20 * np.ones(n_dims)
+    cls_x_std = 4
+    
+    # dataset_informative_intervals = [(0, 29), (10, 39), (20, 49), (30, 59)]
+    info_interval = (0, 29)
+#     datafolder = './virtual'
+    datafolder = info_interval_2_folder_name(info_interval)
+    
+    
+    dataset_generator = DatasetGenerator(
+        n_dims = n_dims, n_all_classes = n_all_classes, n_classes = n_classes, 
+        n_samples_per_class = n_samples_per_class)#, datafolder = datafolder)
 
+    # for info_interval in dataset_informative_intervals:
 
-
-
-# for info_interval in dataset_informative_intervals:
-
-# info_int_s1 = str(info_interval[0]).zfill(2)
-# info_int_s2 = str(info_interval[1]).zfill(2)
-# datafolder = 'filelists/virtual_info%s%s/'%(info_int_s1, info_int_s2)
-
-print('datafolder:', datafolder)
-# if should_gen_Gaussian:
-dataset_generator.gen_Gaussian_datasets(
-    datafolder = datafolder, 
-    distrib_center=distrib_center, distrib_std=distrib_std, 
-    cls_x_std=cls_x_std, informative_interval=info_interval)
+    print('datafolder:', datafolder)
+    # if should_gen_Gaussian:
+    dataset_generator.gen_Gaussian_datasets(
+        datafolder = datafolder, 
+        distrib_center=distrib_center, distrib_std=distrib_std, 
+        cls_x_std=cls_x_std, informative_interval=info_interval)
 
 
 
