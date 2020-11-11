@@ -41,8 +41,9 @@ class DatasetGenerator:
         '''
         n_informative = informative_interval[1] - informative_interval[0] + 1
 #         cl_n_informative = n_informative # // 2 # this is replaced by info_noisy_frac
-        info_noise_frac = 0.2
-        info_noise_std = 10
+#         info_noise_frac = 0.2
+#         info_noise_std = 10
+        info_noise_frac = 0.9
         
         distrib_center_info_feat = distrib_center[:n_informative] # hack to easy implement becuz distrib_center all the same currently
         distrib_std_info_feat = distrib_std[:n_informative] # hack to easy implement becuz distrib_center all the same currently
@@ -65,13 +66,14 @@ class DatasetGenerator:
 #                 size = (self.n_samples_per_class, cl_n_informative)
 #                 size = (n_informative, self.n_samples_per_class) # this would get error @@
             )
-            # TODO: 11/11 expand cl_X_info to be n_informative dimensional
             # TODO: add random noise on X_info (column-wise? element-wise?)
             # column-wise add random noise (different for each class)
             n_noise_cols = int(n_informative * info_noise_frac)
             noise_indices = np.random.choice(cl_X_info.shape[1], n_noise_cols, replace = False)
-            cl_X_info[:, noise_indices] += np.random.normal(
-                0, info_noise_std, size = (cl_X_info.shape[0], n_noise_cols))
+#             cl_X_info[:, noise_indices] += np.random.normal(
+#                 0, info_noise_std, size = (cl_X_info.shape[0], n_noise_cols))
+            cl_X_info[:, noise_indices] = np.random.normal(
+                0, distrib_std[0], size = (cl_X_info.shape[0], n_noise_cols))
             
             X_info.append(cl_X_info)
         X_info = np.concatenate(X_info, axis=0)
@@ -121,6 +123,11 @@ class DatasetGenerator:
         return Xs, ys
 
 
+def get_non_info_prob(n_informative, n_cl_informative, n_base_cl):
+    once_non_informative_prob = (n_informative - n_cl_informative) / n_informative
+    base_non_informative_prob = once_non_informative_prob ** n_base_cl
+    return base_non_informative_prob
+
 if __name__ == '__main__':
     
     n_dims = 100
@@ -128,13 +135,14 @@ if __name__ == '__main__':
     n_samples_per_class = 100 # i think max 80support + 15query
     n_classes = {
         'base':400, 'val':100, 'novel':100, 
-        'base25cl':25, 'base50cl':50, 'base100cl':100, 'base200cl':200,}
+        'base5cl':5, 'base25cl':25, 'base50cl':50, 'base100cl':100, 'base200cl':200,}
     distrib_center = np.zeros(n_dims)
     distrib_std = 20 * np.ones(n_dims)
     cls_x_std = 4
     
     # dataset_informative_intervals = [(0, 29), (10, 39), (20, 49), (30, 59)]
-    info_interval = (0, 29)
+    # dataset_informative_intervals = [(0, 49), (25, 74), (50, 99)]
+    info_interval = (50, 99)
 #     datafolder = './virtual'
     datafolder = info_interval_2_folder_name(info_interval)
     
