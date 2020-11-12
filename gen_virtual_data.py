@@ -9,6 +9,15 @@ def info_interval_2_folder_name(info_interval):
     datafolder = 'filelists/virtual_info%s%s/'%(info_int_s1, info_int_s2)
     return datafolder
 
+def get_random_indices(arr, n):
+    # return shape: (n, arr.ndim)
+    dim_indices = []
+    for dim_size in arr.shape:
+        indices = np.random.choice(dim_size, size = n, replace = False) # shape:(n,)
+        dim_indices.append(indices)
+    dim_indices = np.stack(dim_indices) # shape: (arr.ndim, n)
+    dim_indices = dim_indices.T # shape: (n, arr.ndim)
+    return dim_indices
 
 
 # def load_dataset(path):
@@ -26,24 +35,23 @@ class DatasetGenerator:
 #         self.datafolder = datafolder
         assert n_all_classes == n_classes['base'] + n_classes['val'] + n_classes['novel']
         
-#     def gen_random_dataset(self, save_path=None):
-#         n_samples = self.n_samples_per_class * self.n_all_classes
-#         X_shape = (n_samples, self.n_dims)
-#         X = np.random.random(X_shape)
-#         y = np.repeat(np.arange(self.n_all_classes),self.n_samples_per_class,axis=0) # [0 0 1 1 2 2 ...]
-#         if save_path is not None:
-#             assert '.npz' in save_path, 'save path should be .npz file'
-#             np.savez(save_path, X=X, y=y)#, X_mean=X.mean(axis=0), X_std=X.std(axis=0))
-#         return X, y
+#     def gen_linear_dataset(self, datafolder, all_latent_centers, transform_matrix, shift_factor):
+#         ''' generate dataset decided by n_latent factors follows Gaussian distributions
+#         '''
+#         cl_feat_noise_rate = 0.5
+# #         latent_centers = np.random.normal(loc = 0, scale = 1, size = (self.n_all_classes, n_latent))
+# #         transform_matrix = np.random.normal(loc = 0, scale = 1, size = (self.n_dims, n_latent))
         
-    def gen_Gaussian_datasets(self, datafolder, distrib_center, distrib_std, cls_x_std, informative_interval):
-        ''' generate base100cl, base200cl, base400cl, val, novel datasets
+    def gen_Gaussian_dataset(self, datafolder, distrib_center, distrib_std, cls_x_std, informative_interval):
+        ''' generate base100cl, base200cl, base(400cl), val, novel datasets
         '''
         n_informative = informative_interval[1] - informative_interval[0] + 1
 #         cl_n_informative = n_informative # // 2 # this is replaced by info_noisy_frac
-#         info_noise_frac = 0.2
+#         cl_info_noise_frac = 0.2
 #         info_noise_std = 10
-        info_noise_frac = 0.0 # 0.2 naive5cl 4%up, domain 1.7%up / 0.5 naive5cl 4%up, domain 1%up / 0.8 is trash
+        cl_info_noise_frac = 0.0 
+        # 0.0 naive5cl=1%up(/97%), domain=3%up, Ldomain=11.8%up / 0.2 naive5cl=4%up, domain=1.7%up 
+        # 0.5 naive5cl=4%up, domain=1%up / 0.8 is trash
         
         distrib_center_info_feat = distrib_center[:n_informative] # hack to easy implement becuz distrib_center all the same currently
         distrib_std_info_feat = distrib_std[:n_informative] # hack to easy implement becuz distrib_center all the same currently
@@ -68,7 +76,7 @@ class DatasetGenerator:
             )
             # TODO: add random noise on X_info (column-wise? element-wise?)
             # column-wise add random noise (different for each class)
-            n_noise_cols = int(n_informative * info_noise_frac)
+            n_noise_cols = int(n_informative * cl_info_noise_frac)
             noise_indices = np.random.choice(cl_X_info.shape[1], n_noise_cols, replace = False)
 #             cl_X_info[:, noise_indices] += np.random.normal(
 #                 0, info_noise_std, size = (cl_X_info.shape[0], n_noise_cols))
@@ -155,7 +163,7 @@ if __name__ == '__main__':
 
     print('datafolder:', datafolder)
     # if should_gen_Gaussian:
-    dataset_generator.gen_Gaussian_datasets(
+    dataset_generator.gen_Gaussian_dataset(
         datafolder = datafolder, 
         distrib_center=distrib_center, distrib_std=distrib_std, 
         cls_x_std=cls_x_std, informative_interval=info_interval)
