@@ -150,9 +150,9 @@ if __name__ == '__main__':
     
     # dataset_informative_intervals = [(0, 29), (10, 39), (20, 49), (30, 59)]
     # dataset_informative_intervals = [(0, 49), (25, 74), (50, 99)]
-    info_interval = (50, 99)
-#     datafolder = './virtual'
+    info_interval = (0, 74)
     datafolder = info_interval_2_folder_name(info_interval)
+#     datafolder = './virtual'
     
     
     dataset_generator = DatasetGenerator(
