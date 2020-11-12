@@ -43,7 +43,7 @@ class DatasetGenerator:
 #         cl_n_informative = n_informative # // 2 # this is replaced by info_noisy_frac
 #         info_noise_frac = 0.2
 #         info_noise_std = 10
-        info_noise_frac = 0.9
+        info_noise_frac = 0.5
         
         distrib_center_info_feat = distrib_center[:n_informative] # hack to easy implement becuz distrib_center all the same currently
         distrib_std_info_feat = distrib_std[:n_informative] # hack to easy implement becuz distrib_center all the same currently
