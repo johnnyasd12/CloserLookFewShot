@@ -148,9 +148,11 @@ if __name__ == '__main__':
     distrib_std = 20 * np.ones(n_dims)
     cls_x_std = 4
     
-    # dataset_informative_intervals = [(0, 29), (10, 39), (20, 49), (30, 59)]
-    # dataset_informative_intervals = [(0, 49), (25, 74), (50, 99)]
-    info_interval = (0, 74)
+    # dataset_informative_intervals = [(0, 29), (10, 39), (20, 49), (30, 59)] # target (old)
+    # dataset_informative_intervals = [(0, 49), (25, 74), (50, 99)] # target (old)
+    # dataset_informative_intervals = [(0, 49), (0, 74), (0, 99)] # source
+    # dataset_informative_intervals = [(0, 49), (20, 69), (35, 84), (50, 99)] # target
+    info_interval = (50, 99)
     datafolder = info_interval_2_folder_name(info_interval)
 #     datafolder = './virtual'
     
