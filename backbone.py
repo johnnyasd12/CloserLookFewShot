@@ -927,6 +927,8 @@ def FC100_30_20(dropout_p=0, dropout_layer_id=2, more_to_drop=None):
     return FCNet(list_of_n_dims=[100,30,20], dropout_p=dropout_p, dropout_layer_id=dropout_layer_id, more_to_drop=more_to_drop)
 def FC100_200_20(dropout_p=0, dropout_layer_id=2, more_to_drop=None):
     return FCNet(list_of_n_dims=[100,200,20], dropout_p=dropout_p, dropout_layer_id=dropout_layer_id, more_to_drop=more_to_drop)
+def FC100_1000_20(dropout_p=0, dropout_layer_id=2, more_to_drop=None):
+    return FCNet(list_of_n_dims=[100,1000,20], dropout_p=dropout_p, dropout_layer_id=dropout_layer_id, more_to_drop=more_to_drop)
     
 def Conv4(dropout_p=0., dropout_block_id=3, more_to_drop=None, gram_bid=None):
 # def Conv4(dropout_p=0., dropout_block_id=3, more_to_drop=None):

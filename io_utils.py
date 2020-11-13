@@ -24,6 +24,7 @@ model_dict = dict(
             FC80 = backbone.FC100_80_20, 
             FC30 = backbone.FC100_30_20, 
             FC200 = backbone.FC100_200_20, 
+            FC1000 = backbone.FC100_1000_20, 
             
     
 #             ResNet18Widen1 = backbone.ResNet18Widen1, 
